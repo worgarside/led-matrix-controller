@@ -52,11 +52,11 @@ class RainingGrid(Grid):
         """Move raindrops down one cell."""
         lower_slice = self._grid[target_slice]
         upper_slice = self._grid[self.translate_slice(target_slice, vrt=Direction.UP)]
+        raindrop = State.RAINDROP.state
+        null = State.NULL.state
 
         def _mask() -> Mask:
-            return (upper_slice == State.RAINDROP.state) & (  # type: ignore[no-any-return]
-                lower_slice == State.NULL.state
-            )
+            return (upper_slice == raindrop) & (lower_slice == null)  # type: ignore[no-any-return]
 
         return _mask
 
@@ -105,11 +105,14 @@ class RainingGrid(Grid):
         splash_spots = self._grid[target_slice]
         below_slice = self._grid[self.translate_slice(target_slice, vrt=Direction.DOWN)]
 
+        raindrop = State.RAINDROP.state
+        null = State.NULL.state
+
         def _mask() -> Mask:
             return (  # type: ignore[no-any-return]
-                (source_slice == State.RAINDROP.state)
-                & (splash_spots == State.NULL.state)
-                & (below_slice == State.NULL.state)
+                (source_slice == raindrop)
+                & (splash_spots == null)
+                & (below_slice == null)
             )
 
         return _mask
@@ -139,9 +142,11 @@ class RainingGrid(Grid):
             )
         ]
 
+        state = splash_state.state
+
         def _mask() -> Mask:
             return (  # type: ignore[no-any-return]
-                source_slice == splash_state.state
+                source_slice == state
             )  # & self._grid[target_slice] will be NULL
 
         return _mask
@@ -194,9 +199,10 @@ class RainingGrid(Grid):
     def move_splashdrop_down(self, target_slice: TargetSlice) -> MaskGen:
         """Move the splashdrop down."""
         source_slice = self._grid[self.translate_slice(target_slice, vrt=Direction.UP)]
+        splashdrop = State.SPLASHDROP.state
 
         def _mask() -> Mask:
-            return source_slice == State.SPLASHDROP.state  # type: ignore[no-any-return]
+            return source_slice == splashdrop  # type: ignore[no-any-return]
             # & self._grid[target_slice] will be State.NULL
 
         return _mask
