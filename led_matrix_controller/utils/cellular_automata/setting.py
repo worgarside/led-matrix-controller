@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from json import loads
+from json import JSONDecodeError, loads
 from logging import DEBUG, getLogger
 from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar
 
@@ -27,7 +27,6 @@ T = TypeVar("T")
 class Setting(Generic[T]):
     """Class for a setting that can be controlled via MQTT."""
 
-    default: T = field(init=False)
     type_: type[T] = field(init=False)
     topic: str = field(init=False)
 
@@ -51,7 +50,11 @@ class Setting(Generic[T]):
             __ (Any): the private user data as set in Client() or userdata_set()
             message (MQTTMessage): the message object from the MQTT subscription
         """
-        payload = loads(message.payload.decode())
+        try:
+            payload = loads(message.payload.decode())
+        except JSONDecodeError:
+            LOGGER.exception("Failed to decode payload: %s", message.payload)
+            return
 
         if not isinstance(payload, self.type_):
             LOGGER.error(
