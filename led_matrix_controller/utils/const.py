@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from os import environ, getenv
-from typing import Final
+from typing import Final, Literal
 
 import numpy as np
 
@@ -11,6 +11,8 @@ MQTT_USERNAME: Final[str] = environ["MQTT_USERNAME"]
 MQTT_PASSWORD: Final[str] = environ["MQTT_PASSWORD"]
 
 MQTT_HOST: Final[str] = getenv("MQTT_HOST", "homeassistant.local")
+
+HOSTNAME: Final[Literal["mtrxpi"]] = "mtrxpi"
 
 HA_LED_MATRIX_PAYLOAD_TOPIC: Final[str] = "/homeassistant/led_matrix/display"
 HA_LED_MATRIX_BRIGHTNESS_TOPIC: Final[str] = "/homeassistant/led_matrix/brightness"

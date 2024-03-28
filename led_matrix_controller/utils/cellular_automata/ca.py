@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import Enum, IntEnum
 from functools import lru_cache, wraps
 from itertools import islice
-from typing import Any, Callable, ClassVar, Generator, Self
+from typing import Any, Callable, ClassVar, Generator, get_type_hints
 
 import numpy as np
 from numpy.typing import DTypeLike, NDArray
+
+from .setting import Setting
 
 _BY_VALUE: dict[int, StateBase] = {}
 EVERYWHERE = (slice(None), slice(None))
@@ -57,21 +60,21 @@ TargetSliceDecVal = slice | int | tuple[int | slice, int | slice]
 TargetSlice = tuple[slice, slice]
 Mask = NDArray[np.bool_]
 MaskGen = Callable[[], Mask]
+Rule = Callable[["Grid"], MaskGen]
+
+CAMEL_CASE = re.compile(r"(?<!^)(?=[A-Z])")
 
 
 @dataclass
 class Grid:
     """Base class for a grid of cells."""
 
+    ID: ClassVar[str]
+    _RULES: ClassVar[list[tuple[TargetSlice, Callable[..., MaskGen], StateBase]]]
+    _RULE_METHODS: ClassVar[list[Callable[..., MaskGen]]]
+
     height: int
     width: int
-
-    frame_index: int = -1
-
-    _RULES: ClassVar[list[tuple[TargetSlice, Callable[..., MaskGen], StateBase]]] = []
-    _RULE_METHODS: ClassVar[list[Callable[..., MaskGen]]] = []
-
-    Rule: ClassVar = Callable[[Self], MaskGen]
 
     class OutOfBoundsError(ValueError):
         """Error for when a slice goes out of bounds."""
@@ -85,8 +88,16 @@ class Grid:
 
             super().__init__(f"Out of bounds: {current} + {delta} > {limit}")
 
+    def __init_subclass__(cls) -> None:
+        """Initialize the subclass."""
+        cls._RULES = []
+        cls._RULE_METHODS = []
+
+        cls.ID = CAMEL_CASE.sub("-", cls.__name__).lower()
+
     def __post_init__(self) -> None:
         """Set the calculated attributes of the Grid."""
+        self.frame_index = -1
         self._grid: NDArray[np.int_] = self.zeros()
 
         self.frame_updates = []
@@ -95,6 +106,19 @@ class Grid:
             self.frame_updates.append(
                 (self._grid[target_slice], mask_generator, to_state.value)
             )
+
+        settings = {}
+        for field_name, field_type in get_type_hints(
+            self.__class__, include_extras=True
+        ).items():
+            if hasattr(field_type, "__metadata__"):
+                for annotation in field_type.__metadata__:
+                    if isinstance(annotation, Setting):
+                        annotation.setup(
+                            field_name=field_name, grid=self, type_=field_type.__origin__
+                        )
+
+                        settings[field_name] = annotation
 
     @classmethod
     def rule(
@@ -131,7 +155,7 @@ class Grid:
 
         del target_slice
 
-        def decorator(rule_func: Callable[[Grid, TargetSlice], MaskGen]) -> Grid.Rule:
+        def decorator(rule_func: Callable[[Grid, TargetSlice], MaskGen]) -> Rule:
             @wraps(rule_func)
             def wrapper(grid: Grid) -> MaskGen:
                 return rule_func(grid, actual_slice)
