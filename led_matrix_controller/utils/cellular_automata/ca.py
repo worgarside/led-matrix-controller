@@ -89,6 +89,11 @@ class Grid:
         """Set the calculated attributes of the Grid."""
         self._grid: NDArray[np.int_] = self.zeros()
 
+        self.frame_updates = []
+        for target_slice, rule, to_state in self._RULES:
+            mask_generator = rule(self, target_slice)
+            self.frame_updates.append((target_slice, mask_generator, to_state.value))
+
     @classmethod
     def rule(
         cls,
@@ -151,15 +156,9 @@ class Grid:
     @property
     def frames(self) -> Generator[NDArray[np.int_], None, None]:
         """Generate the frames of the grid."""
-
-        updates = []
-        for target_slice, rule, to_state in self._RULES:
-            mask_generator = rule(self, target_slice)
-            updates.append((target_slice, mask_generator, to_state.value))
-
         while True:
             masks = []
-            for target_slice, mask_generator, state in updates:
+            for target_slice, mask_generator, state in self.frame_updates:
                 masks.append((target_slice, mask_generator(), state))
 
             for target_slice, mask, state in masks:
