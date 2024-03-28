@@ -92,7 +92,9 @@ class Grid:
         self.frame_updates = []
         for target_slice, rule, to_state in self._RULES:
             mask_generator = rule(self, target_slice)
-            self.frame_updates.append((target_slice, mask_generator, to_state.value))
+            self.frame_updates.append(
+                (self._grid[target_slice], mask_generator, to_state.value)
+            )
 
     @classmethod
     def rule(
@@ -158,11 +160,11 @@ class Grid:
         """Generate the frames of the grid."""
         while True:
             masks = []
-            for target_slice, mask_generator, state in self.frame_updates:
-                masks.append((target_slice, mask_generator(), state))
+            for target_view, mask_generator, state in self.frame_updates:
+                masks.append((target_view, mask_generator(), state))
 
-            for target_slice, mask, state in masks:
-                self._grid[target_slice][mask] = state
+            for target_view, mask, state in masks:
+                target_view[mask] = state
 
             self.frame_index += 1
 
