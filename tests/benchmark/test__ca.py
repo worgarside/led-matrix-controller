@@ -87,9 +87,5 @@ def test_rules(
 
     @benchmark  # type: ignore[misc]
     def bench() -> None:
-        # Benchmark the time taken to create a mask generator for completeness
-        rule(grid)
-
-        # And then call the mask generator N times
         for mask_gen in mask_generators:
             mask_gen()
