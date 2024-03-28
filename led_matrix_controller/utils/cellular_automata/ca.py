@@ -158,10 +158,12 @@ class Grid:
     @property
     def frames(self) -> Generator[NDArray[np.int_], None, None]:
         """Generate the frames of the grid."""
-        while True:
-            masks = tuple(mask_generator() for _, mask_generator, _ in self.frame_updates)
+        frame_updates = self.frame_updates
 
-            for mask, (target_view, _, state) in zip(masks, self.frame_updates):
+        while True:
+            masks = tuple(mask_generator() for _, mask_generator, _ in frame_updates)
+
+            for mask, (target_view, _, state) in zip(masks, frame_updates):
                 target_view[mask] = state
 
             self.frame_index += 1
