@@ -9,6 +9,11 @@
 		}
 	],
 	"settings": {
-		"python.analysis.extraPaths": ["${workspaceFolder}/led_matrix_controller"]
+		"python.analysis.extraPaths": [
+			"${workspaceFolder}/led_matrix_controller"
+		],
+		"files.associations": {
+			"*.yaml": "home-assistant"
+		}
 	}
 }

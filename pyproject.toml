@@ -10,7 +10,7 @@ readme = "README.md"
 python = ">=3.11,<3.12"
 pillow = "^10.2.0"
 requests = "^2.31.0"
-wg-utilities = {extras = ["exceptions"], version = "^5.14.1"}
+wg-utilities = { extras = ["exceptions"], version = "^5.14.1" }
 paho-mqtt = "^1.6.1"
 numpy = "^1.26.4"
 
@@ -21,6 +21,7 @@ rgbmatrixemulator = "^0.11.3"
 pytest-codspeed = "^2.2.1"
 pytest-env = "^1.1.3"
 pytest-xdist = "^3.5.0"
+pytest-cov = "^4.1.0"
 
 [tool.pytest.ini_options]
 addopts = [
@@ -30,16 +31,31 @@ addopts = [
   "-n",
   "auto",
   "--dist=load",
+  "--cov-report=xml",
+  "--cov=led_matrix_controller",
 ]
 xfail_strict = true
 log_cli_level = "warning"
 pythonpath = ["led_matrix_controller"]
 testpaths = ["tests"]
-env = [
-  "ARTWORK_DIR=./artwork",
-  "MQTT_USERNAME=test",
-  "MQTT_PASSWORD=test",
+env = ["ARTWORK_DIR=./artwork", "MQTT_USERNAME=test", "MQTT_PASSWORD=test"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "def __repr__",
+  "def __ne__",
+  "def __hash__",
+  "def __str__",
+  "@overload",
+  "if TYPE_CHECKING",
+  "pytest.fail",
 ]
+
+[tool.coverage.run]
+omit = ["wg_utilities/devices/epd/*", "wg_utilities/devices/dht22/*"]
+relative_files = true
+
 
 [tool.mypy]
 plugins = "numpy.typing.mypy_plugin"

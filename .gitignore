@@ -346,3 +346,4 @@ resources/gh_cli/
 .github_token
 .png
 .jp(e?)g
+!emulator_config.json
