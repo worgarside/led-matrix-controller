@@ -8,7 +8,7 @@ from math import ceil
 from typing import TYPE_CHECKING, Callable
 
 import pytest
-from rain import RainingGrid
+from utils.cellular_automata import RainingGrid
 
 if TYPE_CHECKING:
     from pytest_codspeed import BenchmarkFixture  # type: ignore[import-untyped]

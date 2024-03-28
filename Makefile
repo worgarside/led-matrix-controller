@@ -37,6 +37,9 @@ install-all:
 	@$(MAKE) install-python
 	@$(MAKE) install-service
 
+rain:
+	sudo .venv/bin/python led_matrix_controller/rain.py
+
 restart:
 	sudo systemctl restart led_matrix_controller.service
 
