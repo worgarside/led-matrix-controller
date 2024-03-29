@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from os import environ, getenv
-from typing import Final, Literal
+from socket import gethostname
+from typing import Final
 
 import numpy as np
 
@@ -15,7 +17,7 @@ DEBUG_MODE: Final[bool] = bool(int(getenv("DEBUG_MODE", "0")))
 MQTT_HOST: Final[str] = getenv("MQTT_HOST", "homeassistant.local")
 
 
-HOSTNAME: Final[Literal["mtrxpi"]] = "mtrxpi"
+HOSTNAME: Final[str] = re.sub(r"[^a-z0-9]", "-", gethostname().lower())
 
 HA_LED_MATRIX_PAYLOAD_TOPIC: Final[str] = "/homeassistant/led_matrix/display"
 HA_LED_MATRIX_BRIGHTNESS_TOPIC: Final[str] = "/homeassistant/led_matrix/brightness"
