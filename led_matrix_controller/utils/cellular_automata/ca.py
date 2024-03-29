@@ -13,6 +13,7 @@ from typing import Any, Callable, ClassVar, Generator, Self, get_type_hints
 
 import numpy as np
 from numpy.typing import DTypeLike, NDArray
+from utils import const
 from wg_utilities.loggers import add_stream_handler
 
 from .setting import FrequencySetting, Setting
@@ -234,14 +235,17 @@ class Grid:
                 )
             )
 
-            # This is just to enable testing/debugging/validation/etc. - the rule should never be called directly
-            @wraps(rule_func)
-            def wrapper(grid: Grid) -> MaskGen:
-                return rule_func(grid, actual_slice)
+            if const.DEBUG_MODE:
+                # This is just to enable testing/debugging/validation/etc.
+                @wraps(rule_func)
+                def wrapper(grid: Grid) -> MaskGen:
+                    return rule_func(grid, actual_slice)
 
-            cls._RULE_FUNCTIONS.append(wrapper)
+                cls._RULE_FUNCTIONS.append(wrapper)
 
-            return wrapper
+                return wrapper
+
+            return None  # The function is never called explicitly
 
         return decorator
 

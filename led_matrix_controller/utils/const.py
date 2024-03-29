@@ -10,7 +10,10 @@ import numpy as np
 MQTT_USERNAME: Final[str] = environ["MQTT_USERNAME"]
 MQTT_PASSWORD: Final[str] = environ["MQTT_PASSWORD"]
 
+DEBUG_MODE: Final[bool] = bool(int(getenv("DEBUG_MODE", "0")))
+
 MQTT_HOST: Final[str] = getenv("MQTT_HOST", "homeassistant.local")
+
 
 HOSTNAME: Final[Literal["mtrxpi"]] = "mtrxpi"
 
