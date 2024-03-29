@@ -66,7 +66,7 @@ MaskGenLoop = tuple[tuple[View, MaskGen, int], ...]
 CAMEL_CASE = re.compile(r"(?<!^)(?=[A-Z])")
 
 
-@dataclass
+@dataclass(slots=True)
 class Rule:
     """Class for a rule to update cells."""
 
@@ -85,18 +85,21 @@ class Rule:
         return i % self._frequency_setting.get_value_from_grid() == 0
 
 
-@dataclass
+@dataclass(slots=True)
 class Grid:
     """Base class for a grid of cells."""
 
-    RULES: ClassVar[list[Rule]]
-    _RULE_FUNCTIONS: ClassVar[list[Callable[..., MaskGen]]]
+    RULES: ClassVar[list[Rule]] = []
+    _RULE_FUNCTIONS: ClassVar[list[Callable[..., MaskGen]]] = []
 
     height: int
     width: int
     id: str
 
-    settings: ClassVar[dict[str, Setting[Any]]] = {}
+    frame_index: int = -1
+
+    _grid: NDArray[np.int_] = field(init=False)
+    settings: dict[str, Setting[Any]] = field(init=False)
     mask_generator_loops: tuple[MaskGenLoop, ...] = field(init=False)
 
     class OutOfBoundsError(ValueError):
@@ -111,15 +114,9 @@ class Grid:
 
             super().__init__(f"Out of bounds: {current} + {delta} > {limit}")
 
-    def __init_subclass__(cls) -> None:
-        """Initialize the subclass."""
-        cls.RULES = []
-        cls._RULE_FUNCTIONS = []
-
     def __post_init__(self) -> None:
         """Set the calculated attributes of the Grid."""
-        self.frame_index = -1
-        self._grid: NDArray[np.int_] = self.zeros()
+        self._grid = self.zeros()
 
         settings: dict[str, Setting[object]] = {}
         for field_name, field_type in get_type_hints(
@@ -145,7 +142,7 @@ class Grid:
                                 ):
                                     rule._frequency_setting = annotation
 
-        self.__class__.settings = settings
+        self.settings = settings
 
         self.generate_rules_loop()
 

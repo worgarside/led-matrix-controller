@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum, auto
+from enum import StrEnum, auto
 from json import JSONDecodeError, loads
 from logging import DEBUG, getLogger
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast
@@ -24,19 +24,22 @@ add_stream_handler(LOGGER)
 T = TypeVar("T")
 
 
-class SettingType(Enum):
+class SettingType(StrEnum):
     FREQUENCY = auto()
     PARAMETER = auto()
 
 
-@dataclass(kw_only=True)
+@dataclass(kw_only=True, slots=True)
 class Setting(Generic[T]):
     """Class for a setting that can be controlled via MQTT."""
 
     setting_type: SettingType
 
-    type_: type[T] = field(init=False)
+    grid: Grid = field(init=False)
+    settings_index: int = field(init=False)
+    slug: str = field(init=False)
     topic: str = field(init=False)
+    type_: type[T] = field(init=False)
 
     def callback(self, payload: T) -> None:
         setattr(self.grid, self.slug, payload)
@@ -48,7 +51,7 @@ class Setting(Generic[T]):
         """Set up the setting."""
         self.settings_index = index
         self.slug = field_name
-        self.topic = f"/{const.HOSTNAME}/{grid.id}/{self.slug.replace('_', '-')}"
+        self.topic = f"/{const.HOSTNAME}/{grid.id}/{self.setting_type}/{self.slug.replace('_', '-')}"
         self.grid = grid
         self.type_ = type_
 
@@ -83,7 +86,7 @@ class Setting(Generic[T]):
         self.callback(payload)
 
 
-@dataclass
+@dataclass(slots=True)
 class FrequencySetting(Setting[int]):
     """Set a rule's frequency."""
 
@@ -91,7 +94,7 @@ class FrequencySetting(Setting[int]):
     type_: type[int] = int
 
 
-@dataclass
+@dataclass(slots=True)
 class ParameterSetting(Setting[T]):
     """Set a parameter for a rule."""
 

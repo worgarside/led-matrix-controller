@@ -31,7 +31,7 @@ class State(StateBase):
     SPLASH_RIGHT = 4, "*", (170, 197, 250)
 
 
-@dataclass
+@dataclass(slots=True)
 class RainingGrid(Grid):
     """Basic rain simulation."""
 
