@@ -15,7 +15,7 @@ paho-mqtt = "^1.6.1"
 numpy = "^1.26.4"
 
 [tool.poetry.group.dev.dependencies]
-rgbmatrixemulator = "^0.11.3"
+rgbmatrixemulator = "^0.11.4"
 
 [tool.poetry.group.test.dependencies]
 pytest-codspeed = "^2.2.1"
