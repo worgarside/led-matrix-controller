@@ -6,7 +6,9 @@ from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from json import JSONDecodeError, loads
 from logging import DEBUG, getLogger
-from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast
+from threading import Thread
+from time import sleep
+from typing import TYPE_CHECKING, Any, Callable, Generic, Literal, TypeVar, cast
 
 from utils import const
 from utils.mqtt import MQTT_CLIENT
@@ -21,7 +23,7 @@ LOGGER.setLevel(DEBUG)
 add_stream_handler(LOGGER)
 
 
-T = TypeVar("T")
+S = TypeVar("S", int, float)
 
 
 class SettingType(StrEnum):
@@ -30,30 +32,80 @@ class SettingType(StrEnum):
 
 
 @dataclass(kw_only=True, slots=True)
-class Setting(Generic[T]):
+class Setting(Generic[S]):
     """Class for a setting that can be controlled via MQTT."""
 
     setting_type: SettingType
+    transition_rate: tuple[S, float] = field(default=None)  # type: ignore[assignment]
+    """The rate at which the setting can be changed. Only applies to numerical settings.
 
+    If None (or 0), the setting modification will be applied immediately. In the form (X, Y), the setting
+    will be de/incremented by X every Y seconds until it reaches the target value.
+    """
+
+    callback: Callable[[S], None] = field(init=False)
     grid: Grid = field(init=False)
     settings_index: int = field(init=False)
     slug: str = field(init=False)
+    target_value: S = field(init=False)
+    transition_thread: Thread = field(init=False)
     topic: str = field(init=False)
-    type_: type[T] = field(init=False)
+    type_: type[S] = field(init=False)
 
-    def callback(self, payload: T) -> None:
-        setattr(self.grid, self.slug, payload)
+    def get_value_from_grid(self) -> S:
+        return cast(S, getattr(self.grid, self.slug))
 
-    def get_value_from_grid(self) -> T:
-        return cast(T, getattr(self.grid, self.slug))
+    def set_value_in_grid(self, value: S) -> None:
+        LOGGER.debug("Setting %s to %s", self.slug, value)
+        setattr(self.grid, self.slug, value)
 
-    def setup(self, index: int, field_name: str, grid: Grid, type_: type[T]) -> None:
+    def transition_value_in_grid(self, value: S) -> None:
+        self.target_value = value
+
+        if not hasattr(self, "transition_thread") or self.transition_thread.is_alive():
+            self.transition_thread = Thread(target=self._transition_value)
+            self.transition_thread.start()
+
+    def _transition_value(self) -> None:
+        LOGGER.debug("Transitioning %s to %s", self.slug, self.target_value)
+
+        while (
+            current_value := self.type_(self.get_value_from_grid())
+        ) != self.target_value:
+            transition_amount = min(
+                self.transition_rate[0], abs(current_value - self.target_value)
+            )
+            LOGGER.debug(
+                "Transitioning %s from %s to %s by %s",
+                self.slug,
+                current_value,
+                self.target_value,
+                transition_amount,
+            )
+
+            self.set_value_in_grid(
+                round(
+                    current_value + transition_amount
+                    if current_value < self.target_value
+                    else current_value - transition_amount,
+                    6,
+                )
+            )
+
+            sleep(self.transition_rate[1])
+
+    def setup(self, *, index: int, field_name: str, grid: Grid, type_: type[S]) -> None:
         """Set up the setting."""
         self.settings_index = index
         self.slug = field_name
         self.topic = f"/{const.HOSTNAME}/{grid.id}/{self.setting_type}/{self.slug.replace('_', '-')}"
         self.grid = grid
         self.type_ = type_
+
+        if self.type_ in {int, float} and self.transition_rate:
+            self.callback = self.transition_value_in_grid
+        else:
+            self.callback = self.set_value_in_grid
 
         MQTT_CLIENT.subscribe(self.topic)
         MQTT_CLIENT.message_callback_add(self.topic, self.on_message)
@@ -93,7 +145,7 @@ class FrequencySetting(Setting[int]):
     setting_type: Literal[SettingType.FREQUENCY] = SettingType.FREQUENCY
     type_: type[int] = int
 
-    def callback(self, payload: T) -> None:
+    def set_value_in_grid(self, payload: S) -> None:
         """Set the rule's frequency and re-generate the rules loop."""
         setattr(self.grid, self.slug, payload)
 
@@ -101,7 +153,7 @@ class FrequencySetting(Setting[int]):
 
 
 @dataclass(slots=True)
-class ParameterSetting(Setting[T]):
+class ParameterSetting(Setting[S]):
     """Set a parameter for a rule."""
 
     setting_type: Literal[SettingType.PARAMETER] = SettingType.PARAMETER

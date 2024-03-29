@@ -142,7 +142,7 @@ class Grid:
         """Set the calculated attributes of the Grid."""
         self._grid = self.zeros()
 
-        settings: dict[str, Setting[object]] = {}
+        settings: dict[str, Setting[Any]] = {}
         for field_name, field_type in get_type_hints(
             self.__class__, include_extras=True
         ).items():
