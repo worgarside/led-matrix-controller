@@ -47,8 +47,13 @@ class Setting(Generic[S]):
     grid: Grid = field(init=False)
     settings_index: int = field(init=False)
     slug: str = field(init=False)
+    target_value: S = field(init=False)
+    transition_thread: Thread = field(init=False)
     topic: str = field(init=False)
     type_: type[S] = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.transition_thread = Thread(target=self._transition_value)
 
     def get_value_from_grid(self) -> S:
         return cast(S, getattr(self.grid, self.slug))
@@ -58,29 +63,33 @@ class Setting(Generic[S]):
         setattr(self.grid, self.slug, value)
 
     def transition_value_in_grid(self, value: S) -> None:
-        transition_thread = Thread(target=self._transition_value, args=(value,))
-        transition_thread.start()
+        self.target_value = value
 
-    def _transition_value(self, value: S) -> None:
-        LOGGER.debug("Transitioning %s to %s", self.slug, value)
-        target_value = self.type_(value)
+        if not self.transition_thread.is_alive():
+            self.transition_thread = Thread(target=self._transition_value)
+            self.transition_thread.start()
 
-        while (current_value := self.type_(self.get_value_from_grid())) != target_value:
+    def _transition_value(self) -> None:
+        LOGGER.debug("Transitioning %s to %s", self.slug, self.target_value)
+
+        while (
+            current_value := self.type_(self.get_value_from_grid())
+        ) != self.target_value:
             transition_amount = min(
-                self.transition_rate[0], abs(current_value - target_value)
+                self.transition_rate[0], abs(current_value - self.target_value)
             )
             LOGGER.debug(
                 "Transitioning %s from %s to %s by %s",
                 self.slug,
                 current_value,
-                target_value,
+                self.target_value,
                 transition_amount,
             )
 
             self.set_value_in_grid(
                 round(
                     current_value + transition_amount
-                    if current_value < target_value
+                    if current_value < self.target_value
                     else current_value - transition_amount,
                     6,
                 )
