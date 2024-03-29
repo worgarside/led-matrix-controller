@@ -35,7 +35,7 @@ def test_raining_grid_simulation(
     limit: int,
 ) -> None:
     """Benchmark the CA."""
-    grid = RainingGrid(size, size)
+    grid = RainingGrid(size, size, rain_chance=0.025, rain_speed=1, splash_speed=1)
 
     @benchmark  # type: ignore[misc]
     def bench() -> None:
@@ -56,7 +56,7 @@ def test_raining_grid_simulation(
         for size, limit, rule in product(
             [8, 16, 32, 64],
             [ceil((10**i) / 2) for i in range(1, 4)],
-            RainingGrid._RULE_METHODS,
+            RainingGrid._RULE_FUNCTIONS,
         )
     ],
 )
@@ -67,7 +67,7 @@ def test_rules(
     rule: Callable[..., MaskGen],
 ) -> None:
     """Test/benchmark each individual rule."""
-    grid = RainingGrid(size, size)
+    grid = RainingGrid(size, size, rain_chance=0.025, rain_speed=1, splash_speed=1)
 
     # Discard the first H frames so all rules are effective (e.g. splashing)
     for _ in islice(grid.frames, size + 10):

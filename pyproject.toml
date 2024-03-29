@@ -38,7 +38,12 @@ xfail_strict = true
 log_cli_level = "warning"
 pythonpath = ["led_matrix_controller"]
 testpaths = ["tests"]
-env = ["ARTWORK_DIR=./artwork", "MQTT_USERNAME=test", "MQTT_PASSWORD=test"]
+env = [
+  "ARTWORK_DIR=./artwork",
+  "MQTT_USERNAME=test",
+  "MQTT_PASSWORD=test",
+  "DEBUG_MODE=1",
+]
 
 [tool.coverage.report]
 exclude_lines = [
@@ -59,6 +64,8 @@ relative_files = true
 
 [tool.mypy]
 plugins = "numpy.typing.mypy_plugin"
+always_true = "DEBUG_MODE"
+
 exclude = ["_local_sandbox"]
 mypy_path = "led_matrix_controller"
 follow_imports = "normal"
