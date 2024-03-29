@@ -28,9 +28,6 @@ addopts = [
   "-ra",
   "--strict-markers",
   "--strict-config",
-  "-n",
-  "auto",
-  "--dist=load",
   "--cov-report=xml",
   "--cov=led_matrix_controller",
 ]
