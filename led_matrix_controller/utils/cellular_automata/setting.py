@@ -81,7 +81,7 @@ class Setting(Generic[T]):
             )
             return
 
-        LOGGER.debug("Received payload: %s", payload)
+        LOGGER.debug("INCOMING ON `%s`: %s", self.topic, payload)
 
         self.callback(payload)
 

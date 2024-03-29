@@ -2,17 +2,25 @@
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
 from functools import lru_cache, wraps
 from itertools import islice
+from logging import DEBUG, getLogger
 from typing import Any, Callable, ClassVar, Generator, Self, get_type_hints
 
 import numpy as np
 from numpy.typing import DTypeLike, NDArray
+from wg_utilities.loggers import add_stream_handler
 
 from .setting import FrequencySetting, Setting
+
+LOGGER = getLogger(__name__)
+LOGGER.setLevel(DEBUG)
+add_stream_handler(LOGGER)
+
 
 _BY_VALUE: dict[int, StateBase] = {}
 EVERYWHERE = (slice(None), slice(None))
@@ -149,10 +157,12 @@ class Grid:
     def generate_rules_loop(self) -> None:
         """Generate the rules loop."""
 
-        largest_frequency = max(
-            setting.get_value_from_grid()
-            for setting in self.settings.values()
-            if isinstance(setting, FrequencySetting)
+        largest_frequency = math.lcm(
+            *[
+                setting.get_value_from_grid()
+                for setting in self.settings.values()
+                if isinstance(setting, FrequencySetting)
+            ]
         )
 
         self.mask_generator_loops = tuple(
@@ -166,6 +176,12 @@ class Grid:
                 if rule.active_on_frame(i)
             )
             for i in range(largest_frequency)
+        )
+
+        LOGGER.info(
+            "Mask Generator loop re-generated. New length: %i; largest ruleset: %i",
+            len(self.mask_generator_loops),
+            max(len(loop) for loop in self.mask_generator_loops),
         )
 
     @classmethod
