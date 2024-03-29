@@ -93,6 +93,12 @@ class FrequencySetting(Setting[int]):
     setting_type: Literal[SettingType.FREQUENCY] = SettingType.FREQUENCY
     type_: type[int] = int
 
+    def callback(self, payload: T) -> None:
+        """Set the rule's frequency and re-generate the rules loop."""
+        setattr(self.grid, self.slug, payload)
+
+        self.grid.generate_rules_loop()
+
 
 @dataclass(slots=True)
 class ParameterSetting(Setting[T]):
