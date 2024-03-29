@@ -42,7 +42,7 @@ class RainingGrid(Grid):
     id: str = "raining-grid"
 
 
-@RainingGrid.rule(State.RAINDROP, target_slice=0)
+@RainingGrid.rule(State.RAINDROP, target_slice=0, frequency="rain_speed")
 def generate_raindrops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Generate raindrops at the top of the grid."""
     shape = ca._grid[target_slice].shape
@@ -53,7 +53,11 @@ def generate_raindrops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     return _mask
 
 
-@RainingGrid.rule(State.RAINDROP, target_slice=(slice(1, None), slice(None)))
+@RainingGrid.rule(
+    State.RAINDROP,
+    target_slice=(slice(1, None), slice(None)),
+    frequency="rain_speed",
+)
 def move_rain_down(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Move raindrops down one cell."""
     lower_slice = ca._grid[target_slice]
@@ -67,7 +71,7 @@ def move_rain_down(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     return _mask
 
 
-@RainingGrid.rule(State.NULL)
+@RainingGrid.rule(State.NULL, frequency="rain_speed")
 def top_of_rain_down(ca: RainingGrid, _: TargetSlice) -> MaskGen:
     """Move the top of a raindrop down."""
     above_slice = ca._grid[slice(None, -2), slice(None)]
@@ -127,7 +131,7 @@ def _splash(
 @RainingGrid.rule(
     State.SPLASH_LEFT,
     target_slice=(-2, slice(None, -1)),
-    frequency="splash_speed",
+    frequency="rain_speed",
 )
 def splash_left(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Create a splash to the left."""
@@ -137,7 +141,7 @@ def splash_left(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 @RainingGrid.rule(
     State.SPLASH_RIGHT,
     target_slice=(-2, slice(1, None)),
-    frequency="splash_speed",
+    frequency="rain_speed",
 )
 def splash_right(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Create a splash to the right."""
