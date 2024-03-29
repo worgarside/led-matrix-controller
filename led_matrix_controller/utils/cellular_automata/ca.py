@@ -158,11 +158,11 @@ class Grid:
         """Generate the rules loop."""
 
         largest_frequency = math.lcm(
-            *[
+            *(
                 setting.get_value_from_grid()
                 for setting in self.settings.values()
                 if isinstance(setting, FrequencySetting)
-            ]
+            )
         )
 
         self.mask_generator_loops = tuple(
