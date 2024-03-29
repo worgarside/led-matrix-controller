@@ -97,7 +97,7 @@ class FrequencySetting(Setting[int]):
         """Set the rule's frequency and re-generate the rules loop."""
         setattr(self.grid, self.slug, payload)
 
-        self.grid.generate_rules_loop()
+        self.grid.generate_frame_rulesets()
 
 
 @dataclass(slots=True)

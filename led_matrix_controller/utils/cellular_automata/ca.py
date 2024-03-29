@@ -71,7 +71,8 @@ Mask = NDArray[np.bool_]
 View = NDArray[np.int_]
 MaskGen = Callable[[], Mask]
 RuleFunc = Callable[["Grid", TargetSlice], MaskGen]
-MaskGenLoop = tuple[tuple[View, MaskGen, int], ...]
+RuleTuple = tuple[View, MaskGen, int]
+FrameRuleSet = tuple[RuleTuple, ...]
 CAMEL_CASE = re.compile(r"(?<!^)(?=[A-Z])")
 
 
@@ -80,11 +81,25 @@ class Rule:
     """Class for a rule to update cells."""
 
     target_slice: TargetSlice
+    """The slice which the rule applies to."""
+
     rule_func: RuleFunc
+    """The function which creates the mask generator."""
+
     to_state: StateBase
+    """The state to change to."""
+
     frequency: int | str
+    """The frequency of the rule in frames. If a string is provided, it references a `FrequencySetting` by name."""
 
     _frequency_setting: FrequencySetting = field(init=False)
+    """Optional frequency setting for the rule. Only set if `frequency` is a string."""
+
+    rule_tuple: RuleTuple = field(init=False)
+    """The tuple of the target view, the mask generator, and the state to change to.
+
+    Invoked (potentially) on each loop as one rule in a frame-ruleset.
+    """
 
     def active_on_frame(self, i: int, /) -> bool:
         """Return whether the rule is active on the given frame."""
@@ -109,7 +124,7 @@ class Grid:
 
     _grid: NDArray[np.int_] = field(init=False)
     settings: dict[str, Setting[Any]] = field(init=False)
-    mask_generator_loops: tuple[MaskGenLoop, ...] = field(init=False)
+    frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False)
 
     class OutOfBoundsError(ValueError):
         """Error for when a slice goes out of bounds."""
@@ -151,14 +166,24 @@ class Grid:
                                 ):
                                     rule._frequency_setting = annotation
 
+                                    rule.rule_tuple = (
+                                        self._grid[rule.target_slice],
+                                        rule.rule_func(self, rule.target_slice),
+                                        rule.to_state.state,
+                                    )
+
         self.settings = settings
 
-        self.generate_rules_loop()
+        self.generate_frame_rulesets()
 
-    def generate_rules_loop(self) -> None:
-        """Generate the rules loop."""
+    def generate_frame_rulesets(self) -> None:
+        """Pre-calculate the a sequence of mask generators for each frame.
 
-        largest_frequency = math.lcm(
+        The total number of frames (and thus rulesets) is the least common multiple of the frequencies of the
+        rules. If the lowest frequency is >1, then some (e.g. every other) frames will have no rules applied.
+        """
+
+        ruleset_count = math.lcm(
             *(
                 setting.get_value_from_grid()
                 for setting in self.settings.values()
@@ -166,23 +191,15 @@ class Grid:
             )
         )
 
-        self.mask_generator_loops = tuple(
-            tuple(
-                (
-                    self._grid[rule.target_slice],
-                    rule.rule_func(self, rule.target_slice),
-                    rule.to_state.state,
-                )
-                for rule in self.RULES
-                if rule.active_on_frame(i)
-            )
-            for i in range(largest_frequency)
+        self.frame_rulesets = tuple(
+            tuple(rule.rule_tuple for rule in self.RULES if rule.active_on_frame(i))
+            for i in range(ruleset_count)
         )
 
         LOGGER.info(
             "Mask Generator loop re-generated. New length: %i; largest ruleset: %i",
-            len(self.mask_generator_loops),
-            max(len(loop) for loop in self.mask_generator_loops),
+            len(self.frame_rulesets),
+            max(len(loop) for loop in self.frame_rulesets),
         )
 
     @classmethod
@@ -266,10 +283,10 @@ class Grid:
     def frames(self) -> Generator[View, None, None]:
         """Generate the frames of the grid."""
         while True:
-            for mask_gen_loop in self.mask_generator_loops:
+            for ruleset in self.frame_rulesets:
                 masks = tuple(
                     (target_slice, mask_gen(), state)
-                    for target_slice, mask_gen, state in mask_gen_loop
+                    for target_slice, mask_gen, state in ruleset
                 )
 
                 for target_view, mask, state in masks:
