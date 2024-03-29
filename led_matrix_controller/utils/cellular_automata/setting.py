@@ -52,9 +52,6 @@ class Setting(Generic[S]):
     topic: str = field(init=False)
     type_: type[S] = field(init=False)
 
-    def __post_init__(self) -> None:
-        self.transition_thread = Thread(target=self._transition_value)
-
     def get_value_from_grid(self) -> S:
         return cast(S, getattr(self.grid, self.slug))
 
@@ -65,7 +62,7 @@ class Setting(Generic[S]):
     def transition_value_in_grid(self, value: S) -> None:
         self.target_value = value
 
-        if not self.transition_thread.is_alive():
+        if not hasattr(self, "transition_thread") or self.transition_thread.is_alive():
             self.transition_thread = Thread(target=self._transition_value)
             self.transition_thread.start()
 
