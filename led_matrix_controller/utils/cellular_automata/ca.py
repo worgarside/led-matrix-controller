@@ -198,7 +198,8 @@ class Grid:
         Args:
             to_state (StateBase): The state to change to.
             target_slice (TargetSliceDecVal | None, optional): The slice to target. Defaults to entire grid.
-            frequency (int, optional): The frequency of the rule (in frames). Defaults to 1 (i.e. every frame).
+            frequency (int, optional): The frequency of the rule (in frames). Defaults to 1 (i.e. every frame). If
+                a string is provided, it references the name of a `FrequencySetting`.
         """
         match target_slice:
             case int(n):

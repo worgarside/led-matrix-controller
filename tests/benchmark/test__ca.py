@@ -35,7 +35,7 @@ def test_raining_grid_simulation(
     limit: int,
 ) -> None:
     """Benchmark the CA."""
-    grid = RainingGrid(size, size)
+    grid = RainingGrid(size, size, rain_chance=0.025, rain_speed=1, splash_speed=1)
 
     @benchmark  # type: ignore[misc]
     def bench() -> None:
