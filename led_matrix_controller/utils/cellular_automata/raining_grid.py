@@ -37,7 +37,7 @@ class RainingGrid(Grid):
 
     rain_chance: Annotated[float, ParameterSetting()] = 0.025
     rain_speed: Annotated[int, FrequencySetting()] = 1
-    splash_speed: Annotated[int, FrequencySetting()] = 3
+    splash_speed: Annotated[int, FrequencySetting()] = 8
 
     id: str = "raining-grid"
 
