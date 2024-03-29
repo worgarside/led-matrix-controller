@@ -56,7 +56,7 @@ def test_raining_grid_simulation(
         for size, limit, rule in product(
             [8, 16, 32, 64],
             [ceil((10**i) / 2) for i in range(1, 4)],
-            RainingGrid._RULE_METHODS,
+            RainingGrid._RULE_FUNCTIONS,
         )
     ],
 )
