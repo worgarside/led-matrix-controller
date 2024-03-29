@@ -284,12 +284,9 @@ class Grid:
         """Generate the frames of the grid."""
         while True:
             for ruleset in self.frame_rulesets:
-                masks = tuple(
-                    (target_slice, mask_gen(), state)
-                    for target_slice, mask_gen, state in ruleset
-                )
+                masks = tuple(mask_gen() for _, mask_gen, _ in ruleset)
 
-                for target_view, mask, state in masks:
+                for mask, (target_view, _, state) in zip(masks, ruleset, strict=True):
                     target_view[mask] = state
 
                 self.frame_index += 1
