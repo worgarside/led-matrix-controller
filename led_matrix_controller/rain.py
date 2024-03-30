@@ -23,10 +23,13 @@ class Matrix:
     OPTIONS: ClassVar[LedMatrixOptions] = {
         "cols": 64,
         "rows": 64,
-        "brightness": 80,
+        "brightness": 100,
         "gpio_slowdown": 4,
         "hardware_mapping": "adafruit-hat-pwm",
         "show_refresh_rate": const.DEBUG_MODE,
+        "limit_refresh_rate_hz": 125,
+        "pwm_lsb_nanoseconds": 60,
+        # "pwm_dither_bits": 1,  # noqa: ERA001
     }
 
     def __init__(self, colormap: NDArray[np.int_]) -> None:
