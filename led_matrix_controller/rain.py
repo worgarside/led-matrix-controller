@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from multiprocessing.pool import Pool
+from multiprocessing import Process, Queue
 from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
@@ -46,15 +46,14 @@ class Matrix:
 
         self.colormap = colormap
 
-    def render_array(self, array: ca.GridView) -> None:
+    def render_array(self, queue: Queue[Image.Image]) -> None:
         """Render the array to the LED matrix."""
 
-        pixels = self.colormap[array]
+        while True:
+            img = queue.get()
 
-        image = Image.fromarray(pixels.astype(np.uint8), "RGB")
-
-        self.canvas.SetImage(image)
-        self.canvas = self.matrix.SwapOnVSync(self.canvas)
+            self.canvas.SetImage(img)
+            self.canvas = self.matrix.SwapOnVSync(self.canvas)
 
     @property
     def height(self) -> int:
@@ -66,21 +65,40 @@ class Matrix:
         """Return the width of the matrix."""
         return int(self.matrix.width)
 
+    def queue_frames(self, grid: ca.Grid, queue: Queue[Image.Image]) -> None:
+        """Queue frames for rendering."""
+        for frame in grid.frames:
+            pixels = self.colormap[frame]
+
+            img = Image.fromarray(pixels.astype(np.uint8), "RGB")
+
+            queue.put(img)
+
 
 def main() -> None:
     """Run the rain simulation."""
 
+    queue: Queue[Image.Image] = Queue(maxsize=5)
+
     matrix = Matrix(colormap=State.colormap())
 
-    pool = Pool()
-    grid = RainingGrid(height=matrix.height, width=matrix.width, pool=pool)
+    grid = RainingGrid(height=matrix.height, width=matrix.width)
 
-    MQTT_CLIENT.loop_start()
+    producer = Process(
+        target=matrix.queue_frames,
+        args=(
+            grid,
+            queue,
+        ),
+    )
+    consumer = Process(target=matrix.render_array, args=(queue,))
 
-    for frame in grid.frames:
-        matrix.render_array(frame)
+    producer.start()
+    consumer.start()
 
-    MQTT_CLIENT.loop_stop()
+    producer.join()
+    consumer.join()
+    MQTT_CLIENT.loop_forever()
 
 
 if __name__ == "__main__":

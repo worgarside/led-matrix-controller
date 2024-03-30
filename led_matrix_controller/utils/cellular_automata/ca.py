@@ -9,7 +9,6 @@ from enum import Enum, IntEnum
 from functools import lru_cache, wraps
 from itertools import islice
 from logging import DEBUG, getLogger
-from multiprocessing.pool import Pool  # noqa: TCH003
 from typing import (
     Any,
     Callable,
@@ -128,7 +127,6 @@ class Grid:
 
     height: int
     width: int
-    pool: Pool
     id: str
 
     frame_index: int = -1
@@ -314,7 +312,7 @@ class Grid:
         """Generate the frames of the grid."""
         while True:
             for ruleset in self.frame_rulesets:
-                masks = self.pool.map(self._generate_mask, ruleset)
+                masks = tuple(rule_tuple[1]() for rule_tuple in ruleset)
 
                 for mask, (target_view, _, state) in zip(masks, ruleset, strict=True):
                     target_view[mask] = state

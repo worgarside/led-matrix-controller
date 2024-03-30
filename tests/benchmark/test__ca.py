@@ -5,7 +5,6 @@ from __future__ import annotations
 from copy import deepcopy
 from itertools import islice, product
 from math import ceil
-from multiprocessing.pool import Pool
 from typing import TYPE_CHECKING, Callable
 
 import pytest
@@ -35,15 +34,12 @@ def test_raining_grid_simulation(
     limit: int,
 ) -> None:
     """Benchmark the CA."""
-    with Pool() as pool:
-        grid = RainingGrid(
-            size, size, rain_chance=0.025, rain_speed=1, splash_speed=1, pool=pool
-        )
+    grid = RainingGrid(size, size, rain_chance=0.025, rain_speed=1, splash_speed=1)
 
-        @benchmark  # type: ignore[misc]
-        def bench() -> None:
-            for _ in grid.run(limit=limit):
-                pass
+    @benchmark  # type: ignore[misc]
+    def bench() -> None:
+        for _ in grid.run(limit=limit):
+            pass
 
 
 @pytest.mark.parametrize(
@@ -69,10 +65,7 @@ def test_rules(
     rule: Callable[..., MaskGen],
 ) -> None:
     """Test/benchmark each individual rule."""
-    pool = Pool()
-    grid = RainingGrid(
-        size, size, rain_chance=0.025, rain_speed=1, splash_speed=1, pool=pool
-    )
+    grid = RainingGrid(size, size, rain_chance=0.025, rain_speed=1, splash_speed=1)
 
     # Discard the first H frames so all rules are effective (e.g. splashing)
     for _ in islice(grid.frames, size + 10):
