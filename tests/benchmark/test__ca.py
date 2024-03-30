@@ -22,7 +22,6 @@ if TYPE_CHECKING:
             size,
             limit,
             id=f"{limit} frame{'s' if limit > 1 else ''} @ {size}x{size}",
-            marks=pytest.mark.xdist_group(f"{size}-{limit}"),
         )
         for size, limit in product(
             [8, 16, 32, 64], [ceil((10**i) / 2) for i in range(1, 4)]
@@ -51,7 +50,6 @@ def test_raining_grid_simulation(
             limit,
             rule,
             id=f"{rule.__name__} for {limit} frame{'s' if limit > 1 else ''} @ {size}x{size}",
-            marks=pytest.mark.xdist_group(f"{size}-{limit}-{rule.__name__}"),
         )
         for size, limit, rule in product(
             [8, 16, 32, 64],

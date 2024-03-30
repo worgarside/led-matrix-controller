@@ -9,14 +9,23 @@ from enum import Enum, IntEnum
 from functools import lru_cache, wraps
 from itertools import islice
 from logging import DEBUG, getLogger
-from typing import Any, Callable, ClassVar, Generator, Self, get_type_hints
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Generator,
+    OrderedDict,
+    Self,
+    cast,
+    get_type_hints,
+)
 
 import numpy as np
 from numpy.typing import DTypeLike, NDArray
 from utils import const
 from wg_utilities.loggers import add_stream_handler
 
-from .setting import FrequencySetting, Setting
+from .setting import FrequencySetting, ParameterSetting, Setting
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel(DEBUG)
@@ -68,10 +77,10 @@ class StateBase(Enum):
 TargetSliceDecVal = slice | int | tuple[int | slice, int | slice]
 TargetSlice = tuple[slice, slice]
 Mask = NDArray[np.bool_]
-View = NDArray[np.int_]
+GridView = NDArray[np.int_]
 MaskGen = Callable[[], Mask]
 RuleFunc = Callable[["Grid", TargetSlice], MaskGen]
-RuleTuple = tuple[View, MaskGen, int]
+RuleTuple = tuple[GridView, MaskGen, int]
 FrameRuleSet = tuple[RuleTuple, ...]
 CAMEL_CASE = re.compile(r"(?<!^)(?=[A-Z])")
 
@@ -122,9 +131,10 @@ class Grid:
 
     frame_index: int = -1
 
-    _grid: NDArray[np.int_] = field(init=False)
-    settings: dict[str, Setting[Any]] = field(init=False)
+    grid: NDArray[np.int_] = field(init=False)
     frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False)
+    parameter_array: NDArray[np.float64] = field(init=False)
+    settings: dict[str, Setting[Any]] = field(init=False)
 
     class OutOfBoundsError(ValueError):
         """Error for when a slice goes out of bounds."""
@@ -140,9 +150,10 @@ class Grid:
 
     def __post_init__(self) -> None:
         """Set the calculated attributes of the Grid."""
-        self._grid = self.zeros()
+        self.grid = self.zeros()
 
         settings: dict[str, Setting[Any]] = {}
+        parameters: OrderedDict[str, int | float] = OrderedDict()
         for field_name, field_type in get_type_hints(
             self.__class__, include_extras=True
         ).items():
@@ -167,12 +178,25 @@ class Grid:
                                     rule._frequency_setting = annotation
 
                                     rule.rule_tuple = (
-                                        self._grid[rule.target_slice],
+                                        self.grid[rule.target_slice],
                                         rule.rule_func(self, rule.target_slice),
                                         rule.to_state.state,
                                     )
+                        elif isinstance(annotation, ParameterSetting):
+                            annotation.settings_array_slice = slice(
+                                len(parameters), len(parameters) + 1
+                            )
+                            parameters[field_name] = annotation.get_value_from_grid()
 
         self.settings = settings
+        self.parameter_array = np.array(list(parameters.values()), dtype=np.float64)
+
+        for p_name in parameters:
+            param = cast(ParameterSetting[Any], self.settings[p_name])
+
+            param.settings_array_view = self.parameter_array[param.settings_array_slice]
+
+            self.__setattr__(p_name, param.settings_array_view)
 
         self.generate_frame_rulesets()
 
@@ -279,8 +303,12 @@ class Grid:
         """Return a grid of zeros."""
         return np.zeros((self.height, self.width), dtype=dtype)
 
+    @staticmethod
+    def _generate_mask(rule_tuple: RuleTuple) -> Mask:
+        return rule_tuple[1]()
+
     @property
-    def frames(self) -> Generator[View, None, None]:
+    def frames(self) -> Generator[GridView, None, None]:
         """Generate the frames of the grid."""
         while True:
             for ruleset in self.frame_rulesets:
@@ -291,12 +319,12 @@ class Grid:
 
                 self.frame_index += 1
 
-                yield self._grid
+                yield self.grid
 
     @property
     def str_repr(self) -> str:
         """Return a string representation of the grid."""
-        return "\n".join(" ".join(state.char for state in row) for row in self._grid)
+        return "\n".join(" ".join(state.char for state in row) for row in self.grid)
 
     def translate_slice(
         self,
@@ -330,11 +358,11 @@ class Grid:
     @property
     def shape(self) -> tuple[int, int]:
         """Return the shape of the grid."""
-        return self._grid.shape  # type: ignore[return-value]
+        return self.grid.shape  # type: ignore[return-value]
 
     def __getitem__(self, key: TargetSliceDecVal) -> NDArray[np.int_]:
         """Get an item from the grid."""
-        return self._grid[key]
+        return self.grid[key]
 
 
 @lru_cache
