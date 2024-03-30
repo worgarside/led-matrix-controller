@@ -14,7 +14,6 @@ from typing import (
     Callable,
     ClassVar,
     Generator,
-    OrderedDict,
     Self,
     cast,
     get_type_hints,
@@ -134,7 +133,7 @@ class Grid:
     grid: NDArray[np.int_] = field(init=False)
     frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False)
     parameter_array: NDArray[np.float64] = field(init=False)
-    settings: dict[str, Setting[Any]] = field(init=False)
+    settings: dict[str, Setting[Any]] = field(default_factory=dict)
 
     class OutOfBoundsError(ValueError):
         """Error for when a slice goes out of bounds."""
@@ -150,57 +149,35 @@ class Grid:
 
     def __post_init__(self) -> None:
         """Set the calculated attributes of the Grid."""
-        self.grid = self.zeros()
 
-        settings: dict[str, Setting[Any]] = {}
-        parameters: OrderedDict[str, int | float] = OrderedDict()
+        # Initialise settings
         for field_name, field_type in get_type_hints(
-            self.__class__, include_extras=True
+            self.__class__,
+            include_extras=True,
         ).items():
-            if hasattr(field_type, "__metadata__"):
-                for annotation in field_type.__metadata__:
-                    if isinstance(annotation, Setting):
-                        annotation.setup(
-                            index=len(settings),
-                            field_name=field_name,
-                            grid=self,
-                            type_=field_type.__origin__,
-                        )
+            if not hasattr(field_type, "__metadata__"):
+                continue
 
-                        settings[field_name] = annotation
+            for annotation in field_type.__metadata__:
+                if isinstance(annotation, Setting):
+                    annotation.setup(
+                        index=len(self.settings),
+                        field_name=field_name,
+                        grid=self,
+                        type_=field_type.__origin__,
+                    )
 
-                        if isinstance(annotation, FrequencySetting):
-                            for rule in self.RULES:
-                                if (
-                                    isinstance(rule.frequency, str)
-                                    and rule.frequency == field_name
-                                ):
-                                    rule._frequency_setting = annotation
+                    self.settings[field_name] = annotation
 
-                        elif isinstance(annotation, ParameterSetting):
-                            settings_index = len(parameters)
+        self.parameter_array = np.array(
+            list(ParameterSetting.INSTANCES.values()), dtype=np.float64
+        )
 
-                            if field_name == "rain_chance":
-                                parameters[f"__{field_name}_inverse__"] = (
-                                    1 - annotation.get_value_from_grid()
-                                )
-                                slice_width = 2
-                            else:
-                                slice_width = 1
-
-                            annotation.settings_array_slice = slice(
-                                settings_index, settings_index + slice_width
-                            )
-                            parameters[field_name] = annotation.get_value_from_grid()
-
-        self.settings = settings
-        self.parameter_array = np.array(list(parameters.values()), dtype=np.float64)
-
-        for p_name in parameters:
+        for p_name in ParameterSetting.INSTANCES:
             if (
                 p_name.startswith("__")
                 and p_name.endswith("_inverse__")
-                and p_name[2:-9] in parameters
+                and p_name[2:-10] in ParameterSetting.INSTANCES
             ):
                 continue
 
@@ -208,7 +185,10 @@ class Grid:
 
             param.settings_array_view = self.parameter_array[param.settings_array_slice]
 
+            # Override the attribute's original value with a view on the parameter array
             self.__setattr__(p_name, param.settings_array_view)
+
+        self.grid = self.zeros()
 
         # Create mask generators after all setup is done
         for rule in self.RULES:

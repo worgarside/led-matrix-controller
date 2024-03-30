@@ -8,7 +8,17 @@ from json import JSONDecodeError, loads
 from logging import DEBUG, getLogger
 from threading import Thread
 from time import sleep
-from typing import TYPE_CHECKING, Any, Callable, Generic, Literal, TypeVar, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Generic,
+    Literal,
+    OrderedDict,
+    TypeVar,
+    cast,
+)
 
 from utils import const
 from utils.mqtt import MQTT_CLIENT
@@ -36,6 +46,8 @@ class SettingType(StrEnum):
 class Setting(Generic[S]):
     """Class for a setting that can be controlled via MQTT."""
 
+    INSTANCES: ClassVar[OrderedDict[str, int | float]] = OrderedDict()
+
     setting_type: SettingType
     transition_rate: tuple[S, float] = field(default=None)  # type: ignore[assignment]
     """The rate at which the setting can be changed. Only applies to numerical settings.
@@ -52,6 +64,9 @@ class Setting(Generic[S]):
     transition_thread: Thread = field(init=False)
     topic: str = field(init=False)
     type_: type[S] = field(init=False)
+
+    def __post_setup__(self) -> None:
+        """Custom hook for post-setup actions."""
 
     def get_value_from_grid(self) -> S:
         return cast(S, getattr(self.grid, self.slug))
@@ -95,7 +110,14 @@ class Setting(Generic[S]):
 
             sleep(self.transition_rate[1])
 
-    def setup(self, *, index: int, field_name: str, grid: Grid, type_: type[S]) -> None:
+    def setup(
+        self,
+        *,
+        index: int,
+        field_name: str,
+        grid: Grid,
+        type_: type[S],
+    ) -> None:
         """Set up the setting."""
         self.settings_index = index
         self.slug = field_name
@@ -111,6 +133,8 @@ class Setting(Generic[S]):
         MQTT_CLIENT.subscribe(self.topic)
         MQTT_CLIENT.message_callback_add(self.topic, self.on_message)
         LOGGER.info("Subscribed to topic: %s", self.topic)
+
+        self.__post_setup__()
 
     def on_message(self, _: Client, __: Any, message: MQTTMessage) -> None:
         """Handle an MQTT message.
@@ -143,6 +167,8 @@ class Setting(Generic[S]):
 class FrequencySetting(Setting[int]):
     """Set a rule's frequency."""
 
+    INSTANCES: ClassVar[OrderedDict[str, int | float]] = OrderedDict()
+
     setting_type: Literal[SettingType.FREQUENCY] = SettingType.FREQUENCY
     type_: type[int] = int
 
@@ -152,15 +178,36 @@ class FrequencySetting(Setting[int]):
 
         self.grid.generate_frame_rulesets()
 
+    def __post_setup__(self) -> None:
+        """Custom hook for post-setup actions."""
+        for rule in self.grid.RULES:
+            if isinstance(rule.frequency, str) and rule.frequency == self.slug:
+                rule._frequency_setting = self
+
 
 @dataclass(slots=True)
 class ParameterSetting(Setting[S]):
     """Set a parameter for a rule."""
 
+    INSTANCES: ClassVar[OrderedDict[str, int | float]] = OrderedDict()
+
     setting_type: Literal[SettingType.PARAMETER] = SettingType.PARAMETER
 
     settings_array_slice: slice = field(init=False)
     settings_array_view: np.typing.NDArray[np.float64] = field(init=False)
+
+    def __post_setup__(self) -> None:
+        """Custom hook for post-setup actions."""
+        settings_index = len(self.INSTANCES)
+
+        if self.slug == "rain_chance":
+            self.INSTANCES[f"__{self.slug}_inverse__"] = 1 - self.get_value_from_grid()
+            slice_width = 2
+        else:
+            slice_width = 1
+
+        self.settings_array_slice = slice(settings_index, settings_index + slice_width)
+        self.INSTANCES[self.slug] = self.get_value_from_grid()
 
 
 __all__ = ["FrequencySetting", "ParameterSetting"]
