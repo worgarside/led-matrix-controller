@@ -52,7 +52,7 @@ def generate_raindrops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
         const.RNG.choice,
         a=const.BOOLEANS,
         size=ca.grid[target_slice].shape,
-        p=[1 - ca.rain_chance, ca.rain_chance],
+        p=ca.rain_chance,
     )
 
 

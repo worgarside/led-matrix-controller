@@ -177,14 +177,19 @@ class Grid:
                                 ):
                                     rule._frequency_setting = annotation
 
-                                    rule.rule_tuple = (
-                                        self.grid[rule.target_slice],
-                                        rule.rule_func(self, rule.target_slice),
-                                        rule.to_state.state,
-                                    )
                         elif isinstance(annotation, ParameterSetting):
+                            settings_index = len(parameters)
+
+                            if field_name == "rain_chance":
+                                parameters[f"__{field_name}_inverse__"] = (
+                                    1 - annotation.get_value_from_grid()
+                                )
+                                slice_width = 2
+                            else:
+                                slice_width = 1
+
                             annotation.settings_array_slice = slice(
-                                len(parameters), len(parameters) + 1
+                                settings_index, settings_index + slice_width
                             )
                             parameters[field_name] = annotation.get_value_from_grid()
 
@@ -192,11 +197,26 @@ class Grid:
         self.parameter_array = np.array(list(parameters.values()), dtype=np.float64)
 
         for p_name in parameters:
+            if (
+                p_name.startswith("__")
+                and p_name.endswith("_inverse__")
+                and p_name[2:-9] in parameters
+            ):
+                continue
+
             param = cast(ParameterSetting[Any], self.settings[p_name])
 
             param.settings_array_view = self.parameter_array[param.settings_array_slice]
 
             self.__setattr__(p_name, param.settings_array_view)
+
+        # Create mask generators after all setup is done
+        for rule in self.RULES:
+            rule.rule_tuple = (
+                self.grid[rule.target_slice],  # target view
+                rule.rule_func(self, rule.target_slice),  # mask generator
+                rule.to_state.state,  # state to change to
+            )
 
         self.generate_frame_rulesets()
 
