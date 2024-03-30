@@ -83,6 +83,10 @@ strict_optional = true
 strict_equality = true
 explicit_package_bases = true
 show_error_codes = true
+enable_error_code = [
+    "truthy-bool",
+    "unused-awaitable"
+]
 
 [tool.codespell]
 ignore-words-list = "reenable"

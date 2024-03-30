@@ -7,27 +7,29 @@ from typing import TYPE_CHECKING, ClassVar
 import numpy as np
 from models import RGBMatrix, RGBMatrixOptions
 from PIL import Image
+from utils import const
 from utils.cellular_automata import RainingGrid
 from utils.cellular_automata.raining_grid import State
 from utils.mqtt import MQTT_CLIENT
 
 if TYPE_CHECKING:
-    from models.matrix import LedMatrixOptionsInfo
+    from models.matrix import LedMatrixOptions
     from numpy.typing import NDArray
 
 
 class Matrix:
     """Class for displaying track information on an RGB LED Matrix."""
 
-    OPTIONS: ClassVar[LedMatrixOptionsInfo] = {
+    OPTIONS: ClassVar[LedMatrixOptions] = {
         "cols": 64,
         "rows": 64,
-        "brightness": 80,
+        "brightness": 100,
         "gpio_slowdown": 4,
         "hardware_mapping": "adafruit-hat-pwm",
-        "inverse_colors": False,
-        "led_rgb_sequence": "RGB",
-        "show_refresh_rate": False,
+        "show_refresh_rate": const.DEBUG_MODE,
+        "limit_refresh_rate_hz": 125,
+        "pwm_lsb_nanoseconds": 70,
+        # "pwm_dither_bits": 1,  # noqa: ERA001
     }
 
     def __init__(self, colormap: NDArray[np.int_]) -> None:
