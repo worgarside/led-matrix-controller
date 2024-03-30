@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from multiprocessing.pool import Pool
 from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 from models import RGBMatrix, RGBMatrixOptions
 from PIL import Image
 from utils import const
-from utils.cellular_automata import RainingGrid
+from utils.cellular_automata import RainingGrid, ca
 from utils.cellular_automata.raining_grid import State
 from utils.mqtt import MQTT_CLIENT
 
@@ -32,19 +33,20 @@ class Matrix:
         # "pwm_dither_bits": 1,  # noqa: ERA001
     }
 
-    def __init__(self, colormap: NDArray[np.int_]) -> None:
-        options = RGBMatrixOptions()
+    def __init__(
+        self, colormap: NDArray[np.int_], options: LedMatrixOptions = OPTIONS
+    ) -> None:
+        all_options = RGBMatrixOptions()
 
-        for name, value in self.OPTIONS.items():
-            if getattr(options, name, None) != value:
-                setattr(options, name, value)
+        for name, value in options.items():
+            setattr(all_options, name, value)
 
-        self.matrix = RGBMatrix(options=options)
+        self.matrix = RGBMatrix(options=all_options)
         self.canvas = self.matrix.CreateFrameCanvas()
 
         self.colormap = colormap
 
-    def render_array(self, array: NDArray[np.int_]) -> None:
+    def render_array(self, array: ca.GridView) -> None:
         """Render the array to the LED matrix."""
 
         pixels = self.colormap[array]
@@ -70,7 +72,8 @@ def main() -> None:
 
     matrix = Matrix(colormap=State.colormap())
 
-    grid = RainingGrid(height=matrix.height, width=matrix.width)
+    pool = Pool()
+    grid = RainingGrid(height=matrix.height, width=matrix.width, pool=pool)
 
     MQTT_CLIENT.loop_start()
 
