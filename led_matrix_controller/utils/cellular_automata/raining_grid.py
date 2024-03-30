@@ -44,16 +44,16 @@ class RainingGrid(Grid):
     id: str = "raining-grid"
 
 
-# TODO replace with `choice`
-# TODO wrong type on chance (View)
-def _generate_raindrops_mask(shape_: tuple[int, int], chance: float) -> Mask:
-    return const.RNG.random(shape_) < chance
-
-
 @RainingGrid.rule(State.RAINDROP, target_slice=0, frequency="rain_speed")
 def generate_raindrops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Generate raindrops at the top of the grid."""
-    return partial(_generate_raindrops_mask, ca.grid[target_slice].shape, ca.rain_chance)
+
+    return partial(  # type: ignore[return-value]
+        const.RNG.choice,
+        a=const.BOOLEANS,
+        size=ca.grid[target_slice].shape,
+        p=[1 - ca.rain_chance, ca.rain_chance],
+    )
 
 
 def move_rain_down_mask(
