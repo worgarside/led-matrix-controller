@@ -23,7 +23,6 @@ if TYPE_CHECKING:
             size,
             limit,
             id=f"{limit} frame{'s' if limit > 1 else ''} @ {size}x{size}",
-            marks=pytest.mark.xdist_group(f"{size}-{limit}"),
         )
         for size, limit in product(
             [8, 16, 32, 64], [ceil((10**i) / 2) for i in range(1, 4)]
