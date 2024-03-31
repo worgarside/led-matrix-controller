@@ -46,8 +46,6 @@ class SettingType(StrEnum):
 class Setting(Generic[S]):
     """Class for a setting that can be controlled via MQTT."""
 
-    INSTANCES: ClassVar[OrderedDict[str, int | float]] = OrderedDict()
-
     setting_type: SettingType
     transition_rate: tuple[S, float] = field(default=None)  # type: ignore[assignment]
     """The rate at which the setting can be changed. Only applies to numerical settings.
@@ -58,6 +56,9 @@ class Setting(Generic[S]):
 
     callback: Callable[[S], None] = field(init=False)
     grid: Grid = field(init=False)
+    parameter_settings: OrderedDict[str, int | float] = field(
+        init=False, default_factory=OrderedDict
+    )
     settings_index: int = field(init=False)
     slug: str = field(init=False)
     target_value: S = field(init=False)
@@ -180,34 +181,47 @@ class FrequencySetting(Setting[int]):
 
     def __post_setup__(self) -> None:
         """Custom hook for post-setup actions."""
-        for rule in self.grid.rules:
-            if isinstance(rule.frequency, str) and rule.frequency == self.slug:
-                rule._frequency_setting = self
 
 
 @dataclass(slots=True)
 class ParameterSetting(Setting[S]):
     """Set a parameter for a rule."""
 
-    INSTANCES: ClassVar[OrderedDict[str, int | float]] = OrderedDict()
+    complement_left: bool = False
+    """Whether the complement (1 - value) should be added to the value's left in the settings array.
+
+    Example:
+        ```python
+            @RainingGrid.rule(State.RAINDROP, target_slice=0, frequency="rain_speed")
+            def generate_raindrops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+                return partial(  # type: ignore[return-value]
+                    const.RNG.choice,
+                    a=const.BOOLEANS,  # [ False, True ]
+                    size=ca.grid[target_slice].shape,
+                    p=ca.rain_chance,  # <-- Needs complement_left=True to be in the form [value, 1 - value]
+                )
+        ```
+    """
 
     setting_type: Literal[SettingType.PARAMETER] = SettingType.PARAMETER
 
     settings_array_slice: slice = field(init=False)
     settings_array_view: np.typing.NDArray[np.float64] = field(init=False)
 
-    def __post_setup__(self) -> None:
-        """Custom hook for post-setup actions."""
-        settings_index = len(self.INSTANCES)
+    def get_parameter_array_values(self, index: int) -> dict[str, S]:
+        """Get the values for the settings array."""
+        array_values = {}
 
-        if self.slug == "rain_chance":
-            self.INSTANCES[f"__{self.slug}_inverse__"] = 1 - self.get_value_from_grid()
+        if self.complement_left:
+            array_values[f"__{self.slug}_complement__"] = 1 - self.get_value_from_grid()
             slice_width = 2
         else:
             slice_width = 1
 
-        self.settings_array_slice = slice(settings_index, settings_index + slice_width)
-        self.INSTANCES[self.slug] = self.get_value_from_grid()
+        self.settings_array_slice = slice(index, index + slice_width)
+        array_values[self.slug] = self.get_value_from_grid()
+
+        return array_values
 
 
 __all__ = ["FrequencySetting", "ParameterSetting"]

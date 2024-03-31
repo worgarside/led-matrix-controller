@@ -15,6 +15,7 @@ from typing import (
     Callable,
     ClassVar,
     Generator,
+    OrderedDict,
     Self,
     cast,
     get_type_hints,
@@ -154,6 +155,7 @@ class Grid:
         """Set the calculated attributes of the Grid."""
         self.rules = deepcopy(self._RULES_SOURCE)
 
+        # Compile settings from type hints
         for field_name, field_type in get_type_hints(
             self.__class__,
             include_extras=True,
@@ -168,31 +170,48 @@ class Grid:
                         type_=field_type.__origin__,
                     )
 
-                    self.settings[field_name] = setting
+                    self.settings[setting.slug] = setting
+
+        # Get and store all parameter values in a single array for easy access
+        parameter_setting_values: OrderedDict[str, int | float] = OrderedDict()
+        for p_setting in self.settings.values():
+            if isinstance(p_setting, ParameterSetting):
+                parameter_setting_values.update(
+                    p_setting.get_parameter_array_values(
+                        index=len(parameter_setting_values)
+                    )
+                )
 
         self.parameter_array = np.array(
-            list(ParameterSetting.INSTANCES.values()), dtype=np.float64
+            list(parameter_setting_values.values()),
+            dtype=np.float64,
         )
 
-        for p_name in ParameterSetting.INSTANCES:
+        # Override the setting attribute's original value with a view on the parameter array
+        for slug in parameter_setting_values:
             if (
-                p_name.startswith("__")
-                and p_name.endswith("_inverse__")
-                and p_name[2:-10] in ParameterSetting.INSTANCES
+                slug.startswith("__")
+                and slug.endswith("_complement__")
+                and slug.removeprefix("__").removesuffix("_complement__")
+                in parameter_setting_values
             ):
                 continue
 
-            param = cast(ParameterSetting[Any], self.settings[p_name])
-
+            # Attach the view to the setting, and overwrite the attribute with it too
+            param = cast(ParameterSetting[Any], self.settings[slug])
             param.settings_array_view = self.parameter_array[param.settings_array_slice]
+            self.__setattr__(slug, param.settings_array_view)
 
-            # Override the attribute's original value with a view on the parameter array
-            self.__setattr__(p_name, param.settings_array_view)
-
+        # Create the grid; 0 is the default state
         self.grid = self.zeros()
 
         # Create mask generators after all setup is done
         for rule in self.rules:
+            if isinstance(rule.frequency, str) and isinstance(
+                freq_setting := self.settings.get(rule.frequency), FrequencySetting
+            ):
+                rule._frequency_setting = freq_setting
+
             rule.rule_tuple = (
                 self.grid[rule.target_slice],  # target view
                 rule.rule_func(self, rule.target_slice),  # mask generator

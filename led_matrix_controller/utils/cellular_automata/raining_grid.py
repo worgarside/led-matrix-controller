@@ -37,7 +37,13 @@ class State(StateBase):
 class RainingGrid(Grid):
     """Basic rain simulation."""
 
-    rain_chance: Annotated[float, ParameterSetting(transition_rate=(0.002, 0.2))] = 0.025
+    rain_chance: Annotated[
+        float,
+        ParameterSetting(
+            complement_left=True,
+            transition_rate=(0.002, 0.2),
+        ),
+    ] = 0.025
     rain_speed: Annotated[int, FrequencySetting()] = 1
     splash_speed: Annotated[int, FrequencySetting()] = 8
 
