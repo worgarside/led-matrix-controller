@@ -51,10 +51,6 @@ def generate_raindrops_mask(shape: tuple[int, int], chance: float) -> Mask:
     return const.RNG.random(shape) < chance
 
 
-def eq_check(l1: GridView, r1: int, /) -> Mask:
-    return l1 == r1  # type: ignore[no-any-return]
-
-
 def eq_check_double(l1: GridView, r1: int, l2: GridView, r2: int, /) -> Mask:
     return (l1 == r1) & (l2 == r2)  # type: ignore[no-any-return]
 
@@ -208,7 +204,7 @@ def _splash_high(
     ]
 
     return partial(
-        eq_check,
+        np.equal,
         source_slice,
         splash_state.state,
     )  # & ca._grid[target_slice] will be NULL
@@ -279,7 +275,7 @@ def move_splashdrop_down(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Move the splashdrop down."""
     source_slice = ca.grid[ca.translate_slice(target_slice, vrt=Direction.UP)]
 
-    return partial(eq_check, source_slice, State.SPLASHDROP.state)
+    return partial(np.equal, source_slice, State.SPLASHDROP.state)
 
 
 __all__ = ["RainingGrid", "State"]
