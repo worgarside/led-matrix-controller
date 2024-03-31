@@ -25,7 +25,6 @@ from utils.mqtt import MQTT_CLIENT
 from wg_utilities.loggers import add_stream_handler
 
 if TYPE_CHECKING:
-    import numpy as np
     from paho.mqtt.client import Client, MQTTMessage
     from utils.cellular_automata.ca import Grid
 
@@ -66,20 +65,16 @@ class Setting(Generic[S]):
     topic: str = field(init=False)
     type_: type[S] = field(init=False)
 
-    def __post_setup__(self) -> None:
-        """Custom hook for post-setup actions."""
-
     def get_value_from_grid(self) -> S:
         return cast(S, getattr(self.grid, self.slug))
 
     def set_value_in_grid(self, value: S) -> None:
-        LOGGER.debug("Setting %s to %s", self.slug, value)
         setattr(self.grid, self.slug, value)
 
     def transition_value_in_grid(self, value: S) -> None:
         self.target_value = value
 
-        if not hasattr(self, "transition_thread") or self.transition_thread.is_alive():
+        if not (hasattr(self, "transition_thread") and self.transition_thread.is_alive()):
             self.transition_thread = Thread(target=self._transition_value)
             self.transition_thread.start()
 
@@ -89,8 +84,8 @@ class Setting(Generic[S]):
         while (
             current_value := self.type_(self.get_value_from_grid())
         ) != self.target_value:
-            transition_amount = min(
-                self.transition_rate[0], abs(current_value - self.target_value)
+            transition_amount = round(
+                min(self.transition_rate[0], abs(current_value - self.target_value)), 6
             )
             LOGGER.debug(
                 "Transitioning %s from %s to %s by %s",
@@ -135,8 +130,6 @@ class Setting(Generic[S]):
         MQTT_CLIENT.message_callback_add(self.topic, self.on_message)
         LOGGER.info("Subscribed to topic: %s", self.topic)
 
-        self.__post_setup__()
-
     def on_message(self, _: Client, __: Any, message: MQTTMessage) -> None:
         """Handle an MQTT message.
 
@@ -151,7 +144,7 @@ class Setting(Generic[S]):
             LOGGER.exception("Failed to decode payload: %s", message.payload)
             return
 
-        if not isinstance(payload, self.type_):
+        if not isinstance(payload, self.type_) and self.type_(payload) != payload:
             LOGGER.error(
                 "Payload %s is not of type %s",
                 payload,
@@ -179,49 +172,19 @@ class FrequencySetting(Setting[int]):
 
         self.grid.generate_frame_rulesets()
 
-    def __post_setup__(self) -> None:
-        """Custom hook for post-setup actions."""
-
 
 @dataclass(slots=True)
 class ParameterSetting(Setting[S]):
     """Set a parameter for a rule."""
 
-    complement_left: bool = False
-    """Whether the complement (1 - value) should be added to the value's left in the settings array.
-
-    Example:
-        ```python
-            @RainingGrid.rule(State.RAINDROP, target_slice=0, frequency="rain_speed")
-            def generate_raindrops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
-                return partial(  # type: ignore[return-value]
-                    const.RNG.choice,
-                    a=const.BOOLEANS,  # [ False, True ]
-                    size=ca.grid[target_slice].shape,
-                    p=ca.rain_chance,  # <-- Needs complement_left=True to be in the form [value, 1 - value]
-                )
-        ```
-    """
-
     setting_type: Literal[SettingType.PARAMETER] = SettingType.PARAMETER
 
-    settings_array_slice: slice = field(init=False)
-    settings_array_view: np.typing.NDArray[np.float64] = field(init=False)
+    def set_value_in_grid(self, value: S) -> None:
+        """Set the parameter and re-generate the rules loop."""
+        LOGGER.debug("Setting %s to %s", self.slug, value)
+        setattr(self.grid, self.slug, value)
 
-    def get_parameter_array_values(self, index: int) -> dict[str, S]:
-        """Get the values for the settings array."""
-        array_values = {}
-
-        if self.complement_left:
-            array_values[f"__{self.slug}_complement__"] = 1 - self.get_value_from_grid()
-            slice_width = 2
-        else:
-            slice_width = 1
-
-        self.settings_array_slice = slice(index, index + slice_width)
-        array_values[self.slug] = self.get_value_from_grid()
-
-        return array_values
+        self.grid.generate_frame_rulesets(update_parameter=self.slug)
 
 
 __all__ = ["FrequencySetting", "ParameterSetting"]

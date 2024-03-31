@@ -12,8 +12,14 @@
 		"python.analysis.extraPaths": [
 			"${workspaceFolder}/led_matrix_controller"
 		],
-		"files.associations": {
-			"*.yaml": "home-assistant"
-		}
+		"vsmqtt.brokerProfiles": [
+			{
+				"name": "Home Assistant",
+				"host": "homeassistant.local",
+				"port": 1883,
+				"clientId": "vsmqtt_client_f5b0",
+				"promptCredentials": true
+			}
+		],
 	}
 }

@@ -39,10 +39,7 @@ class RainingGrid(Grid):
 
     rain_chance: Annotated[
         float,
-        ParameterSetting(
-            complement_left=True,
-            transition_rate=(0.002, 0.2),
-        ),
+        ParameterSetting(transition_rate=(0.002, 0.2)),
     ] = 0.025
     rain_speed: Annotated[int, FrequencySetting()] = 1
     splash_speed: Annotated[int, FrequencySetting()] = 8
@@ -50,15 +47,18 @@ class RainingGrid(Grid):
     id: str = "raining-grid"
 
 
+def generate_raindrops_mask(shape: tuple[int, int], chance: float) -> Mask:
+    return const.RNG.random(shape) < chance
+
+
 @RainingGrid.rule(State.RAINDROP, target_slice=0, frequency="rain_speed")
 def generate_raindrops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Generate raindrops at the top of the grid."""
 
-    return partial(  # type: ignore[return-value]
-        const.RNG.choice,
-        a=const.BOOLEANS,
-        size=ca.grid[target_slice].shape,
-        p=ca.rain_chance,
+    return partial(
+        generate_raindrops_mask,
+        shape=ca.grid[target_slice].shape,
+        chance=ca.rain_chance,
     )
 
 

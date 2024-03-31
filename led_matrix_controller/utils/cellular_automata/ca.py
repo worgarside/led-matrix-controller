@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ast
+import inspect
 import math
 import re
 from copy import deepcopy
@@ -15,9 +17,7 @@ from typing import (
     Callable,
     ClassVar,
     Generator,
-    OrderedDict,
     Self,
-    cast,
     get_type_hints,
 )
 
@@ -86,6 +86,22 @@ FrameRuleSet = tuple[RuleTuple, ...]
 CAMEL_CASE = re.compile(r"(?<!^)(?=[A-Z])")
 
 
+class AttributeVisitor(ast.NodeVisitor):
+    """Visitor to extract attributes from a function."""
+
+    def __init__(self, grid_arg_name: str):
+        self.grid_arg_name = grid_arg_name
+        self.attributes: set[str] = set()
+
+    def visit_Attribute(self, node: ast.Attribute) -> None:  # noqa: N802
+        """Visit an attribute node."""
+        if isinstance(node.value, ast.Name) and node.value.id == self.grid_arg_name:
+            # Record the consumption of the grid's attribute
+            self.attributes.add(node.attr)
+
+        self.generic_visit(node)
+
+
 @dataclass(slots=True)
 class Rule:
     """Class for a rule to update cells."""
@@ -105,11 +121,14 @@ class Rule:
     _frequency_setting: FrequencySetting = field(init=False)
     """Optional frequency setting for the rule. Only set if `frequency` is a string."""
 
-    rule_tuple: RuleTuple = field(init=False)
-    """The tuple of the target view, the mask generator, and the state to change to.
+    target_view: GridView = field(init=False)
+    """The view of the grid which the rule applies to."""
 
-    Invoked (potentially) on each loop as one rule in a frame-ruleset.
-    """
+    mask_generator: MaskGen = field(init=False)
+    """The mask generator for the rule."""
+
+    consumed_parameters: set[str] = field(init=False)
+    """The slugs of the ParameterSettings consumed by the rule function."""
 
     def active_on_frame(self, i: int, /) -> bool:
         """Return whether the rule is active on the given frame."""
@@ -117,6 +136,29 @@ class Rule:
             return i % self.frequency == 0
 
         return i % self._frequency_setting.get_value_from_grid() == 0
+
+    def refresh_mask_generator(self, grid: Grid) -> None:
+        """Refresh the mask generator for the rule.
+
+        Also sets the consumed_parameters attribute if it hasn't been set yet.
+        """
+        if not hasattr(self, "consumed_parameters"):
+            grid_arg_name = self.rule_func.__code__.co_varnames[0]
+            visitor = AttributeVisitor(grid_arg_name)
+            visitor.visit(ast.parse(inspect.getsource(self.rule_func)))
+
+            self.consumed_parameters = {
+                va
+                for va in visitor.attributes
+                if isinstance(grid.settings.get(va), ParameterSetting)
+            }
+
+        self.mask_generator = self.rule_func(grid, self.target_slice)
+
+    @property
+    def rule_tuple(self) -> RuleTuple:
+        """Return the rule as a tuple."""
+        return self.target_view, self.mask_generator, self.to_state.value
 
 
 @dataclass(slots=True)
@@ -135,7 +177,6 @@ class Grid:
 
     grid: NDArray[np.int_] = field(init=False)
     frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False)
-    parameter_array: NDArray[np.float64] = field(init=False)
     rules: list[Rule] = field(init=False)
     settings: dict[str, Setting[Any]] = field(default_factory=dict)
 
@@ -172,36 +213,6 @@ class Grid:
 
                     self.settings[setting.slug] = setting
 
-        # Get and store all parameter values in a single array for easy access
-        parameter_setting_values: OrderedDict[str, int | float] = OrderedDict()
-        for p_setting in self.settings.values():
-            if isinstance(p_setting, ParameterSetting):
-                parameter_setting_values.update(
-                    p_setting.get_parameter_array_values(
-                        index=len(parameter_setting_values)
-                    )
-                )
-
-        self.parameter_array = np.array(
-            list(parameter_setting_values.values()),
-            dtype=np.float64,
-        )
-
-        # Override the setting attribute's original value with a view on the parameter array
-        for slug in parameter_setting_values:
-            if (
-                slug.startswith("__")
-                and slug.endswith("_complement__")
-                and slug.removeprefix("__").removesuffix("_complement__")
-                in parameter_setting_values
-            ):
-                continue
-
-            # Attach the view to the setting, and overwrite the attribute with it too
-            param = cast(ParameterSetting[Any], self.settings[slug])
-            param.settings_array_view = self.parameter_array[param.settings_array_slice]
-            self.__setattr__(slug, param.settings_array_view)
-
         # Create the grid; 0 is the default state
         self.grid = self.zeros()
 
@@ -212,15 +223,12 @@ class Grid:
             ):
                 rule._frequency_setting = freq_setting
 
-            rule.rule_tuple = (
-                self.grid[rule.target_slice],  # target view
-                rule.rule_func(self, rule.target_slice),  # mask generator
-                rule.to_state.state,  # state to change to
-            )
+            rule.target_view = self.grid[rule.target_slice]
+            rule.refresh_mask_generator(self)
 
         self.generate_frame_rulesets()
 
-    def generate_frame_rulesets(self) -> None:
+    def generate_frame_rulesets(self, update_parameter: str | None = None) -> None:
         """Pre-calculate the a sequence of mask generators for each frame.
 
         The total number of frames (and thus rulesets) is the least common multiple of the frequencies of the
@@ -234,6 +242,11 @@ class Grid:
                 if isinstance(setting, FrequencySetting)
             )
         )
+
+        if update_parameter:
+            for rule in self.rules:
+                if update_parameter in rule.consumed_parameters:
+                    rule.refresh_mask_generator(self)
 
         self.frame_rulesets = tuple(
             tuple(rule.rule_tuple for rule in self.rules if rule.active_on_frame(i))
@@ -287,7 +300,6 @@ class Grid:
         def decorator(
             rule_func: Callable[[Grid, TargetSlice], MaskGen],
         ) -> Callable[[Grid], MaskGen]:
-            # This is the only bit that matters here
             cls._RULES_SOURCE.append(
                 Rule(
                     target_slice=actual_slice,
@@ -307,7 +319,7 @@ class Grid:
 
                 return wrapper
 
-            return None  # The function is never called explicitly
+            return None  # The function is never explicitly called directly, only ever via Rule.rule_func
 
         return decorator
 
@@ -322,10 +334,6 @@ class Grid:
     def zeros(self, *, dtype: DTypeLike = np.int_) -> NDArray[Any]:
         """Return a grid of zeros."""
         return np.zeros((self.height, self.width), dtype=dtype)
-
-    @staticmethod
-    def _generate_mask(rule_tuple: RuleTuple) -> Mask:
-        return rule_tuple[1]()
 
     @property
     def frames(self) -> Generator[GridView, None, None]:
