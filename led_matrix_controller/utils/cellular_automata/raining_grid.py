@@ -8,7 +8,7 @@ from functools import partial
 from typing import Annotated, Literal
 
 import numpy as np
-from numba import jit  # type: ignore[import-untyped]
+from numba import njit  # type: ignore[import-not-found]
 from utils import const
 
 from .ca import (
@@ -87,7 +87,7 @@ def move_rain_down(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     return partial(move_rain_down_mask, upper_slice, raindrop, lower_slice, null)
 
 
-@jit()  # type: ignore[misc]
+@njit()  # type: ignore[misc]
 def top_of_rain_down_mask(
     top_row: GridView,
     raindrop: int,
@@ -128,6 +128,7 @@ def top_of_rain_down(ca: RainingGrid, _: TargetSlice) -> MaskGen:
     )
 
 
+@njit()  # type: ignore[misc]
 def _splash_mask(
     source_slice: GridView,
     raindrop: int,

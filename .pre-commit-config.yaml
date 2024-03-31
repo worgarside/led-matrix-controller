@@ -31,7 +31,6 @@ repos:
           - types-python-dateutil
           - wg-utilities==5.14.1
           - rgbmatrixemulator==0.11.4
-          - numba==0.59.1
 
   - repo: https://github.com/python-poetry/poetry
     rev: 1.8.0
