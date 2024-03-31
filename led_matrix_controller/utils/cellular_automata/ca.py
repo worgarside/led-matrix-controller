@@ -149,30 +149,29 @@ class Grid:
 
         self.rules = deepcopy(self._RULES_SOURCE)
 
-        for field_name, field_type in deepcopy(
-            get_type_hints(
-                self.__class__,
-                include_extras=True,
-            )
+        for field_name, field_type in get_type_hints(
+            self.__class__,
+            include_extras=True,
         ).items():
             for annotation in getattr(field_type, "__metadata__", ()):
                 if isinstance(annotation, Setting):
-                    annotation.setup(
+                    setting = deepcopy(annotation)
+                    setting.setup(
                         index=len(settings),
                         field_name=field_name,
                         grid=self,
                         type_=field_type.__origin__,
                     )
 
-                    settings[field_name] = annotation
+                    settings[field_name] = setting
 
-                    if isinstance(annotation, FrequencySetting):
+                    if isinstance(setting, FrequencySetting):
                         for rule in self.rules:
                             if (
                                 isinstance(rule.frequency, str)
                                 and rule.frequency == field_name
                             ):
-                                rule._frequency_setting = annotation
+                                rule._frequency_setting = setting
 
                                 rule.rule_tuple = (
                                     self.grid[rule.target_slice],
