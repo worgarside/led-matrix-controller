@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from copy import deepcopy
 from itertools import islice, product
-from math import ceil
 from typing import TYPE_CHECKING, Callable
 
 import pytest
@@ -25,7 +24,8 @@ if TYPE_CHECKING:
             marks=pytest.mark.xdist_group(f"{size}-{limit}"),
         )
         for size, limit in product(
-            [8, 16, 32, 64], [ceil((10**i) / 2) for i in range(1, 4)]
+            [8, 16, 32, 64],
+            [50, 250, 500],
         )
     ],
 )
@@ -55,7 +55,7 @@ def test_raining_grid_simulation(
         )
         for size, limit, rule in product(
             [8, 16, 32, 64],
-            [ceil((10**i) / 2) for i in range(1, 4)],
+            [50, 250, 500],
             RainingGrid._RULE_FUNCTIONS,
         )
     ],
