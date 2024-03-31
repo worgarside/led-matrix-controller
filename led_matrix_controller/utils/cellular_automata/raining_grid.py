@@ -55,7 +55,7 @@ def generate_raindrops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 
 @RainingGrid.rule(
     State.RAINDROP,
-    target_slice=(slice(1, None), slice(None)),
+    target_slice=(slice(1, None)),
     frequency="rain_speed",
 )
 def move_rain_down(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
@@ -205,7 +205,7 @@ def splash_right_high(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 
 @RainingGrid.rule(
     State.NULL,
-    target_slice=(slice(-3, None), slice(None)),
+    target_slice=(slice(-3, None)),
     frequency="splash_speed",
 )
 def remove_splashes(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
