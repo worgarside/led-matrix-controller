@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from multiprocessing import Process, Queue
 from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 from models import RGBMatrix, RGBMatrixOptions
 from PIL import Image
 from utils import const
-from utils.cellular_automata import RainingGrid
+from utils.cellular_automata import RainingGrid, ca
 from utils.cellular_automata.raining_grid import State
 from utils.mqtt import MQTT_CLIENT
 
@@ -32,27 +33,27 @@ class Matrix:
         # "pwm_dither_bits": 1,  # noqa: ERA001
     }
 
-    def __init__(self, colormap: NDArray[np.int_]) -> None:
-        options = RGBMatrixOptions()
+    def __init__(
+        self, colormap: NDArray[np.int_], options: LedMatrixOptions = OPTIONS
+    ) -> None:
+        all_options = RGBMatrixOptions()
 
-        for name, value in self.OPTIONS.items():
-            if getattr(options, name, None) != value:
-                setattr(options, name, value)
+        for name, value in options.items():
+            setattr(all_options, name, value)
 
-        self.matrix = RGBMatrix(options=options)
+        self.matrix = RGBMatrix(options=all_options)
         self.canvas = self.matrix.CreateFrameCanvas()
 
         self.colormap = colormap
 
-    def render_array(self, array: NDArray[np.int_]) -> None:
+    def render_array(self, queue: Queue[Image.Image]) -> None:
         """Render the array to the LED matrix."""
 
-        pixels = self.colormap[array]
+        while True:
+            img = queue.get()
 
-        image = Image.fromarray(pixels.astype(np.uint8), "RGB")
-
-        self.canvas.SetImage(image)
-        self.canvas = self.matrix.SwapOnVSync(self.canvas)
+            self.canvas.SetImage(img)
+            self.canvas = self.matrix.SwapOnVSync(self.canvas)
 
     @property
     def height(self) -> int:
@@ -64,20 +65,40 @@ class Matrix:
         """Return the width of the matrix."""
         return int(self.matrix.width)
 
+    def queue_frames(self, grid: ca.Grid, queue: Queue[Image.Image]) -> None:
+        """Queue frames for rendering."""
+        for frame in grid.frames:
+            pixels = self.colormap[frame]
+
+            img = Image.fromarray(pixels.astype(np.uint8), "RGB")
+
+            queue.put(img)
+
 
 def main() -> None:
     """Run the rain simulation."""
+
+    queue: Queue[Image.Image] = Queue(maxsize=5)
 
     matrix = Matrix(colormap=State.colormap())
 
     grid = RainingGrid(height=matrix.height, width=matrix.width)
 
-    MQTT_CLIENT.loop_start()
+    producer = Process(
+        target=matrix.queue_frames,
+        args=(
+            grid,
+            queue,
+        ),
+    )
+    consumer = Process(target=matrix.render_array, args=(queue,))
 
-    for frame in grid.frames:
-        matrix.render_array(frame)
+    producer.start()
+    consumer.start()
 
-    MQTT_CLIENT.loop_stop()
+    producer.join()
+    consumer.join()
+    MQTT_CLIENT.loop_forever()
 
 
 if __name__ == "__main__":

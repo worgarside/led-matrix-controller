@@ -15,6 +15,7 @@ from utils.mqtt import MQTT_CLIENT
 from wg_utilities.loggers import add_stream_handler
 
 if TYPE_CHECKING:
+    import numpy as np
     from paho.mqtt.client import Client, MQTTMessage
     from utils.cellular_automata.ca import Grid
 
@@ -157,6 +158,9 @@ class ParameterSetting(Setting[S]):
     """Set a parameter for a rule."""
 
     setting_type: Literal[SettingType.PARAMETER] = SettingType.PARAMETER
+
+    settings_array_slice: slice = field(init=False)
+    settings_array_view: np.typing.NDArray[np.float64] = field(init=False)
 
 
 __all__ = ["FrequencySetting", "ParameterSetting"]
