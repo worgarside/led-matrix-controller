@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import re
+from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
 from functools import lru_cache, wraps
@@ -113,8 +114,9 @@ class Rule:
 class Grid:
     """Base class for a grid of cells."""
 
-    RULES: ClassVar[list[Rule]] = []
-    _RULE_FUNCTIONS: ClassVar[list[Callable[..., MaskGen]]] = []
+    _RULES_SOURCE: ClassVar[list[Rule]] = []
+    if const.DEBUG_MODE:
+        _RULE_FUNCTIONS: ClassVar[list[Callable[..., MaskGen]]] = []
 
     height: int
     width: int
@@ -122,9 +124,10 @@ class Grid:
 
     frame_index: int = -1
 
-    _grid: NDArray[np.int_] = field(init=False)
-    settings: dict[str, Setting[Any]] = field(init=False)
     frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False)
+    grid: NDArray[np.int_] = field(init=False)
+    rules: list[Rule] = field(init=False)
+    settings: dict[str, Setting[Any]] = field(init=False)
 
     class OutOfBoundsError(ValueError):
         """Error for when a slice goes out of bounds."""
@@ -140,37 +143,42 @@ class Grid:
 
     def __post_init__(self) -> None:
         """Set the calculated attributes of the Grid."""
-        self._grid = self.zeros()
+        self.grid = self.zeros()
 
         settings: dict[str, Setting[Any]] = {}
-        for field_name, field_type in get_type_hints(
-            self.__class__, include_extras=True
+
+        self.rules = deepcopy(self._RULES_SOURCE)
+
+        for field_name, field_type in deepcopy(
+            get_type_hints(
+                self.__class__,
+                include_extras=True,
+            )
         ).items():
-            if hasattr(field_type, "__metadata__"):
-                for annotation in field_type.__metadata__:
-                    if isinstance(annotation, Setting):
-                        annotation.setup(
-                            index=len(settings),
-                            field_name=field_name,
-                            grid=self,
-                            type_=field_type.__origin__,
-                        )
+            for annotation in getattr(field_type, "__metadata__", ()):
+                if isinstance(annotation, Setting):
+                    annotation.setup(
+                        index=len(settings),
+                        field_name=field_name,
+                        grid=self,
+                        type_=field_type.__origin__,
+                    )
 
-                        settings[field_name] = annotation
+                    settings[field_name] = annotation
 
-                        if isinstance(annotation, FrequencySetting):
-                            for rule in self.RULES:
-                                if (
-                                    isinstance(rule.frequency, str)
-                                    and rule.frequency == field_name
-                                ):
-                                    rule._frequency_setting = annotation
+                    if isinstance(annotation, FrequencySetting):
+                        for rule in self.rules:
+                            if (
+                                isinstance(rule.frequency, str)
+                                and rule.frequency == field_name
+                            ):
+                                rule._frequency_setting = annotation
 
-                                    rule.rule_tuple = (
-                                        self._grid[rule.target_slice],
-                                        rule.rule_func(self, rule.target_slice),
-                                        rule.to_state.state,
-                                    )
+                                rule.rule_tuple = (
+                                    self.grid[rule.target_slice],
+                                    rule.rule_func(self, rule.target_slice),
+                                    rule.to_state.state,
+                                )
 
         self.settings = settings
 
@@ -192,7 +200,7 @@ class Grid:
         )
 
         self.frame_rulesets = tuple(
-            tuple(rule.rule_tuple for rule in self.RULES if rule.active_on_frame(i))
+            tuple(rule.rule_tuple for rule in self.rules if rule.active_on_frame(i))
             for i in range(ruleset_count)
         )
 
@@ -244,7 +252,7 @@ class Grid:
             rule_func: Callable[[Grid, TargetSlice], MaskGen],
         ) -> Callable[[Grid], MaskGen]:
             # This is the only bit that matters here
-            cls.RULES.append(
+            cls._RULES_SOURCE.append(
                 Rule(
                     target_slice=actual_slice,
                     rule_func=rule_func,
@@ -291,12 +299,12 @@ class Grid:
 
                 self.frame_index += 1
 
-                yield self._grid
+                yield self.grid
 
     @property
     def str_repr(self) -> str:
         """Return a string representation of the grid."""
-        return "\n".join(" ".join(state.char for state in row) for row in self._grid)
+        return "\n".join(" ".join(state.char for state in row) for row in self.grid)
 
     def translate_slice(
         self,
@@ -330,11 +338,11 @@ class Grid:
     @property
     def shape(self) -> tuple[int, int]:
         """Return the shape of the grid."""
-        return self._grid.shape  # type: ignore[return-value]
+        return self.grid.shape  # type: ignore[return-value]
 
     def __getitem__(self, key: TargetSliceDecVal) -> NDArray[np.int_]:
         """Get an item from the grid."""
-        return self._grid[key]
+        return self.grid[key]
 
 
 @lru_cache
