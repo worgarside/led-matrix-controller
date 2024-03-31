@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ast
+import inspect
 import math
 import re
 from copy import deepcopy
@@ -10,14 +12,21 @@ from enum import Enum, IntEnum
 from functools import lru_cache, wraps
 from itertools import islice
 from logging import DEBUG, getLogger
-from typing import Any, Callable, ClassVar, Generator, Self, get_type_hints
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Generator,
+    Self,
+    get_type_hints,
+)
 
 import numpy as np
 from numpy.typing import DTypeLike, NDArray
 from utils import const
 from wg_utilities.loggers import add_stream_handler
 
-from .setting import FrequencySetting, Setting
+from .setting import FrequencySetting, ParameterSetting, Setting
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel(DEBUG)
@@ -69,12 +78,28 @@ class StateBase(Enum):
 TargetSliceDecVal = slice | int | tuple[int | slice, int | slice]
 TargetSlice = tuple[slice, slice]
 Mask = NDArray[np.bool_]
-View = NDArray[np.int_]
+GridView = NDArray[np.int_]
 MaskGen = Callable[[], Mask]
 RuleFunc = Callable[["Grid", TargetSlice], MaskGen]
-RuleTuple = tuple[View, MaskGen, int]
+RuleTuple = tuple[GridView, MaskGen, int]
 FrameRuleSet = tuple[RuleTuple, ...]
 CAMEL_CASE = re.compile(r"(?<!^)(?=[A-Z])")
+
+
+class AttributeVisitor(ast.NodeVisitor):
+    """Visitor to extract attributes from a function."""
+
+    def __init__(self, grid_arg_name: str):
+        self.grid_arg_name = grid_arg_name
+        self.attributes: set[str] = set()
+
+    def visit_Attribute(self, node: ast.Attribute) -> None:  # noqa: N802
+        """Visit an attribute node."""
+        if isinstance(node.value, ast.Name) and node.value.id == self.grid_arg_name:
+            # Record the consumption of the grid's attribute
+            self.attributes.add(node.attr)
+
+        self.generic_visit(node)
 
 
 @dataclass(slots=True)
@@ -96,11 +121,14 @@ class Rule:
     _frequency_setting: FrequencySetting = field(init=False)
     """Optional frequency setting for the rule. Only set if `frequency` is a string."""
 
-    rule_tuple: RuleTuple = field(init=False)
-    """The tuple of the target view, the mask generator, and the state to change to.
+    target_view: GridView = field(init=False)
+    """The view of the grid which the rule applies to."""
 
-    Invoked (potentially) on each loop as one rule in a frame-ruleset.
-    """
+    mask_generator: MaskGen = field(init=False)
+    """The mask generator for the rule."""
+
+    consumed_parameters: set[str] = field(init=False)
+    """The slugs of the ParameterSettings consumed by the rule function."""
 
     def active_on_frame(self, i: int, /) -> bool:
         """Return whether the rule is active on the given frame."""
@@ -108,6 +136,29 @@ class Rule:
             return i % self.frequency == 0
 
         return i % self._frequency_setting.get_value_from_grid() == 0
+
+    def refresh_mask_generator(self, grid: Grid) -> None:
+        """Refresh the mask generator for the rule.
+
+        Also sets the consumed_parameters attribute if it hasn't been set yet.
+        """
+        if not hasattr(self, "consumed_parameters"):
+            grid_arg_name = self.rule_func.__code__.co_varnames[0]
+            visitor = AttributeVisitor(grid_arg_name)
+            visitor.visit(ast.parse(inspect.getsource(self.rule_func)))
+
+            self.consumed_parameters = {
+                va
+                for va in visitor.attributes
+                if isinstance(grid.settings.get(va), ParameterSetting)
+            }
+
+        self.mask_generator = self.rule_func(grid, self.target_slice)
+
+    @property
+    def rule_tuple(self) -> RuleTuple:
+        """Return the rule as a tuple."""
+        return self.target_view, self.mask_generator, self.to_state.value
 
 
 @dataclass(slots=True)
@@ -124,10 +175,10 @@ class Grid:
 
     frame_index: int = -1
 
-    frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False)
     grid: NDArray[np.int_] = field(init=False)
+    frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False)
     rules: list[Rule] = field(init=False)
-    settings: dict[str, Setting[Any]] = field(init=False)
+    settings: dict[str, Setting[Any]] = field(default_factory=dict)
 
     class OutOfBoundsError(ValueError):
         """Error for when a slice goes out of bounds."""
@@ -143,12 +194,9 @@ class Grid:
 
     def __post_init__(self) -> None:
         """Set the calculated attributes of the Grid."""
-        self.grid = self.zeros()
-
-        settings: dict[str, Setting[Any]] = {}
-
         self.rules = deepcopy(self._RULES_SOURCE)
 
+        # Compile settings from type hints
         for field_name, field_type in get_type_hints(
             self.__class__,
             include_extras=True,
@@ -157,33 +205,30 @@ class Grid:
                 if isinstance(annotation, Setting):
                     setting = deepcopy(annotation)
                     setting.setup(
-                        index=len(settings),
+                        index=len(self.settings),
                         field_name=field_name,
                         grid=self,
                         type_=field_type.__origin__,
                     )
 
-                    settings[field_name] = setting
+                    self.settings[setting.slug] = setting
 
-                    if isinstance(setting, FrequencySetting):
-                        for rule in self.rules:
-                            if (
-                                isinstance(rule.frequency, str)
-                                and rule.frequency == field_name
-                            ):
-                                rule._frequency_setting = setting
+        # Create the grid; 0 is the default state
+        self.grid = self.zeros()
 
-                                rule.rule_tuple = (
-                                    self.grid[rule.target_slice],
-                                    rule.rule_func(self, rule.target_slice),
-                                    rule.to_state.state,
-                                )
+        # Create mask generators after all setup is done
+        for rule in self.rules:
+            if isinstance(rule.frequency, str) and isinstance(
+                freq_setting := self.settings.get(rule.frequency), FrequencySetting
+            ):
+                rule._frequency_setting = freq_setting
 
-        self.settings = settings
+            rule.target_view = self.grid[rule.target_slice]
+            rule.refresh_mask_generator(self)
 
         self.generate_frame_rulesets()
 
-    def generate_frame_rulesets(self) -> None:
+    def generate_frame_rulesets(self, update_parameter: str | None = None) -> None:
         """Pre-calculate the a sequence of mask generators for each frame.
 
         The total number of frames (and thus rulesets) is the least common multiple of the frequencies of the
@@ -197,6 +242,11 @@ class Grid:
                 if isinstance(setting, FrequencySetting)
             )
         )
+
+        if update_parameter:
+            for rule in self.rules:
+                if update_parameter in rule.consumed_parameters:
+                    rule.refresh_mask_generator(self)
 
         self.frame_rulesets = tuple(
             tuple(rule.rule_tuple for rule in self.rules if rule.active_on_frame(i))
@@ -250,7 +300,6 @@ class Grid:
         def decorator(
             rule_func: Callable[[Grid, TargetSlice], MaskGen],
         ) -> Callable[[Grid], MaskGen]:
-            # This is the only bit that matters here
             cls._RULES_SOURCE.append(
                 Rule(
                     target_slice=actual_slice,
@@ -270,7 +319,7 @@ class Grid:
 
                 return wrapper
 
-            return None  # The function is never called explicitly
+            return None  # The function is never explicitly called directly, only ever via Rule.rule_func
 
         return decorator
 
@@ -287,7 +336,7 @@ class Grid:
         return np.zeros((self.height, self.width), dtype=dtype)
 
     @property
-    def frames(self) -> Generator[View, None, None]:
+    def frames(self) -> Generator[GridView, None, None]:
         """Generate the frames of the grid."""
         while True:
             for ruleset in self.frame_rulesets:

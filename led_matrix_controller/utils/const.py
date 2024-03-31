@@ -30,4 +30,5 @@ FONT_HEIGHT: Final[int] = 7
 SCROLL_INCREMENT_DISTANCE: Final[int] = 2 * FONT_WIDTH
 
 
+BOOLEANS: Final[np.typing.NDArray[np.bool_]] = np.array([False, True], dtype=np.bool_)
 RNG = np.random.default_rng(830003040)

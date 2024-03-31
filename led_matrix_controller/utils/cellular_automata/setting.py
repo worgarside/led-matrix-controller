@@ -8,7 +8,17 @@ from json import JSONDecodeError, loads
 from logging import DEBUG, getLogger
 from threading import Thread
 from time import sleep
-from typing import TYPE_CHECKING, Any, Callable, Generic, Literal, TypeVar, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Generic,
+    Literal,
+    OrderedDict,
+    TypeVar,
+    cast,
+)
 
 from utils import const
 from utils.mqtt import MQTT_CLIENT
@@ -45,6 +55,9 @@ class Setting(Generic[S]):
 
     callback: Callable[[S], None] = field(init=False)
     grid: Grid = field(init=False)
+    parameter_settings: OrderedDict[str, int | float] = field(
+        init=False, default_factory=OrderedDict
+    )
     settings_index: int = field(init=False)
     slug: str = field(init=False)
     target_value: S = field(init=False)
@@ -56,13 +69,12 @@ class Setting(Generic[S]):
         return cast(S, getattr(self.grid, self.slug))
 
     def set_value_in_grid(self, value: S) -> None:
-        LOGGER.debug("Setting %s to %s", self.slug, value)
         setattr(self.grid, self.slug, value)
 
     def transition_value_in_grid(self, value: S) -> None:
         self.target_value = value
 
-        if not hasattr(self, "transition_thread") or self.transition_thread.is_alive():
+        if not (hasattr(self, "transition_thread") and self.transition_thread.is_alive()):
             self.transition_thread = Thread(target=self._transition_value)
             self.transition_thread.start()
 
@@ -72,8 +84,8 @@ class Setting(Generic[S]):
         while (
             current_value := self.type_(self.get_value_from_grid())
         ) != self.target_value:
-            transition_amount = min(
-                self.transition_rate[0], abs(current_value - self.target_value)
+            transition_amount = round(
+                min(self.transition_rate[0], abs(current_value - self.target_value)), 6
             )
             LOGGER.debug(
                 "Transitioning %s from %s to %s by %s",
@@ -94,7 +106,14 @@ class Setting(Generic[S]):
 
             sleep(self.transition_rate[1])
 
-    def setup(self, *, index: int, field_name: str, grid: Grid, type_: type[S]) -> None:
+    def setup(
+        self,
+        *,
+        index: int,
+        field_name: str,
+        grid: Grid,
+        type_: type[S],
+    ) -> None:
         """Set up the setting."""
         self.settings_index = index
         self.slug = field_name
@@ -125,7 +144,7 @@ class Setting(Generic[S]):
             LOGGER.exception("Failed to decode payload: %s", message.payload)
             return
 
-        if not isinstance(payload, self.type_):
+        if not isinstance(payload, self.type_) and self.type_(payload) != payload:
             LOGGER.error(
                 "Payload %s is not of type %s",
                 payload,
@@ -142,6 +161,8 @@ class Setting(Generic[S]):
 class FrequencySetting(Setting[int]):
     """Set a rule's frequency."""
 
+    INSTANCES: ClassVar[OrderedDict[str, int | float]] = OrderedDict()
+
     setting_type: Literal[SettingType.FREQUENCY] = SettingType.FREQUENCY
     type_: type[int] = int
 
@@ -157,6 +178,13 @@ class ParameterSetting(Setting[S]):
     """Set a parameter for a rule."""
 
     setting_type: Literal[SettingType.PARAMETER] = SettingType.PARAMETER
+
+    def set_value_in_grid(self, value: S) -> None:
+        """Set the parameter and re-generate the rules loop."""
+        LOGGER.debug("Setting %s to %s", self.slug, value)
+        setattr(self.grid, self.slug, value)
+
+        self.grid.generate_frame_rulesets(update_parameter=self.slug)
 
 
 __all__ = ["FrequencySetting", "ParameterSetting"]
