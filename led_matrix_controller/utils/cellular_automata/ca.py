@@ -12,6 +12,7 @@ from enum import Enum, IntEnum
 from functools import lru_cache, wraps
 from itertools import islice
 from logging import DEBUG, getLogger
+from multiprocessing.pool import Pool
 from typing import (
     Any,
     Callable,
@@ -335,19 +336,24 @@ class Grid:
         """Return a grid of zeros."""
         return np.zeros((self.height, self.width), dtype=dtype)
 
+    @staticmethod
+    def _generate_mask(rule_tuple: RuleTuple) -> Mask:
+        return rule_tuple[1]()
+
     @property
     def frames(self) -> Generator[GridView, None, None]:
         """Generate the frames of the grid."""
-        while True:
-            for ruleset in self.frame_rulesets:
-                masks = tuple(mask_gen() for _, mask_gen, _ in ruleset)
+        with Pool() as pool:
+            while True:
+                for ruleset in self.frame_rulesets:
+                    masks = pool.map(self._generate_mask, ruleset)
 
-                for mask, (target_view, _, state) in zip(masks, ruleset, strict=True):
-                    target_view[mask] = state
+                    for mask, (target_view, _, state) in zip(masks, ruleset, strict=True):
+                        target_view[mask] = state
 
-                self.frame_index += 1
+                    self.frame_index += 1
 
-                yield self.grid
+                    yield self.grid
 
     @property
     def str_repr(self) -> str:
