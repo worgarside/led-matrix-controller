@@ -180,7 +180,7 @@ class FrequencySetting(Setting[int]):
 
     def __post_setup__(self) -> None:
         """Custom hook for post-setup actions."""
-        for rule in self.grid.RULES:
+        for rule in self.grid.rules:
             if isinstance(rule.frequency, str) and rule.frequency == self.slug:
                 rule._frequency_setting = self
 

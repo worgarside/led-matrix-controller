@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import re
+from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
 from functools import lru_cache, wraps
@@ -121,8 +122,9 @@ class Rule:
 class Grid:
     """Base class for a grid of cells."""
 
-    RULES: ClassVar[list[Rule]] = []
-    _RULE_FUNCTIONS: ClassVar[list[Callable[..., MaskGen]]] = []
+    _RULES_SOURCE: ClassVar[list[Rule]] = []
+    if const.DEBUG_MODE:
+        _RULE_FUNCTIONS: ClassVar[list[Callable[..., MaskGen]]] = []
 
     height: int
     width: int
@@ -133,6 +135,7 @@ class Grid:
     grid: NDArray[np.int_] = field(init=False)
     frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False)
     parameter_array: NDArray[np.float64] = field(init=False)
+    rules: list[Rule] = field(init=False)
     settings: dict[str, Setting[Any]] = field(default_factory=dict)
 
     class OutOfBoundsError(ValueError):
@@ -149,25 +152,23 @@ class Grid:
 
     def __post_init__(self) -> None:
         """Set the calculated attributes of the Grid."""
+        self.rules = deepcopy(self._RULES_SOURCE)
 
-        # Initialise settings
         for field_name, field_type in get_type_hints(
             self.__class__,
             include_extras=True,
         ).items():
-            if not hasattr(field_type, "__metadata__"):
-                continue
-
-            for annotation in field_type.__metadata__:
+            for annotation in getattr(field_type, "__metadata__", ()):
                 if isinstance(annotation, Setting):
-                    annotation.setup(
+                    setting = deepcopy(annotation)
+                    setting.setup(
                         index=len(self.settings),
                         field_name=field_name,
                         grid=self,
                         type_=field_type.__origin__,
                     )
 
-                    self.settings[field_name] = annotation
+                    self.settings[field_name] = setting
 
         self.parameter_array = np.array(
             list(ParameterSetting.INSTANCES.values()), dtype=np.float64
@@ -191,7 +192,7 @@ class Grid:
         self.grid = self.zeros()
 
         # Create mask generators after all setup is done
-        for rule in self.RULES:
+        for rule in self.rules:
             rule.rule_tuple = (
                 self.grid[rule.target_slice],  # target view
                 rule.rule_func(self, rule.target_slice),  # mask generator
@@ -216,7 +217,7 @@ class Grid:
         )
 
         self.frame_rulesets = tuple(
-            tuple(rule.rule_tuple for rule in self.RULES if rule.active_on_frame(i))
+            tuple(rule.rule_tuple for rule in self.rules if rule.active_on_frame(i))
             for i in range(ruleset_count)
         )
 
@@ -268,7 +269,7 @@ class Grid:
             rule_func: Callable[[Grid, TargetSlice], MaskGen],
         ) -> Callable[[Grid], MaskGen]:
             # This is the only bit that matters here
-            cls.RULES.append(
+            cls._RULES_SOURCE.append(
                 Rule(
                     target_slice=actual_slice,
                     rule_func=rule_func,

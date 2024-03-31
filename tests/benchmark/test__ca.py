@@ -15,12 +15,13 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.parametrize(
-    ("size", "limit"),
+    ("size", "limit", "test_id"),
     [
         pytest.param(
             size,
             limit,
-            id=f"{limit} frame{'s' if limit > 1 else ''} @ {size}x{size}",
+            test_id := f"{limit} frame{'s' if limit > 1 else ''} @ {size}x{size}",
+            id=test_id,
         )
         for size, limit in product(
             [8, 16, 32, 64],
@@ -32,9 +33,17 @@ def test_raining_grid_simulation(
     benchmark: BenchmarkFixture,
     size: int,
     limit: int,
+    test_id: str,
 ) -> None:
     """Benchmark the CA."""
-    grid = RainingGrid(size, size, rain_chance=0.025, rain_speed=1, splash_speed=1)
+    grid = RainingGrid(
+        size,
+        size,
+        rain_chance=0.025,
+        rain_speed=1,
+        splash_speed=1,
+        id=test_id,
+    )
 
     @benchmark  # type: ignore[misc]
     def bench() -> None:
@@ -43,13 +52,15 @@ def test_raining_grid_simulation(
 
 
 @pytest.mark.parametrize(
-    ("size", "limit", "rule"),
+    ("size", "limit", "rule", "test_id"),
     [
         pytest.param(
             size,
             limit,
             rule,
-            id=f"{rule.__name__} for {limit} frame{'s' if limit > 1 else ''} @ {size}x{size}",
+            test_id
+            := f"{rule.__name__} for {limit} frame{'s' if limit > 1 else ''} @ {size}x{size}",
+            id=test_id,
         )
         for size, limit, rule in product(
             [8, 16, 32, 64],
@@ -63,11 +74,19 @@ def test_rules(
     size: int,
     limit: int,
     rule: Callable[..., MaskGen],
+    test_id: str,
 ) -> None:
     """Test/benchmark each individual rule."""
-    grid = RainingGrid(size, size, rain_chance=0.025, rain_speed=1, splash_speed=1)
+    grid = RainingGrid(
+        size,
+        size,
+        rain_chance=0.025,
+        rain_speed=1,
+        splash_speed=1,
+        id=test_id,
+    )
 
-    # Discard the first H frames so all rules are effective (e.g. splashing)
+    # Discard the first `size` frames so all rules are effective (e.g. splashing)
     for _ in islice(grid.frames, size + 10):
         pass
 
