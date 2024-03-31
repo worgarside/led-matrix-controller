@@ -38,7 +38,12 @@ def test_raining_grid_simulation(
 ) -> None:
     """Benchmark the CA."""
     grid = RainingGrid(
-        size, size, rain_chance=0.025, rain_speed=1, splash_speed=1, id=test_id
+        size,
+        size,
+        rain_chance=0.025,
+        rain_speed=1,
+        splash_speed=1,
+        id=test_id,
     )
 
     @benchmark  # type: ignore[misc]
@@ -75,10 +80,15 @@ def test_rules(
 ) -> None:
     """Test/benchmark each individual rule."""
     grid = RainingGrid(
-        size, size, rain_chance=0.025, rain_speed=1, splash_speed=1, id=test_id
+        size,
+        size,
+        rain_chance=0.025,
+        rain_speed=1,
+        splash_speed=1,
+        id=test_id,
     )
 
-    # Discard the first H frames so all rules are effective (e.g. splashing)
+    # Discard the first `size` frames so all rules are effective (e.g. splashing)
     for _ in islice(grid.frames, size + 10):
         pass
 
