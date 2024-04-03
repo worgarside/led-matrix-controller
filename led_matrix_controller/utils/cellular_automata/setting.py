@@ -99,7 +99,9 @@ class Setting(Generic[S]):
 
     def __post_init__(self) -> None:
         if self.min is not None and self.max is not None and self.min > self.max:
-            raise ValueError(f"The 'min' value ({self.min}) cannot be greater than the 'max' value ({self.max}).")
+            raise ValueError(
+                f"The 'min' value ({self.min}) cannot be greater than the 'max' value ({self.max})."
+            )
 
     def __post_init__(self) -> None:
         if isinstance(self.max, float):
