@@ -98,6 +98,10 @@ class Setting(Generic[S]):
     """The number of decimal places to round floats to during processing."""
 
     def __post_init__(self) -> None:
+        if self.min is not None and self.max is not None and self.min > self.max:
+            raise ValueError(f"The 'min' value ({self.min}) cannot be greater than the 'max' value ({self.max}).")
+
+    def __post_init__(self) -> None:
         if isinstance(self.max, float):
             self.max = round(self.max, self.fp_precision)
 
@@ -199,7 +203,7 @@ class Setting(Generic[S]):
             if self.max is not None and coerced > self.max:
                 coerced = self.type_(self.max)
 
-            if self.min is not None:
+            if self.min is not None and coerced < self.min:
                 coerced = self.type_(self.min)
 
         if isinstance(coerced, float):
