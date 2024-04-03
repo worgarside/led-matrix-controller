@@ -43,6 +43,10 @@ class InvalidPayloadError(ValueError):
     """Raised when an invalid MQTT payload is received."""
 
 
+class InvalidSettingError(ValueError):
+    """Raised when an invalid setting is created."""
+
+
 @dataclass(kw_only=True, slots=True)
 class Setting(Generic[S]):
     """Class for a setting that can be controlled via MQTT."""
@@ -99,11 +103,10 @@ class Setting(Generic[S]):
 
     def __post_init__(self) -> None:
         if self.min is not None and self.max is not None and self.min > self.max:
-            raise ValueError(
+            raise InvalidSettingError(
                 f"The 'min' value ({self.min}) cannot be greater than the 'max' value ({self.max})."
             )
 
-    def __post_init__(self) -> None:
         if isinstance(self.max, float):
             self.max = round(self.max, self.fp_precision)
 
