@@ -199,7 +199,14 @@ class Setting(Generic[S]):
             __ (Any): the private user data as set in Client() or userdata_set()
             message (MQTTMessage): the message object from the MQTT subscription
         """
-        payload = self.validate(message.payload)
+        try:
+            payload = self.validate(message.payload)
+        except InvalidPayloadError:
+            LOGGER.exception("Invalid payload")
+            return
+        except Exception:
+            LOGGER.exception("An unexpected error occurred while validating the payload")
+            return
 
         self.callback(payload)
 
