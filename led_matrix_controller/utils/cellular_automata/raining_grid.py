@@ -39,7 +39,7 @@ class RainingGrid(Grid):
 
     rain_chance: Annotated[
         float,
-        ParameterSetting(transition_rate=(0.002, 0.2)),
+        ParameterSetting(min=0, max=1, transition_rate=(0.002, 0.2), fp_precision=3),
     ] = 0.025
     rain_speed: Annotated[int, FrequencySetting()] = 1
     splash_speed: Annotated[int, FrequencySetting()] = 8
