@@ -256,9 +256,10 @@ class Grid:
         )
 
         LOGGER.info(
-            "Mask Generator loop re-generated. New length: %i; largest ruleset: %i",
+            "Mask Generator loop re-generated. New length: %i; largest ruleset: %i; empty rulesets: %i",
             len(self.frame_rulesets),
             max(len(loop) for loop in self.frame_rulesets),
+            sum(not loop for loop in self.frame_rulesets),
         )
 
     @classmethod
