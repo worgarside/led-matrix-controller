@@ -7,11 +7,11 @@ from itertools import islice, product
 from typing import TYPE_CHECKING, Callable
 
 import pytest
-from utils.cellular_automata import RainingGrid
+from models.content import RainingGrid
 
 if TYPE_CHECKING:
     from pytest_codspeed import BenchmarkFixture  # type: ignore[import-untyped]
-    from utils.cellular_automata.ca import MaskGen
+    from utils.cellular_automata.grid import MaskGen
 
 
 @pytest.mark.parametrize(

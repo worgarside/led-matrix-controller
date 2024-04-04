@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from . import ca
-from .raining_grid import RainingGrid
+from .grid import Grid
 
-__all__ = ["ca", "RainingGrid"]
+__all__ = ["Grid"]
