@@ -132,10 +132,13 @@ class Rule:
 
     def active_on_frame(self, i: int, /) -> bool:
         """Return whether the rule is active on the given frame."""
-        if isinstance(self.frequency, int):
-            return i % self.frequency == 0
+        current_frequency = (
+            self.frequency
+            if isinstance(self.frequency, int)
+            else self._frequency_setting.get_value_from_grid()
+        )
 
-        return i % self._frequency_setting.get_value_from_grid() == 0
+        return bool(current_frequency) and i % current_frequency == 0
 
     def refresh_mask_generator(self, grid: Grid) -> None:
         """Refresh the mask generator for the rule.
@@ -205,7 +208,6 @@ class Grid:
                 if isinstance(annotation, Setting):
                     setting = deepcopy(annotation)
                     setting.setup(
-                        index=len(self.settings),
                         field_name=field_name,
                         grid=self,
                         type_=field_type.__origin__,
@@ -254,9 +256,10 @@ class Grid:
         )
 
         LOGGER.info(
-            "Mask Generator loop re-generated. New length: %i; largest ruleset: %i",
+            "Mask Generator loop re-generated. New length: %i; largest ruleset: %i; empty rulesets: %i",
             len(self.frame_rulesets),
             max(len(loop) for loop in self.frame_rulesets),
+            sum(not loop for loop in self.frame_rulesets),
         )
 
     @classmethod
