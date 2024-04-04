@@ -42,6 +42,9 @@ class SettingType(StrEnum):
 class InvalidPayloadError(ValueError):
     """Raised when an invalid MQTT payload is received."""
 
+    def __init__(self, *, decoded: Any, strict: bool, coerced: Any | Exception) -> None:
+        super().__init__(f"Invalid payload with {strict=}: {decoded=}, {coerced=}")
+
 
 class InvalidSettingError(ValueError):
     """Raised when an invalid setting is created."""
@@ -227,10 +230,18 @@ class Setting(Generic[S]):
         try:
             coerced_and_formatted = self._coerce_and_format(decoded)
         except Exception as err:
-            raise InvalidPayloadError(decoded) from err
+            raise InvalidPayloadError(
+                decoded=decoded,
+                strict=self.strict,
+                coerced=err,
+            ) from err
 
         if self.strict and coerced_and_formatted != decoded:
-            raise InvalidPayloadError(decoded)
+            raise InvalidPayloadError(
+                decoded=decoded,
+                strict=self.strict,
+                coerced=coerced_and_formatted,
+            )
 
         return coerced_and_formatted
 
