@@ -24,7 +24,7 @@ from wg_utilities.loggers import add_stream_handler
 
 if TYPE_CHECKING:
     from paho.mqtt.client import Client, MQTTMessage
-    from utils.cellular_automata.ca import Grid
+    from utils.cellular_automata.grid import Grid
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel(DEBUG)

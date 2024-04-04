@@ -9,8 +9,7 @@ from typing import Annotated, Literal
 
 import numpy as np
 from utils import const
-
-from .ca import (
+from utils.cellular_automata.grid import (
     Direction,
     Grid,
     GridView,
@@ -19,7 +18,10 @@ from .ca import (
     StateBase,
     TargetSlice,
 )
-from .setting import FrequencySetting, ParameterSetting  # noqa: TCH001
+from utils.cellular_automata.setting import (  # noqa: TCH002
+    FrequencySetting,
+    ParameterSetting,
+)
 
 
 @unique
