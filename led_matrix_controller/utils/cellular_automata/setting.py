@@ -172,6 +172,7 @@ class Setting(Generic[S]):
         self.slug = field_name
         self.grid = grid
         self.type_ = type_
+        self.callback = self.set_value_in_grid
 
         if self.type_ in {int, float}:
             if self.transition_rate:
@@ -184,8 +185,6 @@ class Setting(Generic[S]):
                 self.max = round(self.max, self.fp_precision)
             if self.min:
                 self.min = round(self.min, self.fp_precision)
-        else:
-            self.callback = self.set_value_in_grid
 
         MQTT_CLIENT.subscribe(self.mqtt_topic)
         MQTT_CLIENT.message_callback_add(self.mqtt_topic, self.on_message)
