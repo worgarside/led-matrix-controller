@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING
 from utils.cellular_automata.setting import FrequencySetting, ParameterSetting
 
 if TYPE_CHECKING:
-    from .grid import (
-        Grid,
+    from .automaton import (
+        Automaton,
         GridView,
         MaskGen,
         RuleFunc,
@@ -75,7 +75,7 @@ class Rule:
 
         return bool(current_frequency) and i % current_frequency == 0
 
-    def refresh_mask_generator(self, grid: Grid) -> None:
+    def refresh_mask_generator(self, grid: Automaton) -> None:
         """Refresh the mask generator for the rule.
 
         Also sets the consumed_parameters attribute if it hasn't been set yet.

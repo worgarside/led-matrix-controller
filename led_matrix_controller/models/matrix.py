@@ -2,19 +2,18 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from logging import DEBUG, getLogger
 from typing import TYPE_CHECKING, ClassVar
 
-import numpy as np
-from PIL import Image
+from models.content import ContentTag
 from utils import const
 from wg_utilities.loggers import add_stream_handler
 
 from ._rgbmatrix import RGBMatrix, RGBMatrixOptions
 
 if TYPE_CHECKING:
-    from numpy.typing import NDArray
-    from utils.cellular_automata.grid import GridView
+    from models.content.base import ContentBase
 
     from .led_matrix_options import LedMatrixOptions
 
@@ -38,9 +37,7 @@ class Matrix:
         # "pwm_dither_bits": 1,  # noqa: ERA001
     }
 
-    def __init__(
-        self, colormap: NDArray[np.int_], options: LedMatrixOptions = OPTIONS
-    ) -> None:
+    def __init__(self, options: LedMatrixOptions = OPTIONS) -> None:
         all_options = RGBMatrixOptions()
 
         for name, value in options.items():
@@ -49,17 +46,21 @@ class Matrix:
         self.matrix = RGBMatrix(options=all_options)
         self.canvas = self.matrix.CreateFrameCanvas()
 
-        self.colormap = colormap
+        self._content: dict[ContentTag, list[ContentBase]] = defaultdict(list)
 
-    def render_array(self, array: GridView) -> None:
-        """Render the array to the LED matrix."""
+    def add_content(self, content: ContentBase, tag: ContentTag) -> None:
+        """Add content to the matrix."""
+        self._content[tag].append(content)
 
-        pixels = self.colormap[array]
+    def mainloop(self) -> None:
+        """Run the main loop for the matrix."""
 
-        image = Image.fromarray(pixels.astype(np.uint8), "RGB")
+        current_tag = ContentTag.IDLE
+        current_content_index = 0
 
-        self.canvas.SetImage(image)
-        self.canvas = self.matrix.SwapOnVSync(self.canvas)
+        for frame in self._content[current_tag][current_content_index].frames:
+            self.canvas.SetImage(frame)
+            self.canvas = self.matrix.SwapOnVSync(self.canvas)
 
     @property
     def height(self) -> int:

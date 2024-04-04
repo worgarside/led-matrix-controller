@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-import re
+from abc import ABC
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
@@ -20,7 +20,9 @@ from typing import (
 )
 
 import numpy as np
+from models.content.base import ContentBase
 from numpy.typing import DTypeLike, NDArray
+from PIL import Image
 from utils import const
 from utils.cellular_automata.rule import Rule
 from wg_utilities.loggers import add_stream_handler
@@ -60,6 +62,7 @@ class StateBase(Enum):
         _BY_VALUE[value] = self
 
     @classmethod
+    @lru_cache(maxsize=1, typed=True)
     def colormap(cls) -> NDArray[np.int_]:
         """Return the color map of the states."""
         return np.array([state.color for state in cls])
@@ -79,15 +82,16 @@ TargetSlice = tuple[slice, slice]
 Mask = NDArray[np.bool_]
 GridView = NDArray[np.int_]
 MaskGen = Callable[[], Mask]
-RuleFunc = Callable[["Grid", TargetSlice], MaskGen]
+RuleFunc = Callable[["Automaton", TargetSlice], MaskGen]
 RuleTuple = tuple[GridView, MaskGen, int]
 FrameRuleSet = tuple[RuleTuple, ...]
-CAMEL_CASE = re.compile(r"(?<!^)(?=[A-Z])")
 
 
 @dataclass(slots=True)
-class Grid:
+class Automaton(ContentBase, ABC):
     """Base class for a grid of cells."""
+
+    STATE: ClassVar[type[StateBase]]
 
     _RULES_SOURCE: ClassVar[list[Rule]] = []
     if const.DEBUG_MODE:
@@ -222,8 +226,8 @@ class Grid:
         del target_slice
 
         def decorator(
-            rule_func: Callable[[Grid, TargetSlice], MaskGen],
-        ) -> Callable[[Grid], MaskGen]:
+            rule_func: Callable[[Automaton, TargetSlice], MaskGen],
+        ) -> Callable[[Automaton], MaskGen]:
             cls._RULES_SOURCE.append(
                 Rule(
                     target_slice=actual_slice,
@@ -236,7 +240,7 @@ class Grid:
             if const.DEBUG_MODE:
                 # This is just to enable testing/debugging/validation/etc.
                 @wraps(rule_func)
-                def wrapper(grid: Grid) -> MaskGen:
+                def wrapper(grid: Automaton) -> MaskGen:
                     return rule_func(grid, actual_slice)
 
                 cls._RULE_FUNCTIONS.append(wrapper)
@@ -260,8 +264,10 @@ class Grid:
         return np.zeros((self.height, self.width), dtype=dtype)
 
     @property
-    def frames(self) -> Generator[GridView, None, None]:
+    def frames(self) -> Generator[Image.Image, None, None]:
         """Generate the frames of the grid."""
+        colormap = self.STATE.colormap()
+
         while True:
             for ruleset in self.frame_rulesets:
                 masks = tuple(mask_gen() for _, mask_gen, _ in ruleset)
@@ -271,7 +277,7 @@ class Grid:
 
                 self.frame_index += 1
 
-                yield self.grid
+                yield Image.fromarray(colormap[self.grid].astype(np.uint8), "RGB")
 
     @property
     def str_repr(self) -> str:
@@ -382,7 +388,7 @@ def _translate_slice_start(*, current: int | None, delta: int, size: int) -> int
 
         upper_bound = (size - 1) if current is None or current >= 0 else -1
         if new_value > upper_bound:  # Gone off grid - not good!
-            raise Grid.OutOfBoundsError(current, delta, size)
+            raise Automaton.OutOfBoundsError(current, delta, size)
     elif delta < 0:  # Left/Up - can't go OOB
         if current is None:  # Immediately going off grid, but that's okay
             new_value = None
@@ -427,7 +433,7 @@ def _translate_slice_stop(*, current: int | None, delta: int, size: int) -> int 
 
         lower_bound = 0 if current is not None and current >= 0 else -size
         if new_value < lower_bound:
-            raise Grid.OutOfBoundsError(current, delta, size)
+            raise Automaton.OutOfBoundsError(current, delta, size)
     elif delta == 0:  # No change
         new_value = current
 
