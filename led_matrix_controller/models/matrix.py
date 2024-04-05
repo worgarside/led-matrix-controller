@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from functools import partial
 from logging import DEBUG, getLogger
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, Sequence
 
 import numpy as np
 from models.content import ContentTag
@@ -16,6 +17,8 @@ from ._rgbmatrix import RGBMatrix, RGBMatrixOptions
 
 if TYPE_CHECKING:
     from models.content.base import ContentBase
+    from numpy.typing import NDArray
+    from utils.cellular_automata.automaton import GridView
 
     from .led_matrix_options import LedMatrixOptions
 
@@ -54,6 +57,12 @@ class Matrix:
         """Add content to the matrix."""
         self._content[tag].append(content)
 
+    @staticmethod
+    def _convert(
+        colormap: NDArray[np.uint8], grid: GridView
+    ) -> Sequence[tuple[int, int, int]]:
+        return [tuple(cell) for cell in colormap[grid].reshape((-1, 3))]
+
     def mainloop(self) -> None:
         """Run the main loop for the matrix."""
 
@@ -62,10 +71,15 @@ class Matrix:
         current_content_index = 0
 
         content = self._content[current_tag][current_content_index]
-        colormap = content.STATE.colormap()
+        convert = partial(self._convert, content.STATE.colormap(), content.grid)
+
+        img = Image.fromarray(
+            content.STATE.colormap()[content.grid].astype(np.uint8),
+            "RGB",
+        )
 
         for _ in content:
-            img = Image.fromarray(colormap[content.grid].astype(np.uint8), "RGB")
+            img.putdata(data=convert())  # type: ignore[arg-type]
 
             self.canvas.SetImage(img)
             self.canvas = self.matrix.SwapOnVSync(self.canvas)
