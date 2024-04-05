@@ -1,5 +1,5 @@
 from __future__ import annotations
 
-from .grid import Grid
+from .automaton import Automaton
 
-__all__ = ["Grid"]
+__all__ = ["Automaton"]

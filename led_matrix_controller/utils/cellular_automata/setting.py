@@ -24,7 +24,7 @@ from wg_utilities.loggers import add_stream_handler
 
 if TYPE_CHECKING:
     from paho.mqtt.client import Client, MQTTMessage
-    from utils.cellular_automata.grid import Grid
+    from utils.cellular_automata.automaton import Automaton
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel(DEBUG)
@@ -71,7 +71,7 @@ class Setting(Generic[S]):
     per subclass.
     """
 
-    grid: Grid = field(init=False)
+    grid: Automaton = field(init=False)
     """The grid to which the setting applies."""
 
     slug: str = field(init=False)
@@ -165,7 +165,7 @@ class Setting(Generic[S]):
         self,
         *,
         field_name: str,
-        grid: Grid,
+        grid: Automaton,
         type_: type[S],
     ) -> None:
         """Set up the setting."""

@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import math
-import re
+from abc import ABC
 from copy import deepcopy
 from dataclasses import dataclass, field
-from enum import Enum, IntEnum
+from enum import IntEnum
 from functools import lru_cache, wraps
 from itertools import islice
 from logging import DEBUG, getLogger
@@ -20,6 +20,7 @@ from typing import (
 )
 
 import numpy as np
+from models.content.base import ContentBase, StateBase
 from numpy.typing import DTypeLike, NDArray
 from utils import const
 from utils.cellular_automata.rule import Rule
@@ -32,7 +33,6 @@ LOGGER.setLevel(DEBUG)
 add_stream_handler(LOGGER)
 
 
-_BY_VALUE: dict[int, StateBase] = {}
 EVERYWHERE = (slice(None), slice(None))
 
 
@@ -45,48 +45,18 @@ class Direction(IntEnum):
     DOWN = 1
 
 
-# TODO can this be an ABC?
-class StateBase(Enum):
-    """Base class for the states of a cell."""
-
-    def __init__(
-        self, value: int, char: str, color: tuple[int, int, int] = (0, 0, 0)
-    ) -> None:
-        self._value_ = value
-        self.state = value  # This is only really for type checkers, _value_ is the same but has a different type
-        self.char = char
-        self.color = color
-
-        _BY_VALUE[value] = self
-
-    @classmethod
-    def colormap(cls) -> NDArray[np.int_]:
-        """Return the color map of the states."""
-        return np.array([state.color for state in cls])
-
-    @staticmethod
-    def by_value(value: int | np.int_) -> StateBase:
-        """Return the state by its value."""
-        return _BY_VALUE[int(value)]
-
-    def __hash__(self) -> int:
-        """Return the hash of the value of the state."""
-        return hash(self.value)
-
-
 TargetSliceDecVal = slice | int | tuple[int | slice, int | slice]
 TargetSlice = tuple[slice, slice]
 Mask = NDArray[np.bool_]
 GridView = NDArray[np.int_]
 MaskGen = Callable[[], Mask]
-RuleFunc = Callable[["Grid", TargetSlice], MaskGen]
+RuleFunc = Callable[["Automaton", TargetSlice], MaskGen]
 RuleTuple = tuple[GridView, MaskGen, int]
 FrameRuleSet = tuple[RuleTuple, ...]
-CAMEL_CASE = re.compile(r"(?<!^)(?=[A-Z])")
 
 
 @dataclass(slots=True)
-class Grid:
+class Automaton(ContentBase, ABC):
     """Base class for a grid of cells."""
 
     _RULES_SOURCE: ClassVar[list[Rule]] = []
@@ -222,8 +192,8 @@ class Grid:
         del target_slice
 
         def decorator(
-            rule_func: Callable[[Grid, TargetSlice], MaskGen],
-        ) -> Callable[[Grid], MaskGen]:
+            rule_func: Callable[[Automaton, TargetSlice], MaskGen],
+        ) -> Callable[[Automaton], MaskGen]:
             cls._RULES_SOURCE.append(
                 Rule(
                     target_slice=actual_slice,
@@ -236,7 +206,7 @@ class Grid:
             if const.DEBUG_MODE:
                 # This is just to enable testing/debugging/validation/etc.
                 @wraps(rule_func)
-                def wrapper(grid: Grid) -> MaskGen:
+                def wrapper(grid: Automaton) -> MaskGen:
                     return rule_func(grid, actual_slice)
 
                 cls._RULE_FUNCTIONS.append(wrapper)
@@ -249,7 +219,7 @@ class Grid:
 
     def run(self, limit: int) -> Generator[NDArray[np.int_], None, None]:
         """Run the simulation for a given number of frames."""
-        yield from islice(self.frames, limit)
+        yield from islice(self, limit)
 
     def fresh_mask(self) -> Mask:
         """Return a fresh mask."""
@@ -259,8 +229,7 @@ class Grid:
         """Return a grid of zeros."""
         return np.zeros((self.height, self.width), dtype=dtype)
 
-    @property
-    def frames(self) -> Generator[GridView, None, None]:
+    def __iter__(self) -> Generator[None, None, None]:
         """Generate the frames of the grid."""
         while True:
             for ruleset in self.frame_rulesets:
@@ -271,7 +240,7 @@ class Grid:
 
                 self.frame_index += 1
 
-                yield self.grid
+                yield
 
     @property
     def str_repr(self) -> str:
@@ -382,7 +351,7 @@ def _translate_slice_start(*, current: int | None, delta: int, size: int) -> int
 
         upper_bound = (size - 1) if current is None or current >= 0 else -1
         if new_value > upper_bound:  # Gone off grid - not good!
-            raise Grid.OutOfBoundsError(current, delta, size)
+            raise Automaton.OutOfBoundsError(current, delta, size)
     elif delta < 0:  # Left/Up - can't go OOB
         if current is None:  # Immediately going off grid, but that's okay
             new_value = None
@@ -427,7 +396,7 @@ def _translate_slice_stop(*, current: int | None, delta: int, size: int) -> int 
 
         lower_bound = 0 if current is not None and current >= 0 else -size
         if new_value < lower_bound:
-            raise Grid.OutOfBoundsError(current, delta, size)
+            raise Automaton.OutOfBoundsError(current, delta, size)
     elif delta == 0:  # No change
         new_value = current
 

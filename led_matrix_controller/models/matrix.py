@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
+from functools import partial
 from logging import DEBUG, getLogger
 from typing import TYPE_CHECKING, ClassVar
 
-import numpy as np
+from models.content import ContentTag
 from PIL import Image
 from utils import const
 from wg_utilities.loggers import add_stream_handler
@@ -13,8 +15,10 @@ from wg_utilities.loggers import add_stream_handler
 from ._rgbmatrix import RGBMatrix, RGBMatrixOptions
 
 if TYPE_CHECKING:
+    import numpy as np
+    from models.content.base import ContentBase
     from numpy.typing import NDArray
-    from utils.cellular_automata.grid import GridView
+    from utils.cellular_automata.automaton import GridView
 
     from .led_matrix_options import LedMatrixOptions
 
@@ -38,9 +42,7 @@ class Matrix:
         # "pwm_dither_bits": 1,  # noqa: ERA001
     }
 
-    def __init__(
-        self, colormap: NDArray[np.int_], options: LedMatrixOptions = OPTIONS
-    ) -> None:
+    def __init__(self, options: LedMatrixOptions = OPTIONS) -> None:
         all_options = RGBMatrixOptions()
 
         for name, value in options.items():
@@ -49,17 +51,32 @@ class Matrix:
         self.matrix = RGBMatrix(options=all_options)
         self.canvas = self.matrix.CreateFrameCanvas()
 
-        self.colormap = colormap
+        self._content: dict[ContentTag, list[ContentBase]] = defaultdict(list)
 
-    def render_array(self, array: GridView) -> None:
-        """Render the array to the LED matrix."""
+    def add_content(self, content: ContentBase, tag: ContentTag) -> None:
+        """Add content to the matrix."""
+        self._content[tag].append(content)
 
-        pixels = self.colormap[array]
+    @staticmethod
+    def _get_image(colormap: NDArray[np.uint8], grid: GridView) -> Image.Image:
+        return Image.fromarray(
+            colormap[grid],
+            "RGB",
+        )
 
-        image = Image.fromarray(pixels.astype(np.uint8), "RGB")
+    def mainloop(self) -> None:
+        """Run the main loop for the matrix."""
 
-        self.canvas.SetImage(image)
-        self.canvas = self.matrix.SwapOnVSync(self.canvas)
+        # Placeholders for future instance attributes(?)
+        current_tag = ContentTag.IDLE
+        current_content_index = 0
+
+        content = self._content[current_tag][current_content_index]
+        get_image = partial(self._get_image, content.STATE.colormap(), content.grid)
+
+        for _ in content:
+            self.canvas.SetImage(get_image())
+            self.canvas = self.matrix.SwapOnVSync(self.canvas)
 
     @property
     def height(self) -> int:

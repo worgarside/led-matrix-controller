@@ -5,23 +5,24 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import unique
 from functools import partial
-from typing import Annotated, Literal
+from typing import Annotated, ClassVar, Literal
 
 import numpy as np
 from utils import const
-from utils.cellular_automata.grid import (
+from utils.cellular_automata.automaton import (
+    Automaton,
     Direction,
-    Grid,
     GridView,
     Mask,
     MaskGen,
-    StateBase,
     TargetSlice,
 )
 from utils.cellular_automata.setting import (  # noqa: TCH002
     FrequencySetting,
     ParameterSetting,
 )
+
+from .base import StateBase
 
 
 @unique
@@ -36,8 +37,10 @@ class State(StateBase):
 
 
 @dataclass(slots=True)
-class RainingGrid(Grid):
+class RainingGrid(Automaton):
     """Basic rain simulation."""
+
+    STATE: ClassVar[type[StateBase]] = State
 
     rain_chance: Annotated[
         float,

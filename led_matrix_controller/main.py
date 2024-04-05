@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from models.content import RainingGrid
-from models.content.raining_grid import State
+from models.content import ContentTag, RainingGrid
 from models.matrix import Matrix
 from utils.mqtt import MQTT_CLIENT
 
@@ -11,15 +10,14 @@ from utils.mqtt import MQTT_CLIENT
 def main() -> None:
     """Run the rain simulation."""
 
-    matrix = Matrix(colormap=State.colormap())
+    matrix = Matrix()
 
     grid = RainingGrid(height=matrix.height, width=matrix.width)
 
+    matrix.add_content(grid, tag=ContentTag.IDLE)
+
     MQTT_CLIENT.loop_start()
-
-    for frame in grid.frames:
-        matrix.render_array(frame)
-
+    matrix.mainloop()
     MQTT_CLIENT.loop_stop()
 
 

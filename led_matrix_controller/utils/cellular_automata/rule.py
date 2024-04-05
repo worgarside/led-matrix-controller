@@ -10,13 +10,14 @@ from typing import TYPE_CHECKING
 from utils.cellular_automata.setting import FrequencySetting, ParameterSetting
 
 if TYPE_CHECKING:
-    from .grid import (
-        Grid,
+    from models.content.base import StateBase
+
+    from .automaton import (
+        Automaton,
         GridView,
         MaskGen,
         RuleFunc,
         RuleTuple,
-        StateBase,
         TargetSlice,
     )
 
@@ -75,7 +76,7 @@ class Rule:
 
         return bool(current_frequency) and i % current_frequency == 0
 
-    def refresh_mask_generator(self, grid: Grid) -> None:
+    def refresh_mask_generator(self, grid: Automaton) -> None:
         """Refresh the mask generator for the rule.
 
         Also sets the consumed_parameters attribute if it hasn't been set yet.
@@ -96,4 +97,4 @@ class Rule:
     @property
     def rule_tuple(self) -> RuleTuple:
         """Return the rule as a tuple."""
-        return self.target_view, self.mask_generator, self.to_state.value
+        return self.target_view, self.mask_generator, self.to_state.value  # type: ignore[return-value]
