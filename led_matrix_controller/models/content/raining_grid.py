@@ -42,6 +42,8 @@ class RainingGrid(Automaton):
 
     STATE: ClassVar[type[StateBase]] = State
 
+    colormap = State.colormap()
+
     rain_chance: Annotated[
         float,
         ParameterSetting(min=0, max=1, transition_rate=(0.002, 0.2), fp_precision=3),
