@@ -10,13 +10,14 @@ from typing import TYPE_CHECKING
 from utils.cellular_automata.setting import FrequencySetting, ParameterSetting
 
 if TYPE_CHECKING:
+    from models.content.base import StateBase
+
     from .automaton import (
         Automaton,
         GridView,
         MaskGen,
         RuleFunc,
         RuleTuple,
-        StateBase,
         TargetSlice,
     )
 
@@ -96,4 +97,4 @@ class Rule:
     @property
     def rule_tuple(self) -> RuleTuple:
         """Return the rule as a tuple."""
-        return self.target_view, self.mask_generator, self.to_state.value
+        return self.target_view, self.mask_generator, self.to_state.value  # type: ignore[return-value]

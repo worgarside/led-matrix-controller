@@ -15,13 +15,14 @@ from utils.cellular_automata.automaton import (
     GridView,
     Mask,
     MaskGen,
-    StateBase,
     TargetSlice,
 )
 from utils.cellular_automata.setting import (  # noqa: TCH002
     FrequencySetting,
     ParameterSetting,
 )
+
+from .base import StateBase
 
 
 @unique

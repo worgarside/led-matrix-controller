@@ -6,7 +6,7 @@ import math
 from abc import ABC
 from copy import deepcopy
 from dataclasses import dataclass, field
-from enum import Enum, IntEnum
+from enum import IntEnum
 from functools import lru_cache, wraps
 from itertools import islice
 from logging import DEBUG, getLogger
@@ -20,9 +20,8 @@ from typing import (
 )
 
 import numpy as np
-from models.content.base import ContentBase
+from models.content.base import ContentBase, StateBase
 from numpy.typing import DTypeLike, NDArray
-from PIL import Image
 from utils import const
 from utils.cellular_automata.rule import Rule
 from wg_utilities.loggers import add_stream_handler
@@ -34,7 +33,6 @@ LOGGER.setLevel(DEBUG)
 add_stream_handler(LOGGER)
 
 
-_BY_VALUE: dict[int, StateBase] = {}
 EVERYWHERE = (slice(None), slice(None))
 
 
@@ -45,36 +43,6 @@ class Direction(IntEnum):
     RIGHT = 1
     UP = -1
     DOWN = 1
-
-
-# TODO can this be an ABC?
-class StateBase(Enum):
-    """Base class for the states of a cell."""
-
-    def __init__(
-        self, value: int, char: str, color: tuple[int, int, int] = (0, 0, 0)
-    ) -> None:
-        self._value_ = value
-        self.state = value  # This is only really for type checkers, _value_ is the same but has a different type
-        self.char = char
-        self.color = color
-
-        _BY_VALUE[value] = self
-
-    @classmethod
-    @lru_cache(maxsize=1, typed=True)
-    def colormap(cls) -> NDArray[np.int_]:
-        """Return the color map of the states."""
-        return np.array([state.color for state in cls])
-
-    @staticmethod
-    def by_value(value: int | np.int_) -> StateBase:
-        """Return the state by its value."""
-        return _BY_VALUE[int(value)]
-
-    def __hash__(self) -> int:
-        """Return the hash of the value of the state."""
-        return hash(self.value)
 
 
 TargetSliceDecVal = slice | int | tuple[int | slice, int | slice]
@@ -90,8 +58,6 @@ FrameRuleSet = tuple[RuleTuple, ...]
 @dataclass(slots=True)
 class Automaton(ContentBase, ABC):
     """Base class for a grid of cells."""
-
-    STATE: ClassVar[type[StateBase]]
 
     _RULES_SOURCE: ClassVar[list[Rule]] = []
     if const.DEBUG_MODE:
@@ -253,7 +219,7 @@ class Automaton(ContentBase, ABC):
 
     def run(self, limit: int) -> Generator[NDArray[np.int_], None, None]:
         """Run the simulation for a given number of frames."""
-        yield from islice(self.frames, limit)
+        yield from islice(self, limit)
 
     def fresh_mask(self) -> Mask:
         """Return a fresh mask."""
@@ -263,11 +229,8 @@ class Automaton(ContentBase, ABC):
         """Return a grid of zeros."""
         return np.zeros((self.height, self.width), dtype=dtype)
 
-    @property
-    def frames(self) -> Generator[Image.Image, None, None]:
+    def __iter__(self) -> Generator[None, None, None]:
         """Generate the frames of the grid."""
-        colormap = self.STATE.colormap()
-
         while True:
             for ruleset in self.frame_rulesets:
                 masks = tuple(mask_gen() for _, mask_gen, _ in ruleset)
@@ -277,7 +240,7 @@ class Automaton(ContentBase, ABC):
 
                 self.frame_index += 1
 
-                yield Image.fromarray(colormap[self.grid].astype(np.uint8), "RGB")
+                yield
 
     @property
     def str_repr(self) -> str:

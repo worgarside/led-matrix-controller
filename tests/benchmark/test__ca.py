@@ -87,14 +87,14 @@ def test_rules(
     )
 
     # Discard the first `size` frames so all rules are effective (e.g. splashing)
-    for _ in islice(grid.frames, size + 10):
+    for _ in islice(grid, size + 10):
         pass
 
     expected_frame_index = size + 9
     assert grid.frame_index == expected_frame_index
     expected_frame_index += 1
 
-    grids_to_eval = [deepcopy(grid) for _ in islice(grid.frames, limit)]
+    grids_to_eval = [deepcopy(grid) for _ in islice(grid, limit)]
 
     assert len(grids_to_eval) == limit
 

@@ -6,7 +6,9 @@ from collections import defaultdict
 from logging import DEBUG, getLogger
 from typing import TYPE_CHECKING, ClassVar
 
+import numpy as np
 from models.content import ContentTag
+from PIL import Image
 from utils import const
 from wg_utilities.loggers import add_stream_handler
 
@@ -55,11 +57,17 @@ class Matrix:
     def mainloop(self) -> None:
         """Run the main loop for the matrix."""
 
+        # Placeholders for future instance attributes(?)
         current_tag = ContentTag.IDLE
         current_content_index = 0
 
-        for frame in self._content[current_tag][current_content_index].frames:
-            self.canvas.SetImage(frame)
+        content = self._content[current_tag][current_content_index]
+        colormap = content.STATE.colormap()
+
+        for _ in content:
+            img = Image.fromarray(colormap[content.grid].astype(np.uint8), "RGB")
+
+            self.canvas.SetImage(img)
             self.canvas = self.matrix.SwapOnVSync(self.canvas)
 
     @property
