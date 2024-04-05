@@ -32,9 +32,9 @@ class StateBase(Enum):
 
     @classmethod
     @lru_cache(maxsize=1, typed=True)
-    def colormap(cls) -> NDArray[np.int_]:
+    def colormap(cls) -> NDArray[np.uint8]:
         """Return the color map of the states."""
-        return np.array([state.color for state in cls])
+        return np.array([state.color for state in cls], dtype=np.uint8)
 
     @staticmethod
     def by_value(value: int | np.int_) -> StateBase:

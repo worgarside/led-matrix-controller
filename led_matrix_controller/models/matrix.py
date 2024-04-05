@@ -5,9 +5,8 @@ from __future__ import annotations
 from collections import defaultdict
 from functools import partial
 from logging import DEBUG, getLogger
-from typing import TYPE_CHECKING, ClassVar, Sequence
+from typing import TYPE_CHECKING, ClassVar
 
-import numpy as np
 from models.content import ContentTag
 from PIL import Image
 from utils import const
@@ -16,6 +15,7 @@ from wg_utilities.loggers import add_stream_handler
 from ._rgbmatrix import RGBMatrix, RGBMatrixOptions
 
 if TYPE_CHECKING:
+    import numpy as np
     from models.content.base import ContentBase
     from numpy.typing import NDArray
     from utils.cellular_automata.automaton import GridView
@@ -58,10 +58,11 @@ class Matrix:
         self._content[tag].append(content)
 
     @staticmethod
-    def _convert(
-        colormap: NDArray[np.uint8], grid: GridView
-    ) -> Sequence[tuple[int, int, int]]:
-        return [tuple(cell) for cell in colormap[grid].reshape((-1, 3))]
+    def _get_image(colormap: NDArray[np.uint8], grid: GridView) -> Image.Image:
+        return Image.fromarray(
+            colormap[grid],
+            "RGB",
+        )
 
     def mainloop(self) -> None:
         """Run the main loop for the matrix."""
@@ -71,17 +72,10 @@ class Matrix:
         current_content_index = 0
 
         content = self._content[current_tag][current_content_index]
-        convert = partial(self._convert, content.STATE.colormap(), content.grid)
-
-        img = Image.fromarray(
-            content.STATE.colormap()[content.grid].astype(np.uint8),
-            "RGB",
-        )
+        get_image = partial(self._get_image, content.STATE.colormap(), content.grid)
 
         for _ in content:
-            img.putdata(data=convert())  # type: ignore[arg-type]
-
-            self.canvas.SetImage(img)
+            self.canvas.SetImage(get_image())
             self.canvas = self.matrix.SwapOnVSync(self.canvas)
 
     @property
