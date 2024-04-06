@@ -51,6 +51,8 @@ class Matrix:
         self.matrix = RGBMatrix(options=all_options)
         self.canvas = self.matrix.CreateFrameCanvas()
 
+        self.active = False
+
         self._content: dict[ContentTag, list[ContentBase]] = defaultdict(list)
 
     def add_content(self, content: ContentBase, tag: ContentTag) -> None:
@@ -72,11 +74,14 @@ class Matrix:
         current_content_index = 0
 
         content = self._content[current_tag][current_content_index]
-        get_image = partial(self._get_image, content.STATE.colormap(), content.grid)
+        get_image = partial(self._get_image, content.colormap, content.grid)
 
+        self.active = True
         for _ in content:
             self.canvas.SetImage(get_image())
             self.canvas = self.matrix.SwapOnVSync(self.canvas)
+
+        self.active = False
 
     @property
     def height(self) -> int:

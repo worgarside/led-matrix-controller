@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from os import environ, getenv
+from pathlib import Path
 from socket import gethostname
 from typing import Final
 
@@ -32,3 +33,5 @@ SCROLL_INCREMENT_DISTANCE: Final[int] = 2 * FONT_WIDTH
 
 BOOLEANS: Final[np.typing.NDArray[np.bool_]] = np.array([False, True], dtype=np.bool_)
 RNG = np.random.default_rng(830003040)
+
+REPO_PATH: Final[Path] = Path(__file__).parents[2]

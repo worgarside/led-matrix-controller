@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from models.content import ContentTag, RainingGrid
 from models.matrix import Matrix
+from utils.image import ImageViewer
 from utils.mqtt import MQTT_CLIENT
 
 
@@ -13,6 +16,11 @@ def main() -> None:
     matrix = Matrix()
 
     grid = RainingGrid(height=matrix.height, width=matrix.width)
+
+    matrix.add_content(
+        ImageViewer(Path("door/closed.bmp"), height=matrix.height, width=matrix.width),
+        tag=ContentTag.IDLE,
+    )
 
     matrix.add_content(grid, tag=ContentTag.IDLE)
 

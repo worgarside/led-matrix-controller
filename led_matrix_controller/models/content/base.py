@@ -51,6 +51,7 @@ class ContentBase(ABC):
 
     STATE: ClassVar[type[StateBase]]
 
+    colormap: NDArray[np.uint8]
     grid: NDArray[np.int_]
 
     @abstractmethod
