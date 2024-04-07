@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import suppress
 from pathlib import Path
 
 from models.content import RainingGrid
@@ -25,4 +26,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        with suppress(Exception):
+            Matrix(mqtt_client=MqttClient(connect=False)).clear_matrix()
+        raise

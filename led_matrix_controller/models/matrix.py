@@ -201,3 +201,7 @@ class Matrix:
     def width(self) -> int:
         """Return the width of the matrix."""
         return int(self.matrix.width)
+
+    def __del__(self) -> None:
+        """Clear the matrix when the object is deleted."""
+        self.clear_matrix()
