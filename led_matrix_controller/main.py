@@ -5,29 +5,24 @@ from __future__ import annotations
 from contextlib import suppress
 from pathlib import Path
 
-from models.content import ContentTag, RainingGrid
+from models.content import RainingGrid
 from models.matrix import Matrix
-from utils.image import ImageViewer
-from utils.mqtt import MQTT_CLIENT
+from utils import ImageViewer, MqttClient
 
 
 def main() -> None:
     """Run the rain simulation."""
 
-    matrix = Matrix()
+    mqtt_client = MqttClient(connect=True)
 
-    grid = RainingGrid(height=matrix.height, width=matrix.width)
+    matrix = Matrix(mqtt_client=mqtt_client)
 
-    matrix.add_content(
-        ImageViewer(Path("door/closed.bmp"), height=matrix.height, width=matrix.width),
-        tag=ContentTag.IDLE,
+    matrix.register_content(
+        RainingGrid(**matrix.dimensions, mqtt_client=mqtt_client, persistent=True),
+        ImageViewer(path=Path("door/closed.bmp"), **matrix.dimensions, display_seconds=5),
     )
 
-    matrix.add_content(grid, tag=ContentTag.IDLE)
-
-    MQTT_CLIENT.loop_start()
-    matrix.mainloop()
-    MQTT_CLIENT.loop_stop()
+    mqtt_client.loop_forever()
 
 
 if __name__ == "__main__":
@@ -35,5 +30,5 @@ if __name__ == "__main__":
         main()
     except Exception:
         with suppress(Exception):
-            Matrix().clear_matrix()
+            Matrix(mqtt_client=MqttClient(connect=False)).clear_matrix()
         raise

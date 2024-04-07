@@ -20,10 +20,11 @@ from typing import (
 )
 
 import numpy as np
-from models.content.base import ContentBase, StateBase
+from models.content.base import ContentBase, GridView, StateBase
 from numpy.typing import DTypeLike, NDArray
 from utils import const
 from utils.cellular_automata.rule import Rule
+from utils.mqtt import MqttClient  # noqa: TCH002
 from wg_utilities.loggers import add_stream_handler
 
 from .setting import FrequencySetting, Setting
@@ -48,28 +49,25 @@ class Direction(IntEnum):
 TargetSliceDecVal = slice | int | tuple[int | slice, int | slice]
 TargetSlice = tuple[slice, slice]
 Mask = NDArray[np.bool_]
-GridView = NDArray[np.int_]
 MaskGen = Callable[[], Mask]
 RuleFunc = Callable[["Automaton", TargetSlice], MaskGen]
 RuleTuple = tuple[GridView, MaskGen, int]
 FrameRuleSet = tuple[RuleTuple, ...]
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class Automaton(ContentBase, ABC):
     """Base class for a grid of cells."""
 
+    STATE: ClassVar[type[StateBase]]
     _RULES_SOURCE: ClassVar[list[Rule]] = []
     if const.DEBUG_MODE:
         _RULE_FUNCTIONS: ClassVar[list[Callable[..., MaskGen]]] = []
 
-    height: int
-    width: int
-    id: str
+    mqtt_client: MqttClient
 
-    frame_index: int = -1
+    frame_index: int = field(init=False, default=-1)
 
-    grid: NDArray[np.int_] = field(init=False)
     frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False)
     rules: list[Rule] = field(init=False)
     settings: dict[str, Setting[Any]] = field(default_factory=dict)
@@ -88,6 +86,8 @@ class Automaton(ContentBase, ABC):
 
     def __post_init__(self) -> None:
         """Set the calculated attributes of the Grid."""
+        self.colormap = self.STATE.colormap()
+
         self.rules = deepcopy(self._RULES_SOURCE)
 
         # Compile settings from type hints
@@ -107,7 +107,7 @@ class Automaton(ContentBase, ABC):
                     self.settings[setting.slug] = setting
 
         # Create the grid; 0 is the default state
-        self.grid = self.zeros()
+        self.pixels = self.zeros()
 
         # Create mask generators after all setup is done
         for rule in self.rules:
@@ -116,7 +116,7 @@ class Automaton(ContentBase, ABC):
             ):
                 rule._frequency_setting = freq_setting
 
-            rule.target_view = self.grid[rule.target_slice]
+            rule.target_view = self.pixels[rule.target_slice]
             rule.refresh_mask_generator(self)
 
         self.generate_frame_rulesets()
@@ -245,7 +245,7 @@ class Automaton(ContentBase, ABC):
     @property
     def str_repr(self) -> str:
         """Return a string representation of the grid."""
-        return "\n".join(" ".join(state.char for state in row) for row in self.grid)
+        return "\n".join(" ".join(state.char for state in row) for row in self.pixels)
 
     def translate_slice(
         self,
@@ -279,11 +279,11 @@ class Automaton(ContentBase, ABC):
     @property
     def shape(self) -> tuple[int, int]:
         """Return the shape of the grid."""
-        return self.grid.shape  # type: ignore[return-value]
+        return self.pixels.shape  # type: ignore[return-value]
 
     def __getitem__(self, key: TargetSliceDecVal) -> NDArray[np.int_]:
         """Get an item from the grid."""
-        return self.grid[key]
+        return self.pixels[key]
 
 
 @lru_cache

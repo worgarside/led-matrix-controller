@@ -2,71 +2,118 @@
 
 from __future__ import annotations
 
+from json import loads
 from logging import DEBUG, getLogger
-from random import uniform
-from sys import exit as sys_exit
-from time import sleep
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
-from paho.mqtt.client import Client
+import paho.mqtt.client as mqtt
+from paho.mqtt.enums import CallbackAPIVersion
+from utils import const
 from wg_utilities.loggers import add_stream_handler
 
-from .const import MQTT_HOST, MQTT_PASSWORD, MQTT_USERNAME
+if TYPE_CHECKING:
+    from paho.mqtt.properties import Properties
+    from paho.mqtt.reasoncodes import ReasonCode
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel(DEBUG)
 add_stream_handler(LOGGER)
 
-
-MQTT_CLIENT = Client()
-MQTT_CLIENT.username_pw_set(username=MQTT_USERNAME, password=MQTT_PASSWORD)
+T = TypeVar("T", bound=object)
 
 
-def on_connect(
-    client: Client, userdata: dict[str, object], flags: dict[str, object], rc: int
-) -> None:
-    """Log successful connection to MQTT broker.
+class MqttClient:
+    """MQTT Client wrapper class."""
 
-    Called when the broker responds to the connection request.
+    def __init__(self, *, connect: bool = True, userdata: Any = None) -> None:
+        self._client = mqtt.Client(
+            callback_api_version=CallbackAPIVersion.VERSION2,
+            userdata=userdata,
+            protocol=mqtt.MQTTv5,
+        )
+        self._client.username_pw_set(
+            username=const.MQTT_USERNAME,
+            password=const.MQTT_PASSWORD,
+        )
+        self._client.on_connect = self._on_connect
+        self._client.on_connect_fail = self._on_connect_fail
+        self._client.on_disconnect = self._on_disconnect
+        self._client.on_message = self._on_message
+        self._client.on_subscribe = self._on_subscribe
 
-    Args:
-        client (Client): the client instance for this callback
-        userdata (dict): the private user data as set in Client() or userdata_set()
-        flags (dict): response flags sent by the broker
-        rc (int): the connection result
-    """
-    _ = client, userdata, flags, rc
-    LOGGER.debug("MQTT Client connected")
+        if connect:
+            LOGGER.debug("Connecting to MQTT broker")
+            self._client.connect(const.MQTT_HOST)
 
+    def _on_connect(
+        self,
+        client: mqtt.Client,
+        userdata: Any,
+        flags: mqtt.ConnectFlags,
+        rc: ReasonCode,
+        properties: Properties | None,
+    ) -> None:
+        _ = client, userdata, flags, properties
+        LOGGER.info("Connected with result code: %s", rc)
 
-def on_disconnect(client: Client, userdata: dict[str, object], rc: int) -> None:
-    """Reconnect to MQTT broker if disconnected.
+    def _on_connect_fail(
+        self,
+        client: mqtt.Client,
+        userdata: Any,
+    ) -> None:
+        _ = client, userdata
+        LOGGER.error("Failed to connect to MQTT broker")
 
-    Called when the client disconnects from the broker.
+    def _on_disconnect(
+        self,
+        client: mqtt.Client,
+        userdata: Any,
+        flags: mqtt.DisconnectFlags,
+        rc: ReasonCode,
+        properties: Properties | None,
+    ) -> None:
+        _ = client, userdata, flags, properties
+        LOGGER.info("Disconnected with reason code: %s", rc)
 
-    Args:
-        client (Client): the client instance for this callback
-        userdata (dict): the private user data as set in Client() or userdata_set()
-        rc (int): the connection result
-    """
-    _ = client, userdata, rc
+    def _on_message(
+        self, client: mqtt.Client, userdata: Any, message: mqtt.MQTTMessage
+    ) -> None:
+        _ = client, userdata
+        LOGGER.info("Received message: %s", message.payload)
 
-    LOGGER.debug("MQTT Client disconnected")
-    try:
-        for i in range(5):
-            MQTT_CLIENT.connect(MQTT_HOST)
-            if MQTT_CLIENT.is_connected():
-                break
-            LOGGER.error("MQTT Client failed to connect, retrying...")
-            sleep(i * (1 + uniform(0, 1)))  # noqa: S311
-        else:
-            raise ConnectionError("MQTT Client failed to connect")  # noqa: TRY301
-    except ConnectionError:
-        # The above doesn't seem to cause a non-zero exit code, so we'll do it manually
-        sys_exit(1)
+    def _on_subscribe(
+        self,
+        client: mqtt.Client,
+        userdata: Any,
+        mid: int,
+        rc: list[ReasonCode],
+        properties: Properties,
+    ) -> None:
+        _ = client, userdata, rc, properties
+        LOGGER.debug("Subscribed with message ID: %s", mid)
 
+    def add_topic_callback(
+        self,
+        topic: str,
+        callback: Callable[[T], None],
+    ) -> None:
+        """Subscribe to the topic and add a callback for the payload."""
 
-MQTT_CLIENT.on_connect = on_connect  # type: ignore[assignment]
-MQTT_CLIENT.on_disconnect = on_disconnect
+        def _cb(_: mqtt.Client, __: Any, msg: mqtt.MQTTMessage) -> None:
+            LOGGER.debug(
+                "Received message on topic %s with payload %r",
+                topic,
+                msg.payload,
+            )
 
-if MQTT_USERNAME != "test":
-    MQTT_CLIENT.connect(MQTT_HOST)
+            callback(loads(msg.payload))
+
+        self._client.subscribe(topic)
+        self._client.message_callback_add(topic, _cb)
+
+        LOGGER.info("Added callback `%s` for topic: %s", callback.__qualname__, topic)
+
+    def loop_forever(self) -> None:
+        """Start the MQTT loop."""
+        LOGGER.info("Starting MQTT loop")
+        self._client.loop_forever()
