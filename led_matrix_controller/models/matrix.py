@@ -49,7 +49,7 @@ class Matrix:
         "gpio_slowdown": 4,
         "hardware_mapping": "adafruit-hat-pwm",
         "show_refresh_rate": const.DEBUG_MODE,
-        "limit_refresh_rate_hz": 100,
+        "limit_refresh_rate_hz": const.FRAMES_PER_SECOND,
         "pwm_lsb_nanoseconds": 80,
         # "pwm_dither_bits": 1,  # noqa: ERA001
     }

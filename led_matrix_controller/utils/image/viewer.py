@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from time import sleep
 from typing import TYPE_CHECKING, Final, Generator
 
 import numpy as np
@@ -20,6 +21,7 @@ class ImageViewer(ContentBase):
 
     BITMAP_DIRECTORY: Final[Path] = const.REPO_PATH / "assets" / "images" / "64x64"
 
+    display_seconds: int
     path: Path
 
     _image: Image.Image = field(init=False)
@@ -50,4 +52,6 @@ class ImageViewer(ContentBase):
 
     def __iter__(self) -> Generator[None, None, None]:
         """Yield nothing; this is a static image."""
+        yield
+        sleep(max(0, self.display_seconds - (2 * const.FRAME_TIME)))
         yield

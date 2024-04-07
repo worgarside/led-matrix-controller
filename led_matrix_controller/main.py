@@ -18,7 +18,7 @@ def main() -> None:
 
     matrix.register_content(
         RainingGrid(**matrix.dimensions, mqtt_client=mqtt_client, persistent=True),
-        ImageViewer(path=Path("door/closed.bmp"), **matrix.dimensions),
+        ImageViewer(path=Path("door/closed.bmp"), **matrix.dimensions, display_seconds=5),
     )
 
     mqtt_client.loop_forever()
