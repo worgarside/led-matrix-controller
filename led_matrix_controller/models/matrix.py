@@ -55,6 +55,11 @@ class Matrix:
 
         self._content: dict[ContentTag, list[ContentBase]] = defaultdict(list)
 
+    def clear_matrix(self) -> None:
+        """Clear the matrix."""
+        self.canvas.Clear()
+        self.canvas = self.matrix.SwapOnVSync(self.canvas)
+
     def add_content(self, content: ContentBase, tag: ContentTag) -> None:
         """Add content to the matrix."""
         self._content[tag].append(content)
@@ -92,3 +97,7 @@ class Matrix:
     def width(self) -> int:
         """Return the width of the matrix."""
         return int(self.matrix.width)
+
+    def __del__(self) -> None:
+        """Clear the matrix when the object is deleted."""
+        self.clear_matrix()
