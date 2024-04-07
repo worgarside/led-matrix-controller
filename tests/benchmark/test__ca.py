@@ -39,12 +39,12 @@ def test_raining_grid_simulation(
 ) -> None:
     """Benchmark the CA."""
     grid = RainingGrid(
-        size,
-        size,
+        height=size,
+        width=size,
         rain_chance=0.025,
         rain_speed=1,
         splash_speed=1,
-        id=test_id,
+        instance_id=test_id,
         mqtt_client=mqtt_client,
     )
 
@@ -82,12 +82,12 @@ def test_rules(
 ) -> None:
     """Test/benchmark each individual rule."""
     grid = RainingGrid(
-        size,
-        size,
+        height=size,
+        width=size,
         rain_chance=0.025,
         rain_speed=1,
         splash_speed=1,
-        id=test_id,
+        instance_id=test_id,
         mqtt_client=mqtt_client,
     )
 

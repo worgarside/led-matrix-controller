@@ -5,14 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import unique
 from functools import partial
-from typing import Annotated, ClassVar, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 import numpy as np
 from utils import const
 from utils.cellular_automata.automaton import (
     Automaton,
     Direction,
-    GridView,
     Mask,
     MaskGen,
     TargetSlice,
@@ -23,6 +22,9 @@ from utils.cellular_automata.setting import (  # noqa: TCH002
 )
 
 from .base import StateBase
+
+if TYPE_CHECKING:
+    from models.content.base import GridView
 
 
 @unique
@@ -36,13 +38,11 @@ class State(StateBase):
     SPLASH_RIGHT = 4, "*", (170, 197, 250)
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class RainingGrid(Automaton):
     """Basic rain simulation."""
 
-    STATE: ClassVar[type[StateBase]] = State
-
-    colormap = State.colormap()
+    STATE = State
 
     rain_chance: Annotated[
         float,
@@ -51,7 +51,10 @@ class RainingGrid(Automaton):
     rain_speed: Annotated[int, FrequencySetting()] = 1
     splash_speed: Annotated[int, FrequencySetting()] = 8
 
-    id: str = "raining-grid"
+    @property
+    def content_id(self) -> str:
+        """Return the ID of the grid."""
+        return "raining-grid"
 
 
 def generate_raindrops_mask(shape: tuple[int, int], chance: float) -> Mask:

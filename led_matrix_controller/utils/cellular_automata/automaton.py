@@ -20,7 +20,7 @@ from typing import (
 )
 
 import numpy as np
-from models.content.base import ContentBase, StateBase
+from models.content.base import ContentBase, GridView, StateBase
 from numpy.typing import DTypeLike, NDArray
 from utils import const
 from utils.cellular_automata.rule import Rule
@@ -49,30 +49,25 @@ class Direction(IntEnum):
 TargetSliceDecVal = slice | int | tuple[int | slice, int | slice]
 TargetSlice = tuple[slice, slice]
 Mask = NDArray[np.bool_]
-GridView = NDArray[np.int_]
 MaskGen = Callable[[], Mask]
 RuleFunc = Callable[["Automaton", TargetSlice], MaskGen]
 RuleTuple = tuple[GridView, MaskGen, int]
 FrameRuleSet = tuple[RuleTuple, ...]
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class Automaton(ContentBase, ABC):
     """Base class for a grid of cells."""
 
+    STATE: ClassVar[type[StateBase]]
     _RULES_SOURCE: ClassVar[list[Rule]] = []
     if const.DEBUG_MODE:
         _RULE_FUNCTIONS: ClassVar[list[Callable[..., MaskGen]]] = []
 
-    height: int
-    width: int
     mqtt_client: MqttClient
 
-    id: str
+    frame_index: int = field(init=False, default=-1)
 
-    frame_index: int = -1
-
-    pixels: NDArray[np.int_] = field(init=False)
     frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False)
     rules: list[Rule] = field(init=False)
     settings: dict[str, Setting[Any]] = field(default_factory=dict)
@@ -91,6 +86,8 @@ class Automaton(ContentBase, ABC):
 
     def __post_init__(self) -> None:
         """Set the calculated attributes of the Grid."""
+        self.colormap = self.STATE.colormap()
+
         self.rules = deepcopy(self._RULES_SOURCE)
 
         # Compile settings from type hints
