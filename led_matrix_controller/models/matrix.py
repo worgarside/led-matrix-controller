@@ -114,11 +114,12 @@ class Matrix:
 
             LOGGER.debug("Content `%s` complete", content.id)
 
-    def add_content(self, content: ContentBase) -> None:
+    def register_content(self, *content: ContentBase) -> None:
         """Add content to the matrix."""
-        self._content[content.id] = content
+        for c in content:
+            self._content[c.id] = c
 
-        LOGGER.info("Added content with ID `%s`", content.id)
+            LOGGER.info("Added content with ID `%s`", c.id)
 
     @property
     def dimensions(self) -> Dimensions:

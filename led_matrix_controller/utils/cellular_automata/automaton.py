@@ -11,7 +11,6 @@ from functools import lru_cache, wraps
 from itertools import islice
 from logging import DEBUG, getLogger
 from typing import (
-    TYPE_CHECKING,
     Any,
     Callable,
     ClassVar,
@@ -25,12 +24,10 @@ from models.content.base import ContentBase, StateBase
 from numpy.typing import DTypeLike, NDArray
 from utils import const
 from utils.cellular_automata.rule import Rule
+from utils.mqtt import MqttClient  # noqa: TCH002
 from wg_utilities.loggers import add_stream_handler
 
 from .setting import FrequencySetting, Setting
-
-if TYPE_CHECKING:
-    from utils.mqtt import MqttClient
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel(DEBUG)

@@ -16,11 +16,10 @@ def main() -> None:
 
     matrix = Matrix(mqtt_client=mqtt_client)
 
-    for content in (
+    matrix.register_content(
         RainingGrid(**matrix.dimensions, mqtt_client=mqtt_client),
         ImageViewer(Path("door/closed.bmp"), **matrix.dimensions),
-    ):
-        matrix.add_content(content)
+    )
 
     mqtt_client.loop_forever()
 
