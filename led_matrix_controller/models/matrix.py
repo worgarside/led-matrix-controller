@@ -165,6 +165,13 @@ class Matrix:
 
             self.reset_now_playing()
 
+        self.clear_matrix()
+
+    def clear_matrix(self) -> None:
+        """Clear the matrix."""
+        self.canvas.Clear()
+        self.canvas = self.matrix.SwapOnVSync(self.canvas)
+
     def register_content(self, *content: ContentBase) -> None:
         """Add content to the matrix."""
         for c in content:
