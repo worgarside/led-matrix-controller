@@ -4,29 +4,25 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from models.content import ContentTag, RainingGrid
+from models.content import RainingGrid
 from models.matrix import Matrix
-from utils.image import ImageViewer
-from utils.mqtt import MQTT_CLIENT
+from utils import ImageViewer, MqttClient
 
 
 def main() -> None:
     """Run the rain simulation."""
 
-    matrix = Matrix()
+    mqtt_client = MqttClient(connect=True)
 
-    grid = RainingGrid(height=matrix.height, width=matrix.width)
+    matrix = Matrix(mqtt_client=mqtt_client)
 
-    matrix.add_content(
-        ImageViewer(Path("door/closed.bmp"), height=matrix.height, width=matrix.width),
-        tag=ContentTag.IDLE,
-    )
+    for content in (
+        RainingGrid(**matrix.dimensions, mqtt_client=mqtt_client),
+        ImageViewer(Path("door/closed.bmp"), **matrix.dimensions),
+    ):
+        matrix.add_content(content)
 
-    matrix.add_content(grid, tag=ContentTag.IDLE)
-
-    MQTT_CLIENT.loop_start()
-    matrix.mainloop()
-    MQTT_CLIENT.loop_stop()
+    mqtt_client.loop_forever()
 
 
 if __name__ == "__main__":

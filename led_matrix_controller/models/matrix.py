@@ -2,23 +2,18 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
-from functools import partial
 from logging import DEBUG, getLogger
-from typing import TYPE_CHECKING, ClassVar
+from threading import Thread
+from typing import TYPE_CHECKING, ClassVar, TypedDict
 
-from models.content import ContentTag
-from PIL import Image
 from utils import const
 from wg_utilities.loggers import add_stream_handler
 
 from ._rgbmatrix import RGBMatrix, RGBMatrixOptions
 
 if TYPE_CHECKING:
-    import numpy as np
     from models.content.base import ContentBase
-    from numpy.typing import NDArray
-    from utils.cellular_automata.automaton import GridView
+    from utils.mqtt import MqttClient
 
     from .led_matrix_options import LedMatrixOptions
 
@@ -27,8 +22,24 @@ LOGGER.setLevel(DEBUG)
 add_stream_handler(LOGGER)
 
 
+class ContentPayload(TypedDict, total=False):
+    """Object sent via MQTT to display content on the matrix."""
+
+    id: str
+    priority: int
+
+
+class Dimensions(TypedDict):
+    """Dimensions of the matrix."""
+
+    height: int
+    width: int
+
+
 class Matrix:
     """Class for displaying track information on an RGB LED Matrix."""
+
+    content_thread: Thread
 
     OPTIONS: ClassVar[LedMatrixOptions] = {
         "cols": 64,
@@ -42,7 +53,14 @@ class Matrix:
         # "pwm_dither_bits": 1,  # noqa: ERA001
     }
 
-    def __init__(self, options: LedMatrixOptions = OPTIONS) -> None:
+    def __init__(
+        self,
+        *,
+        mqtt_client: MqttClient,
+        options: LedMatrixOptions = OPTIONS,
+    ) -> None:
+        self.mqtt_client = mqtt_client
+
         all_options = RGBMatrixOptions()
 
         for name, value in options.items():
@@ -51,37 +69,64 @@ class Matrix:
         self.matrix = RGBMatrix(options=all_options)
         self.canvas = self.matrix.CreateFrameCanvas()
 
-        self.active = False
+        self._content: dict[str, ContentBase] = {}
 
-        self._content: dict[ContentTag, list[ContentBase]] = defaultdict(list)
-
-    def add_content(self, content: ContentBase, tag: ContentTag) -> None:
-        """Add content to the matrix."""
-        self._content[tag].append(content)
-
-    @staticmethod
-    def _get_image(colormap: NDArray[np.uint8], grid: GridView) -> Image.Image:
-        return Image.fromarray(
-            colormap[grid],
-            "RGB",
+        self.content_topic = (
+            f"/{const.HOSTNAME}/{self.__class__.__name__.lower()}/content"
         )
 
-    def mainloop(self) -> None:
-        """Run the main loop for the matrix."""
+        self.mqtt_client.add_topic_callback(
+            self.content_topic,
+            self._on_content_message,
+        )
 
-        # Placeholders for future instance attributes(?)
-        current_tag = ContentTag.IDLE
-        current_content_index = 0
+        self._content_thread = Thread(target=self._content_loop)
+        self._pending_content: list[ContentBase] = []
 
-        content = self._content[current_tag][current_content_index]
-        get_image = partial(self._get_image, content.colormap, content.grid)
+    def _on_content_message(
+        self,
+        payload: ContentPayload,
+    ) -> None:
+        """Callback for when a message is received on the content topic."""
+        self._pending_content.append(self._content[payload["id"]])
 
-        self.active = True
-        for _ in content:
-            self.canvas.SetImage(get_image())
-            self.canvas = self.matrix.SwapOnVSync(self.canvas)
+        if not self._content_thread.is_alive():
+            try:
+                self._content_thread.start()
+            except RuntimeError as err:
+                if str(err) != "threads can only be started once":
+                    raise
 
-        self.active = False
+                self._content_thread = Thread(target=self._content_loop)
+                self._content_thread.start()
+
+    def _content_loop(self) -> None:
+        while self._pending_content:
+            content = self._pending_content.pop(0)
+
+            get_image = content.image_getter
+
+            LOGGER.info("Displaying content with ID `%s`", content.id)
+
+            for _ in content:
+                self.canvas.SetImage(get_image())
+                self.canvas = self.matrix.SwapOnVSync(self.canvas)
+
+            LOGGER.debug("Content `%s` complete", content.id)
+
+    def add_content(self, content: ContentBase) -> None:
+        """Add content to the matrix."""
+        self._content[content.id] = content
+
+        LOGGER.info("Added content with ID `%s`", content.id)
+
+    @property
+    def dimensions(self) -> Dimensions:
+        """Return the dimensions of the matrix."""
+        return {
+            "height": self.height,
+            "width": self.width,
+        }
 
     @property
     def height(self) -> int:

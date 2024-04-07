@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
-from json import loads
 from logging import DEBUG, getLogger
 from threading import Thread
 from time import sleep
@@ -19,11 +18,9 @@ from typing import (
 )
 
 from utils import const
-from utils.mqtt import MQTT_CLIENT
 from wg_utilities.loggers import add_stream_handler
 
 if TYPE_CHECKING:
-    from paho.mqtt.client import Client, MQTTMessage
     from utils.cellular_automata.automaton import Automaton
 
 LOGGER = getLogger(__name__)
@@ -42,8 +39,10 @@ class SettingType(StrEnum):
 class InvalidPayloadError(ValueError):
     """Raised when an invalid MQTT payload is received."""
 
-    def __init__(self, *, decoded: Any, strict: bool, coerced: Any | Exception) -> None:
-        super().__init__(f"Invalid payload with {strict=}: {decoded=}, {coerced=}")
+    def __init__(
+        self, *, raw_payload: Any, strict: bool, coerced: Any | Exception
+    ) -> None:
+        super().__init__(f"Invalid payload with {strict=}: {raw_payload=}, {coerced=}")
 
 
 class InvalidSettingError(ValueError):
@@ -186,20 +185,16 @@ class Setting(Generic[S]):
             if self.min:
                 self.min = round(self.min, self.fp_precision)
 
-        MQTT_CLIENT.subscribe(self.mqtt_topic)
-        MQTT_CLIENT.message_callback_add(self.mqtt_topic, self.on_message)
-        LOGGER.info("Subscribed to topic: %s", self.mqtt_topic)
+        self.grid.mqtt_client.add_topic_callback(self.mqtt_topic, self.on_message)
 
-    def on_message(self, _: Client, __: Any, message: MQTTMessage) -> None:
+    def on_message(self, raw_payload: S) -> None:
         """Handle an MQTT message.
 
         Args:
-            _ (Client): the client instance for this callback
-            __ (Any): the private user data as set in Client() or userdata_set()
-            message (MQTTMessage): the message object from the MQTT subscription
+            raw_payload: The decoded payload from the MQTT message
         """
         try:
-            payload = self.validate(message.payload)
+            payload = self.validate(raw_payload)
         except InvalidPayloadError:
             LOGGER.exception("Invalid payload")
             return
@@ -225,26 +220,24 @@ class Setting(Generic[S]):
 
         return coerced
 
-    def validate(self, raw_payload: bytes | bytearray) -> S:
+    def validate(self, raw_payload: S) -> S:
         """Check that the incoming payload is a valid value for this Setting."""
-        decoded = loads(raw_payload.decode())
-
-        if isinstance(decoded, self.type_) and self.type_ not in {int, float}:
+        if isinstance(raw_payload, self.type_) and self.type_ not in {int, float}:
             # Non-numeric type, decoded and parsed correctly
-            return decoded
+            return raw_payload
 
         try:
-            coerced_and_formatted = self._coerce_and_format(decoded)
+            coerced_and_formatted = self._coerce_and_format(raw_payload)
         except Exception as err:
             raise InvalidPayloadError(
-                decoded=decoded,
+                raw_payload=raw_payload,
                 strict=self.strict,
                 coerced=err,
             ) from err
 
-        if self.strict and coerced_and_formatted != decoded:
+        if self.strict and coerced_and_formatted != raw_payload:
             raise InvalidPayloadError(
-                decoded=decoded,
+                raw_payload=raw_payload,
                 strict=self.strict,
                 coerced=coerced_and_formatted,
             )

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Generator
 import numpy as np
 from models.content.base import ContentBase
 from PIL import Image
-from utils import const
+from utils import const, to_kebab_case
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -22,7 +22,7 @@ class ImageViewer(ContentBase):
     BITMAP_DIRECTORY = const.REPO_PATH / "assets" / "images" / "64x64"
 
     colormap: NDArray[np.uint8]
-    grid: GridView
+    pixels: GridView
 
     def __init__(self, path: Path, height: int, width: int) -> None:
         if not path.is_absolute():
@@ -32,16 +32,18 @@ class ImageViewer(ContentBase):
 
         img_array = np.array(self._image)
 
-        unique_colors, grid = np.unique(
+        unique_colors, pixels = np.unique(
             img_array.reshape(-1, 3), axis=0, return_inverse=True
         )
         self.colormap = np.array(
             [tuple(color) for color in unique_colors], dtype=np.uint8
         )
-        self.grid = grid.reshape(height, width)
+        self.pixels = pixels.reshape(height, width)
+
+        self.id = "image-" + to_kebab_case(
+            path.relative_to(self.BITMAP_DIRECTORY).with_suffix("").as_posix()
+        )
 
     def __iter__(self) -> Generator[None, None, None]:
         """Yield nothing; this is a static image."""
-        # TODO remove this while loop
-        while True:
-            yield
+        yield

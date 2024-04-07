@@ -64,7 +64,7 @@ def generate_raindrops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 
     return partial(
         generate_raindrops_mask,
-        shape=ca.grid[target_slice].shape,
+        shape=ca.pixels[target_slice].shape,
         chance=ca.rain_chance,
     )
 
@@ -85,8 +85,8 @@ def move_rain_down_mask(
 )
 def move_rain_down(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Move raindrops down one cell."""
-    lower_slice = ca.grid[target_slice]
-    upper_slice = ca.grid[ca.translate_slice(target_slice, vrt=Direction.UP)]
+    lower_slice = ca.pixels[target_slice]
+    upper_slice = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
     raindrop = State.RAINDROP.state
     null = State.NULL.state
 
@@ -122,14 +122,14 @@ def top_of_rain_down(ca: RainingGrid, _: TargetSlice) -> MaskGen:
 
     return partial(
         top_of_rain_down_mask,
-        top_row=ca.grid[0],
+        top_row=ca.pixels[0],
         raindrop=State.RAINDROP.state,
-        second_row=ca.grid[1],
-        above_slice=ca.grid[slice(None, -2), slice(None)],
-        middle_slice=ca.grid[slice(1, -1), slice(None)],
-        below_slice=ca.grid[slice(2, None), slice(None)],
-        last_row=ca.grid[-1],
-        penultimate_row=ca.grid[-2],
+        second_row=ca.pixels[1],
+        above_slice=ca.pixels[slice(None, -2), slice(None)],
+        middle_slice=ca.pixels[slice(1, -1), slice(None)],
+        below_slice=ca.pixels[slice(2, None), slice(None)],
+        last_row=ca.pixels[-1],
+        penultimate_row=ca.pixels[-2],
     )
 
 
@@ -152,15 +152,15 @@ def _splash(
     source_slice_direction: Literal[Direction.LEFT, Direction.RIGHT],
 ) -> MaskGen:
     # TODO this would be better as "will be NULL", instead of "is NULL"
-    source_slice = ca.grid[
+    source_slice = ca.pixels[
         ca.translate_slice(
             target_slice,
             vrt=Direction.DOWN,
             hrz=source_slice_direction,
         )
     ]
-    splash_spots = ca.grid[target_slice]
-    below_slice = ca.grid[ca.translate_slice(target_slice, vrt=Direction.DOWN)]
+    splash_spots = ca.pixels[target_slice]
+    below_slice = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.DOWN)]
 
     raindrop = State.RAINDROP.state
     null = State.NULL.state
@@ -195,7 +195,7 @@ def _splash_high(
     splash_state: State,
     source_slice_direction: Literal[Direction.LEFT, Direction.RIGHT],
 ) -> MaskGen:
-    source_slice = ca.grid[
+    source_slice = ca.pixels[
         ca.translate_slice(
             target_slice,
             vrt=Direction.DOWN,
@@ -250,7 +250,7 @@ def remove_splashes(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
         State.SPLASH_RIGHT.state,
         State.SPLASHDROP.state,
     )
-    view = ca.grid[target_slice]
+    view = ca.pixels[target_slice]
 
     return partial(np.isin, view, any_splash)
 
@@ -259,7 +259,7 @@ def remove_splashes(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 def create_splashdrop(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Convert a splash to a splashdrop."""
     active_splashes = State.SPLASH_LEFT.state, State.SPLASH_RIGHT.state
-    view = ca.grid[target_slice]
+    view = ca.pixels[target_slice]
 
     return partial(np.isin, view, active_splashes)
 
@@ -271,7 +271,7 @@ def create_splashdrop(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 )
 def move_splashdrop_down(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Move the splashdrop down."""
-    source_slice = ca.grid[ca.translate_slice(target_slice, vrt=Direction.UP)]
+    source_slice = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
     splashdrop = State.SPLASHDROP.state
 
     return partial(np.equal, source_slice, splashdrop)

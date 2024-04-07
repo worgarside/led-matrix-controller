@@ -11,6 +11,7 @@ from functools import lru_cache, wraps
 from itertools import islice
 from logging import DEBUG, getLogger
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     ClassVar,
@@ -27,6 +28,9 @@ from utils.cellular_automata.rule import Rule
 from wg_utilities.loggers import add_stream_handler
 
 from .setting import FrequencySetting, Setting
+
+if TYPE_CHECKING:
+    from utils.mqtt import MqttClient
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel(DEBUG)
@@ -65,11 +69,13 @@ class Automaton(ContentBase, ABC):
 
     height: int
     width: int
+    mqtt_client: MqttClient
+
     id: str
 
     frame_index: int = -1
 
-    grid: NDArray[np.int_] = field(init=False)
+    pixels: NDArray[np.int_] = field(init=False)
     frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False)
     rules: list[Rule] = field(init=False)
     settings: dict[str, Setting[Any]] = field(default_factory=dict)
@@ -107,7 +113,7 @@ class Automaton(ContentBase, ABC):
                     self.settings[setting.slug] = setting
 
         # Create the grid; 0 is the default state
-        self.grid = self.zeros()
+        self.pixels = self.zeros()
 
         # Create mask generators after all setup is done
         for rule in self.rules:
@@ -116,7 +122,7 @@ class Automaton(ContentBase, ABC):
             ):
                 rule._frequency_setting = freq_setting
 
-            rule.target_view = self.grid[rule.target_slice]
+            rule.target_view = self.pixels[rule.target_slice]
             rule.refresh_mask_generator(self)
 
         self.generate_frame_rulesets()
@@ -245,7 +251,7 @@ class Automaton(ContentBase, ABC):
     @property
     def str_repr(self) -> str:
         """Return a string representation of the grid."""
-        return "\n".join(" ".join(state.char for state in row) for row in self.grid)
+        return "\n".join(" ".join(state.char for state in row) for row in self.pixels)
 
     def translate_slice(
         self,
@@ -279,11 +285,11 @@ class Automaton(ContentBase, ABC):
     @property
     def shape(self) -> tuple[int, int]:
         """Return the shape of the grid."""
-        return self.grid.shape  # type: ignore[return-value]
+        return self.pixels.shape  # type: ignore[return-value]
 
     def __getitem__(self, key: TargetSliceDecVal) -> NDArray[np.int_]:
         """Get an item from the grid."""
-        return self.grid[key]
+        return self.pixels[key]
 
 
 @lru_cache
