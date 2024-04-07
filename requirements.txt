@@ -208,9 +208,9 @@ pillow==10.3.0 ; python_version >= "3.11" and python_version < "3.12" \
 requests==2.31.0 ; python_version >= "3.11" and python_version < "3.12" \
     --hash=sha256:58cd2187c01e70e6e26505bca751777aa9f2ee0b7f4300988b709f44e013003f \
     --hash=sha256:942c5a758f98d790eaed1a29cb6eefc7ffb0d1cf7af05c3d2791656dbd6ad1e1
-urllib3==2.0.7 ; python_version >= "3.11" and python_version < "3.12" \
-    --hash=sha256:c97dfde1f7bd43a71c8d2a58e369e9b2bf692d1334ea9f9cae55add7d0dd0f84 \
-    --hash=sha256:fdb6d215c776278489906c2f8916e6e7d4f5a9b602ccbcfdf7f016fc8da0596e
+urllib3==2.2.1 ; python_version >= "3.11" and python_version < "3.12" \
+    --hash=sha256:450b20ec296a467077128bff42b73080516e71b56ff59a60a02bef2232c4fa9d \
+    --hash=sha256:d0570876c61ab9e520d776c38acbbb5b05a776d3f9ff98a5c8fd5162a444cf19
 wg-utilities[exceptions]==5.14.1 ; python_version >= "3.11" and python_version < "3.12" \
     --hash=sha256:7962284148660faba688c68a1276143a7d993ddd09bd082f42321fc96c69e99d \
     --hash=sha256:7d1fa5628ef564bda9d03653080f670d8c48cd49f12d489a7e3c499233db7a9e

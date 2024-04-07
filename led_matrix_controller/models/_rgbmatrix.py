@@ -7,15 +7,11 @@ try:
         DrawText,
         Font,
     )
-except ImportError as exc:
+except ImportError:
     from socket import gethostname
 
     if gethostname() == "mtrxpi":
         raise
-
-    from logging import warning
-
-    warning("Could not import `rgbmatrix`, using emulator instead: %s", repr(exc))
 
     from RGBMatrixEmulator import (  # type: ignore[import-untyped]
         RGBMatrix,

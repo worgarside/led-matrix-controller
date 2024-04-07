@@ -23,10 +23,10 @@ repos:
           - --show-error-codes
         additional_dependencies:
           - numpy==1.26.4
+          - paho-mqtt==2.0.0
           - pytest==8.1.1
           - pytest-codspeed==2.2.1
           - types-requests
-          - types-paho-mqtt
           - types-Pillow
           - types-python-dateutil
           - wg-utilities==5.14.1
