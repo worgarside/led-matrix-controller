@@ -23,10 +23,10 @@ import numpy as np
 from models.content.base import ContentBase, GridView, StateBase
 from numpy.typing import DTypeLike, NDArray
 from utils import const
-from utils.cellular_automata.rule import Rule
 from utils.mqtt import MqttClient  # noqa: TCH002
 from wg_utilities.loggers import add_stream_handler
 
+from .rule import Rule
 from .setting import FrequencySetting, Setting
 
 LOGGER = getLogger(__name__)
@@ -217,7 +217,7 @@ class Automaton(ContentBase, ABC):
 
         return decorator
 
-    def run(self, limit: int) -> Generator[NDArray[np.int_], None, None]:
+    def islice(self, limit: int) -> Generator[None, None, None]:
         """Run the simulation for a given number of frames."""
         yield from islice(self, limit)
 

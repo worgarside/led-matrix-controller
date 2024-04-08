@@ -36,5 +36,5 @@ RNG = np.random.default_rng(830003040)
 
 REPO_PATH: Final[Path] = Path(__file__).parents[2]
 
-FRAMES_PER_SECOND: Final[int] = 100
-FRAME_TIME: Final[float] = 1 / FRAMES_PER_SECOND
+TICKS_PER_SECOND: Final[int] = 100
+TICK_LENGTH: Final[float] = 1 / TICKS_PER_SECOND

@@ -7,7 +7,7 @@ import inspect
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from utils.cellular_automata.setting import FrequencySetting, ParameterSetting
+from cellular_automata.setting import FrequencySetting, ParameterSetting
 
 if TYPE_CHECKING:
     from models.content.base import GridView, StateBase
@@ -37,7 +37,7 @@ class AttributeVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class Rule:
     """Class for a rule to update cells."""
 
