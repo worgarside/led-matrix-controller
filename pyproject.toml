@@ -10,7 +10,7 @@ readme = "README.md"
 python = ">=3.11,<3.12"
 pillow = "^10.3.0"
 requests = "^2.31.0"
-wg-utilities = { extras = ["exceptions"], version = "^5.14.1" }
+wg-utilities = { extras = ["exceptions"], version = "^5.14.2" }
 paho-mqtt = "^2.0.0"
 numpy = "^1.26.4"
 
