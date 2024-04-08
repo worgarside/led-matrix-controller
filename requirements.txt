@@ -211,6 +211,6 @@ requests==2.31.0 ; python_version >= "3.11" and python_version < "3.12" \
 urllib3==2.2.1 ; python_version >= "3.11" and python_version < "3.12" \
     --hash=sha256:450b20ec296a467077128bff42b73080516e71b56ff59a60a02bef2232c4fa9d \
     --hash=sha256:d0570876c61ab9e520d776c38acbbb5b05a776d3f9ff98a5c8fd5162a444cf19
-wg-utilities[exceptions]==5.14.1 ; python_version >= "3.11" and python_version < "3.12" \
-    --hash=sha256:7962284148660faba688c68a1276143a7d993ddd09bd082f42321fc96c69e99d \
-    --hash=sha256:7d1fa5628ef564bda9d03653080f670d8c48cd49f12d489a7e3c499233db7a9e
+wg-utilities[exceptions]==5.14.2 ; python_version >= "3.11" and python_version < "3.12" \
+    --hash=sha256:30804bb0441e5065d49a6cbf10bc18d3beba31de96e5626976a30849b85b5dec \
+    --hash=sha256:740575108a09fb2f36f7240ce6a084329234dc80f520bc17fbfafb38bc0a1f87
