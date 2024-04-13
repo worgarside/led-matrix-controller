@@ -138,7 +138,7 @@ class Matrix:
             self.now_playing = content.id
 
             LOGGER.debug(
-                "Content with ID `%s` has priority %s",
+                "Content with ID `%s` from queue has priority %s",
                 content.content_id,
                 current_priority,
             )
@@ -153,7 +153,16 @@ class Matrix:
 
                 if current_priority > self.next_priority or self.now_playing is None:
                     # If there's higher priority content or content has been stopped
+                    LOGGER.debug(
+                        "Content `%s` with priority %s is no longer playing: Now playing: %s; Next priority: %s",
+                        content.content_id,
+                        current_priority,
+                        self.now_playing,
+                        self.next_priority,
+                    )
                     break
+            else:
+                LOGGER.debug("Content `%s` complete", content.content_id)
 
             if content.HAS_TEARDOWN_SEQUENCE and self.now_playing is None:
                 # Only run teardown if the stop isn't due to higher priority content
@@ -167,7 +176,6 @@ class Matrix:
 
             if content.persistent and self.now_playing is not None:
                 self._content_queue.put((current_priority, content))
-
                 LOGGER.info(
                     "Content `%s` is persistent with priority %s",
                     content.content_id,
@@ -176,6 +184,7 @@ class Matrix:
 
             self.reset_now_playing()
 
+        self.reset_now_playing()
         self.clear_matrix()
 
     def clear_matrix(self) -> None:
@@ -205,6 +214,8 @@ class Matrix:
         """Reset the now playing content."""
         self.now_playing = None
         self.next_priority = self.MAX_PRIORITY
+
+        LOGGER.debug("Now playing: null; Next priority: %s", self.next_priority)
 
     @property
     def dimensions(self) -> Dimensions:
