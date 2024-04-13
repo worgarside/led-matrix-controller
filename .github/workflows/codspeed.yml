@@ -20,7 +20,8 @@ jobs:
   benchmarks:
     name: Run Benchmarks
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
+    if: >-
+      !github.event.pull_request.draft
     steps:
       - name: Clone Repo
         uses: actions/checkout@v4
