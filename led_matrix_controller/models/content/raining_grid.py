@@ -69,6 +69,7 @@ class RainingGrid(Automaton):
 
         rain_chance = self.settings["rain_chance"]
 
+        original_rain_chance = rain_chance.get_value_from_grid()
         original_transition_rate = rain_chance.transition_rate
 
         ticks = 0.5 * const.TICKS_PER_SECOND
@@ -90,7 +91,14 @@ class RainingGrid(Automaton):
             if np.all(self.pixels == 0):
                 break
 
+        rain_chance.set_value_in_grid(original_rain_chance)
         rain_chance.transition_rate = original_transition_rate
+
+        LOGGER.debug(
+            "Reset `rain_chance` to %f and transition rate to %f",
+            original_rain_chance,
+            original_transition_rate,
+        )
 
         return
 

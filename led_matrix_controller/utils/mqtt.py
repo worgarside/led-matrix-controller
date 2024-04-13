@@ -42,7 +42,11 @@ class MqttClient:
         self._client.on_subscribe = self._on_subscribe
 
         if connect:
-            LOGGER.debug("Connecting to MQTT broker")
+            LOGGER.debug(
+                "Connecting to MQTT broker at %s. This device's hostname is %s",
+                const.MQTT_HOST,
+                const.HOSTNAME,
+            )
             self._client.connect(const.MQTT_HOST)
 
     def _on_connect(
