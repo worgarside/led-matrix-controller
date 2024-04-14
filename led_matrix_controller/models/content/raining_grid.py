@@ -5,26 +5,33 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import unique
 from functools import partial
-from typing import TYPE_CHECKING, Annotated, Literal
+from itertools import islice
+from logging import DEBUG, getLogger
+from typing import TYPE_CHECKING, Annotated, Generator, Literal
 
 import numpy as np
-from utils import const
-from utils.cellular_automata.automaton import (
+from cellular_automata.automaton import (
     Automaton,
     Direction,
     Mask,
     MaskGen,
     TargetSlice,
 )
-from utils.cellular_automata.setting import (  # noqa: TCH002
+from cellular_automata.setting import (  # noqa: TCH002
     FrequencySetting,
     ParameterSetting,
 )
+from utils import const
+from wg_utilities.loggers import add_stream_handler
 
 from .base import StateBase
 
 if TYPE_CHECKING:
     from models.content.base import GridView
+
+LOGGER = getLogger(__name__)
+LOGGER.setLevel(DEBUG)
+add_stream_handler(LOGGER)
 
 
 @unique
@@ -43,10 +50,11 @@ class RainingGrid(Automaton):
     """Basic rain simulation."""
 
     STATE = State
+    HAS_TEARDOWN_SEQUENCE = True
 
     rain_chance: Annotated[
         float,
-        ParameterSetting(min=0, max=1, transition_rate=(0.002, 0.2), fp_precision=3),
+        ParameterSetting(min=0, max=1, transition_rate=0.001, fp_precision=3),
     ] = 0.025
     rain_speed: Annotated[int, FrequencySetting()] = 1
     splash_speed: Annotated[int, FrequencySetting()] = 8
@@ -55,6 +63,44 @@ class RainingGrid(Automaton):
     def content_id(self) -> str:
         """Return the ID of the grid."""
         return "raining-grid"
+
+    def teardown(self) -> Generator[None, None, None]:
+        """Transition the rain chance to 0 then run the simulation until the grid is clear."""
+
+        rain_chance = self.settings["rain_chance"]
+
+        original_rain_chance = rain_chance.get_value_from_grid()
+        original_transition_rate = rain_chance.transition_rate
+
+        ticks = 0.5 * const.TICKS_PER_SECOND
+        total_change = rain_chance.get_value_from_grid()
+
+        rain_chance.transition_rate = total_change / ticks
+
+        LOGGER.debug(
+            "Modified `rain_chance` transition rate from %f to %f",
+            original_transition_rate,
+            rain_chance.transition_rate,
+        )
+
+        rain_chance.transition_value_in_grid(0)
+
+        for _ in islice(self, const.TICKS_PER_SECOND * 5):
+            yield
+
+            if np.all(self.pixels == 0):
+                break
+
+        rain_chance.set_value_in_grid(original_rain_chance)
+        rain_chance.transition_rate = original_transition_rate
+
+        LOGGER.debug(
+            "Reset `rain_chance` to %f and transition rate to %f",
+            original_rain_chance,
+            original_transition_rate,
+        )
+
+        return
 
 
 def generate_raindrops_mask(shape: tuple[int, int], chance: float) -> Mask:

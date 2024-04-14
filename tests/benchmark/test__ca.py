@@ -10,9 +10,9 @@ import pytest
 from models.content import RainingGrid
 
 if TYPE_CHECKING:
+    from cellular_automata.automaton import MaskGen
     from pytest_codspeed import BenchmarkFixture  # type: ignore[import-untyped]
     from utils import MqttClient
-    from utils.cellular_automata.automaton import MaskGen
 
 
 @pytest.mark.parametrize(
@@ -50,7 +50,7 @@ def test_raining_grid_simulation(
 
     @benchmark  # type: ignore[misc]
     def bench() -> None:
-        for _ in grid.run(limit=limit):
+        for _ in grid.islice(limit=limit):
             pass
 
 

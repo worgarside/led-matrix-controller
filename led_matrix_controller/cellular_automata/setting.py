@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from logging import DEBUG, getLogger
 from threading import Thread
-from time import sleep
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -21,7 +20,8 @@ from utils import const
 from wg_utilities.loggers import add_stream_handler
 
 if TYPE_CHECKING:
-    from utils.cellular_automata.automaton import Automaton
+    from cellular_automata.automaton import Automaton
+    from models.matrix import Matrix
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel(DEBUG)
@@ -56,11 +56,10 @@ class Setting(Generic[S]):
     setting_type: SettingType
     """The type of setting, i.e. frequency or parameter."""
 
-    transition_rate: tuple[S, float] = field(default=None)  # type: ignore[assignment]
-    """The rate at which the setting can be changed. Only applies to numerical settings.
+    transition_rate: S = field(default=None)  # type: ignore[assignment]
+    """The rate at which the setting will be changed per tick/frame.
 
-    If None (or 0), the setting modification will be applied immediately. In the form (X, Y), the setting
-    will be de/incremented by X every Y seconds until it reaches the target value.
+    If None (or 0), the setting modification will be applied immediately.
     """
 
     callback: Callable[[S], None] = field(init=False)
@@ -103,6 +102,8 @@ class Setting(Generic[S]):
     fp_precision: int = 6
     """The number of decimal places to round floats to during processing."""
 
+    matrix: Matrix = field(init=False)
+
     def __post_init__(self) -> None:
         if self.min is not None and self.max is not None and self.min > self.max:
             raise InvalidSettingError(
@@ -132,11 +133,14 @@ class Setting(Generic[S]):
     def _transition_value(self) -> None:
         LOGGER.debug("Transitioning %s to %s", self.slug, self.target_value)
 
+        tick_condition = self.matrix.tick_condition
+        tick_condition.acquire()
+
         while (
             current_value := self.type_(self.get_value_from_grid())
         ) != self.target_value:
             transition_amount = round(
-                min(self.transition_rate[0], abs(current_value - self.target_value)),
+                min(self.transition_rate, abs(current_value - self.target_value)),
                 self.fp_precision,
             )
             LOGGER.debug(
@@ -158,7 +162,9 @@ class Setting(Generic[S]):
                 )
             )
 
-            sleep(self.transition_rate[1])
+            tick_condition.wait()
+
+        tick_condition.release()
 
     def setup(
         self,
@@ -174,7 +180,7 @@ class Setting(Generic[S]):
         self.callback = self.set_value_in_grid
 
         if self.type_ in {int, float}:
-            if self.transition_rate:
+            if (self.transition_rate or 0) > 0:
                 self.callback = self.transition_value_in_grid
 
             if self.type_ is int:
@@ -255,7 +261,7 @@ class Setting(Generic[S]):
         return f"/{const.HOSTNAME}/{self.grid.id}/{self.setting_type}/{self.slug.replace('_', '-')}"
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class FrequencySetting(Setting[int]):
     """Set a rule's frequency."""
 
@@ -270,7 +276,7 @@ class FrequencySetting(Setting[int]):
         self.grid.generate_frame_rulesets()
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class ParameterSetting(Setting[S]):
     """Set a parameter for a rule."""
 
