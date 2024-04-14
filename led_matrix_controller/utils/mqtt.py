@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from json import loads
+from json import JSONDecodeError, loads
 from logging import DEBUG, getLogger
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
@@ -110,7 +110,13 @@ class MqttClient:
                 msg.payload,
             )
 
-            callback(loads(msg.payload))
+            try:
+                payload = loads(msg.payload)
+            except JSONDecodeError:
+                LOGGER.exception("Failed to decode payload: %r", msg.payload)
+                return
+
+            callback(payload)
 
         self._client.subscribe(topic)
         self._client.message_callback_add(topic, _cb)
