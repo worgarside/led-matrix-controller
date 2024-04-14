@@ -70,7 +70,7 @@ class Rule:
         current_frequency = (
             self.frequency
             if isinstance(self.frequency, int)
-            else self._frequency_setting.get_value_from_grid()
+            else self._frequency_setting.value
         )
 
         return bool(current_frequency) and i % current_frequency == 0

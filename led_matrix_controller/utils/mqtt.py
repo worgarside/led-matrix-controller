@@ -25,7 +25,11 @@ T = TypeVar("T", bound=object)
 class MqttClient:
     """MQTT Client wrapper class."""
 
-    def __init__(self, *, connect: bool = True, userdata: Any = None) -> None:
+    CLIENT: MqttClient
+
+    def __init__(
+        self, *, connect: bool = True, userdata: Any = None, retain: bool = False
+    ) -> None:
         self._client = mqtt.Client(
             callback_api_version=CallbackAPIVersion.VERSION2,
             userdata=userdata,
@@ -41,13 +45,17 @@ class MqttClient:
         self._client.on_message = self._on_message
         self._client.on_subscribe = self._on_subscribe
 
-        if connect:
+        self._retain = retain
+
+        if connect and not self._client.is_connected():
             LOGGER.debug(
                 "Connecting to MQTT broker at %s. This device's hostname is %s",
                 const.MQTT_HOST,
                 const.HOSTNAME,
             )
             self._client.connect(const.MQTT_HOST)
+
+        self.__class__.CLIENT = self
 
     def _on_connect(
         self,
@@ -127,3 +135,29 @@ class MqttClient:
         """Start the MQTT loop."""
         LOGGER.info("Starting MQTT loop")
         self._client.loop_forever()
+
+    def publish(
+        self,
+        topic: str,
+        payload: mqtt.PayloadType,
+        qos: int = 0,
+        retain: bool | None = None,
+        properties: Properties | None = None,
+    ) -> None:
+        """Publish a message to the MQTT broker.
+
+        Args:
+            topic: The topic to publish the message to
+            payload: The message to publish
+            qos: The quality of service to use
+            retain: Whether to retain the message on the topic
+            properties: The properties to include in the message
+        """
+        self._client.publish(
+            topic,
+            payload,
+            qos=qos,
+            retain=retain or self._retain,
+            properties=properties,
+        )
+        LOGGER.debug("Published message to topic %s: %r", topic, payload)

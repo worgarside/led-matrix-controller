@@ -10,6 +10,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    ClassVar,
     Generic,
     Literal,
     TypeVar,
@@ -17,6 +18,8 @@ from typing import (
 )
 
 from utils import const
+from utils.helpers import to_kebab_case
+from utils.mqtt import MqttClient
 from wg_utilities.loggers import add_stream_handler
 
 if TYPE_CHECKING:
@@ -104,7 +107,12 @@ class Setting(Generic[S]):
 
     matrix: Matrix = field(init=False)
 
+    _mqtt_client: ClassVar[MqttClient]
+
     def __post_init__(self) -> None:
+        if not hasattr(self.__class__, "_mqtt_client"):
+            self.__class__._mqtt_client = MqttClient.CLIENT
+
         if self.min is not None and self.max is not None and self.min > self.max:
             raise InvalidSettingError(
                 f"The 'min' value ({self.min}) cannot be greater than the 'max' value ({self.max})."
@@ -115,13 +123,6 @@ class Setting(Generic[S]):
 
         if isinstance(self.min, float):
             self.min = round(self.min, self.fp_precision)
-
-    def get_value_from_grid(self) -> S:
-        """Get the setting's value from the grid's attribute."""
-        return cast(S, getattr(self.grid, self.slug))
-
-    def set_value_in_grid(self, value: S) -> None:
-        setattr(self.grid, self.slug, value)
 
     def transition_value_in_grid(self, value: S) -> None:
         self.target_value = value
@@ -136,9 +137,7 @@ class Setting(Generic[S]):
         tick_condition = self.matrix.tick_condition
         tick_condition.acquire()
 
-        while (
-            current_value := self.type_(self.get_value_from_grid())
-        ) != self.target_value:
+        while (current_value := self.type_(self.value)) != self.target_value:
             transition_amount = round(
                 min(self.transition_rate, abs(current_value - self.target_value)),
                 self.fp_precision,
@@ -151,20 +150,21 @@ class Setting(Generic[S]):
                 transition_amount,
             )
 
-            self.set_value_in_grid(
-                round(
-                    (
-                        current_value + transition_amount
-                        if current_value < self.target_value
-                        else current_value - transition_amount
-                    ),
-                    self.fp_precision,
-                )
+            self.value = round(
+                (
+                    current_value + transition_amount
+                    if current_value < self.target_value
+                    else current_value - transition_amount
+                ),
+                self.fp_precision,
             )
 
             tick_condition.wait()
 
         tick_condition.release()
+
+    def _set_value(self, value: S) -> None:
+        self.value = value
 
     def setup(
         self,
@@ -177,7 +177,7 @@ class Setting(Generic[S]):
         self.slug = field_name
         self.grid = grid
         self.type_ = type_
-        self.callback = self.set_value_in_grid
+        self.callback = self._set_value
 
         if self.type_ in {int, float}:
             if (self.transition_rate or 0) > 0:
@@ -250,15 +250,56 @@ class Setting(Generic[S]):
 
         return coerced_and_formatted
 
+    _mqtt_topic: str = field(init=False)
+
     @property
     def mqtt_topic(self) -> str:
         """The MQTT topic that this setting is subscribed to.
 
-        Auto-generated, in the form `/<hostname>/<grid ID>/<setting type>/<kebab-case-slug>`
+        Auto-generated, in the form `/<hostname>/<grid ID>/<setting type>/<kebab-case-slug>/set`
 
-        e.g. /mtrxpi/raining-grid/frequency/rain-speed
+        e.g. /mtrxpi/raining-grid/frequency/rain-speed/set
         """
-        return f"/{const.HOSTNAME}/{self.grid.id}/{self.setting_type}/{self.slug.replace('_', '-')}"
+
+        if not hasattr(self, "_mqtt_topic"):
+            self._mqtt_topic = "/" + "/".join(
+                to_kebab_case(
+                    const.HOSTNAME, self.grid.id, self.setting_type, self.slug, "set"
+                )
+            )
+
+        return self._mqtt_topic
+
+    _mqtt_topic_outgoing: str = field(init=False)
+
+    @property
+    def mqtt_topic_outgoing(self) -> str:
+        """The MQTT topic that this setting publishes to.
+
+        Auto-generated, in the form `/<hostname>/<grid ID>/<setting type>/<kebab-case-slug>/get`
+
+        e.g. /mtrxpi/raining-grid/frequency/rain-speed/get
+        """
+
+        if not hasattr(self, "_mqtt_topic_outgoing"):
+            self._mqtt_topic_outgoing = "/" + "/".join(
+                to_kebab_case(
+                    const.HOSTNAME, self.grid.id, self.setting_type, self.slug, "get"
+                )
+            )
+
+        return self._mqtt_topic_outgoing
+
+    @property
+    def value(self) -> S:
+        """Get the setting's value from the grid's attribute."""
+        return cast(S, getattr(self.grid, self.slug))
+
+    @value.setter
+    def value(self, value: S) -> None:
+        """Set the setting's value in the grid's attribute."""
+        setattr(self.grid, self.slug, value)
+        self._mqtt_client.publish(self.mqtt_topic_outgoing, value)
 
 
 @dataclass(kw_only=True, slots=True)

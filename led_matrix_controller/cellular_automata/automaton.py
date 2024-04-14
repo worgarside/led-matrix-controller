@@ -130,7 +130,7 @@ class Automaton(ContentBase, ABC):
 
         ruleset_count = math.lcm(
             *(
-                setting.get_value_from_grid()
+                setting.value
                 for setting in self.settings.values()
                 if isinstance(setting, FrequencySetting)
             )

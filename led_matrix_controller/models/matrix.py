@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from json import dumps
 from logging import DEBUG, getLogger
 from queue import PriorityQueue
 from threading import Condition, Thread
 from typing import TYPE_CHECKING, ClassVar, TypedDict
 
 from utils import const
+from utils.helpers import to_kebab_case
 from wg_utilities.loggers import add_stream_handler
 
 from ._rgbmatrix import RGBMatrix, RGBMatrixOptions
@@ -72,25 +74,29 @@ class Matrix:
 
         self._content: dict[str, ContentBase] = {}
 
-        self.content_topic = (
-            f"/{const.HOSTNAME}/{self.__class__.__name__}/content".lower()
-        )
-
+        self.content_topic = self._mqtt_topic("content")
         self.mqtt_client.add_topic_callback(
             self.content_topic,
             self._on_content_message,
         )
 
+        self.current_content_topic = self._mqtt_topic("current-content")
+
         self._content_queue: PriorityQueue[tuple[float, ContentBase]] = PriorityQueue()
         self._content_thread = Thread(target=self._content_loop)
 
-        self.now_playing: str | None = None
+        self._current_content: ContentBase | None = None
 
         self._current_priority: float | None = None
         self.next_priority = self.MAX_PRIORITY
 
         self.tick = 0
         self.tick_condition = Condition()
+
+    def _mqtt_topic(self, suffix: str) -> str:
+        return "/" + "/".join(
+            to_kebab_case(const.HOSTNAME, self.__class__.__name__, *suffix.split("/"))
+        )
 
     def _on_content_message(
         self,
@@ -105,7 +111,10 @@ class Matrix:
                     LOGGER.info("Removed content with ID `%s` from queue", payload["id"])
                     break
 
-            if self.now_playing == payload["id"]:
+            if (
+                self.current_content is not None
+                and self.current_content.content_id == payload["id"]
+            ):
                 self.reset_now_playing()
                 LOGGER.info(
                     "Removed content with ID `%s` from now playing", payload["id"]
@@ -118,7 +127,10 @@ class Matrix:
             -self.MAX_PRIORITY,
         )
 
-        if self.now_playing == payload["id"]:
+        if (
+            self.current_content is not None
+            and self.current_content.content_id == payload["id"]
+        ):
             LOGGER.debug("Updating %s priority to %s", payload["id"], priority)
             self.current_priority = priority
             return
@@ -144,53 +156,60 @@ class Matrix:
                 self._content_thread.start()
 
     def _content_loop(self) -> None:
+        """Loop through the content queue."""
         while not self._content_queue.empty():
-            self.current_priority, content = self._content_queue.get()
-
-            self.now_playing = content.id
+            self.current_priority, self.current_content = self._content_queue.get()
 
             LOGGER.debug(
                 "Content with ID `%s` from queue has priority %s",
-                content.content_id,
+                self.current_content.content_id,
                 self.current_priority,
             )
 
-            get_image = content.image_getter
+            LOGGER.info(
+                "Displaying content with ID `%s`", self.current_content.content_id
+            )
 
-            LOGGER.info("Displaying content with ID `%s`", content.content_id)
-
-            for _ in content:
+            get_image = self.current_content.image_getter
+            # Actual loop through individual content instances:
+            for _ in self.current_content:
                 self.canvas.SetImage(get_image())
                 self.swap_canvas()
 
-                if self.current_priority > self.next_priority or self.now_playing is None:
+                if (
+                    self.current_priority > self.next_priority
+                    or self.current_content is None
+                ):
                     # If there's higher priority content or content has been stopped
                     LOGGER.debug(
                         "Content `%s` with priority %s is no longer playing: Now playing: %s; Next priority: %s",
-                        content.content_id,
+                        self.current_content.content_id,
                         self.current_priority,
-                        self.now_playing,
+                        self.current_content,
                         self.next_priority,
                     )
                     break
             else:
-                LOGGER.debug("Content `%s` complete", content.content_id)
+                LOGGER.debug("Content `%s` complete", self.current_content.content_id)
 
-            if content.HAS_TEARDOWN_SEQUENCE and self.now_playing is None:
+            if (
+                self.current_content.HAS_TEARDOWN_SEQUENCE
+                and self.current_content is None
+            ):
                 # Only run teardown if the stop isn't due to higher priority content
-                LOGGER.debug("Running teardown sequence for %s", content.id)
+                LOGGER.debug("Running teardown sequence for %s", self.current_content.id)
 
-                for _ in content.teardown():
+                for _ in self.current_content.teardown():
                     self.canvas.SetImage(get_image())
                     self.swap_canvas()
 
-            LOGGER.debug("Content `%s` complete", content.content_id)
+            LOGGER.debug("Content `%s` complete", self.current_content.content_id)
 
-            if content.persistent and self.now_playing is not None:
-                self._content_queue.put((self.current_priority, content))
+            if self.current_content.persistent and self.current_content is not None:
+                self._content_queue.put((self.current_priority, self.current_content))
                 LOGGER.info(
                     "Content `%s` is persistent with priority %s",
-                    content.content_id,
+                    self.current_content.content_id,
                     self.current_priority,
                 )
 
@@ -214,17 +233,26 @@ class Matrix:
 
     def register_content(self, *content: ContentBase) -> None:
         """Add content to the matrix."""
+
+        content_ids = []
         for c in content:
             self._content[c.content_id] = c
+            content_ids.append(c.content_id)
 
             for setting in getattr(c, "settings", {}).values():
                 setting.matrix = self
 
             LOGGER.info("Added content with ID `%s`", c.content_id)
 
+        self.mqtt_client.publish(
+            topic="/homeassistant/select/mtrxpi-current-content/set-options",
+            payload=dumps(content_ids),
+            retain=True,
+        )
+
     def reset_now_playing(self) -> None:
         """Reset the now playing content."""
-        self.now_playing = None
+        self.current_content = None
         self.current_priority = None
         self.next_priority = self.MAX_PRIORITY
 
@@ -249,10 +277,26 @@ class Matrix:
         return int(self.matrix.width)
 
     @property
+    def current_content(self) -> ContentBase | None:
+        """Return the currently displaying content."""
+        return self._current_content
+
+    @current_content.setter
+    def current_content(self, value: ContentBase | None) -> None:
+        self._current_content = value
+
+        self.mqtt_client.publish(
+            topic=self.current_content_topic,
+            payload=value.content_id if value is not None else None,
+            retain=True,
+        )
+        LOGGER.info("Now playing: %s", value)
+
+    @property
     def current_priority(self) -> float | None:
         """Return the priority of the currently playing content."""
 
-        return self._current_priority if self.now_playing is not None else None
+        return self._current_priority if self.current_content is not None else None
 
     @current_priority.setter
     def current_priority(self, value: float | None) -> None:
