@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from time import sleep
-from typing import TYPE_CHECKING, Final, Generator
+from typing import TYPE_CHECKING, Final, Generator, Literal
 
 import numpy as np
 from models.content.base import ContentBase
@@ -23,6 +23,8 @@ class ImageViewer(ContentBase):
 
     display_seconds: int
     path: Path
+
+    has_teardown_sequence: Literal[False] = False
 
     _image: Image.Image = field(init=False)
 
@@ -50,8 +52,12 @@ class ImageViewer(ContentBase):
             self.path.relative_to(self.BITMAP_DIRECTORY).with_suffix("").as_posix()
         )
 
+    def teardown(self) -> Generator[None, None, None]:
+        """No teardown needed."""
+        yield
+
     def __iter__(self) -> Generator[None, None, None]:
         """Yield nothing; this is a static image."""
         yield
-        sleep(max(0, self.display_seconds - (2 * const.FRAME_TIME)))
+        sleep(max(0, self.display_seconds - (2 * const.TICK_LENGTH)))
         yield

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from logging import DEBUG, getLogger
 from queue import PriorityQueue
-from threading import Thread
+from threading import Condition, Thread
 from typing import TYPE_CHECKING, ClassVar, TypedDict
 
 from utils import const
@@ -40,8 +40,6 @@ class Dimensions(TypedDict):
 class Matrix:
     """Class for displaying track information on an RGB LED Matrix."""
 
-    content_thread: Thread
-
     OPTIONS: ClassVar[LedMatrixOptions] = {
         "cols": 64,
         "rows": 64,
@@ -49,7 +47,7 @@ class Matrix:
         "gpio_slowdown": 4,
         "hardware_mapping": "adafruit-hat-pwm",
         "show_refresh_rate": const.DEBUG_MODE,
-        "limit_refresh_rate_hz": const.FRAMES_PER_SECOND,
+        "limit_refresh_rate_hz": const.TICKS_PER_SECOND,
         "pwm_lsb_nanoseconds": 80,
         # "pwm_dither_bits": 1,  # noqa: ERA001
     }
@@ -88,7 +86,11 @@ class Matrix:
 
         self.now_playing: str | None = None
 
+        self._current_priority: float | None = None
         self.next_priority = self.MAX_PRIORITY
+
+        self.tick = 0
+        self.tick_condition = Condition()
 
     def _on_content_message(
         self,
@@ -116,9 +118,20 @@ class Matrix:
             -self.MAX_PRIORITY,
         )
 
+        if self.now_playing == payload["id"]:
+            LOGGER.debug("Updating %s priority to %s", payload["id"], priority)
+            self.current_priority = priority
+            return
+
         self.next_priority = min(self.next_priority, priority)
 
         self._content_queue.put((priority, self._content[payload["id"]]))
+
+        LOGGER.info(
+            "Added content with ID `%s` to queue with priority %s",
+            payload["id"],
+            priority,
+        )
 
         if not self._content_thread.is_alive():
             try:
@@ -132,14 +145,14 @@ class Matrix:
 
     def _content_loop(self) -> None:
         while not self._content_queue.empty():
-            current_content_priority, content = self._content_queue.get()
+            self.current_priority, content = self._content_queue.get()
 
             self.now_playing = content.id
 
             LOGGER.debug(
-                "Content with ID `%s` has priority %s",
+                "Content with ID `%s` from queue has priority %s",
                 content.content_id,
-                current_content_priority,
+                self.current_priority,
             )
 
             get_image = content.image_getter
@@ -148,41 +161,74 @@ class Matrix:
 
             for _ in content:
                 self.canvas.SetImage(get_image())
-                self.canvas = self.matrix.SwapOnVSync(self.canvas)
+                self.swap_canvas()
 
-                if current_content_priority > self.next_priority or not self.now_playing:
+                if self.current_priority > self.next_priority or self.now_playing is None:
+                    # If there's higher priority content or content has been stopped
+                    LOGGER.debug(
+                        "Content `%s` with priority %s is no longer playing: Now playing: %s; Next priority: %s",
+                        content.content_id,
+                        self.current_priority,
+                        self.now_playing,
+                        self.next_priority,
+                    )
                     break
+            else:
+                LOGGER.debug("Content `%s` complete", content.content_id)
+
+            if content.HAS_TEARDOWN_SEQUENCE and self.now_playing is None:
+                # Only run teardown if the stop isn't due to higher priority content
+                LOGGER.debug("Running teardown sequence for %s", content.id)
+
+                for _ in content.teardown():
+                    self.canvas.SetImage(get_image())
+                    self.swap_canvas()
 
             LOGGER.debug("Content `%s` complete", content.content_id)
 
-            if content.persistent and content.id == self.now_playing:
-                self._content_queue.put((current_content_priority, content))
+            if content.persistent and self.now_playing is not None:
+                self._content_queue.put((self.current_priority, content))
                 LOGGER.info(
                     "Content `%s` is persistent with priority %s",
                     content.content_id,
-                    current_content_priority,
+                    self.current_priority,
                 )
 
             self.reset_now_playing()
 
+        self.reset_now_playing()
         self.clear_matrix()
 
     def clear_matrix(self) -> None:
         """Clear the matrix."""
         self.canvas.Clear()
+        self.swap_canvas()
+
+    def swap_canvas(self) -> None:
+        """Update the content of the canvas and increment the tick count."""
         self.canvas = self.matrix.SwapOnVSync(self.canvas)
+        self.tick += 1
+        self.tick_condition.acquire(timeout=const.TICK_LENGTH)
+        self.tick_condition.notify_all()
+        self.tick_condition.release()
 
     def register_content(self, *content: ContentBase) -> None:
         """Add content to the matrix."""
         for c in content:
             self._content[c.content_id] = c
 
+            for setting in getattr(c, "settings", {}).values():
+                setting.matrix = self
+
             LOGGER.info("Added content with ID `%s`", c.content_id)
 
     def reset_now_playing(self) -> None:
         """Reset the now playing content."""
         self.now_playing = None
+        self.current_priority = None
         self.next_priority = self.MAX_PRIORITY
+
+        LOGGER.debug("Now playing: null; Next priority: %s", self.next_priority)
 
     @property
     def dimensions(self) -> Dimensions:
@@ -201,6 +247,16 @@ class Matrix:
     def width(self) -> int:
         """Return the width of the matrix."""
         return int(self.matrix.width)
+
+    @property
+    def current_priority(self) -> float | None:
+        """Return the priority of the currently playing content."""
+
+        return self._current_priority if self.now_playing is not None else None
+
+    @current_priority.setter
+    def current_priority(self, value: float | None) -> None:
+        self._current_priority = value
 
     def __del__(self) -> None:
         """Clear the matrix when the object is deleted."""

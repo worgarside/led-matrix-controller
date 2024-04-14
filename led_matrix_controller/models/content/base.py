@@ -58,6 +58,7 @@ class ContentBase(ABC):
     """Base class for content models."""
 
     STATE: ClassVar[type[StateBase]]
+    HAS_TEARDOWN_SEQUENCE: ClassVar[bool] = False
 
     height: int
     width: int
@@ -69,6 +70,10 @@ class ContentBase(ABC):
     persistent: bool = field(default=False)
 
     _image_getter: partial[Image.Image] = field(init=False)
+
+    @abstractmethod
+    def teardown(self) -> Generator[None, None, None]:
+        """Perform any necessary cleanup."""
 
     @property
     def image_getter(self) -> partial[Image.Image]:
