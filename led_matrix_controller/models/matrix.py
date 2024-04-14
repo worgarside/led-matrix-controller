@@ -86,6 +86,7 @@ class Matrix:
 
         self.now_playing: str | None = None
 
+        self._current_priority: float | None = None
         self.next_priority = self.MAX_PRIORITY
 
         self.tick = 0
@@ -117,9 +118,20 @@ class Matrix:
             -self.MAX_PRIORITY,
         )
 
+        if self.now_playing == payload["id"]:
+            LOGGER.debug("Updating %s priority to %s", payload["id"], priority)
+            self.current_priority = priority
+            return
+
         self.next_priority = min(self.next_priority, priority)
 
         self._content_queue.put((priority, self._content[payload["id"]]))
+
+        LOGGER.info(
+            "Added content with ID `%s` to queue with priority %s",
+            payload["id"],
+            priority,
+        )
 
         if not self._content_thread.is_alive():
             try:
@@ -133,14 +145,14 @@ class Matrix:
 
     def _content_loop(self) -> None:
         while not self._content_queue.empty():
-            current_priority, content = self._content_queue.get()
+            self.current_priority, content = self._content_queue.get()
 
             self.now_playing = content.id
 
             LOGGER.debug(
                 "Content with ID `%s` from queue has priority %s",
                 content.content_id,
-                current_priority,
+                self.current_priority,
             )
 
             get_image = content.image_getter
@@ -151,12 +163,12 @@ class Matrix:
                 self.canvas.SetImage(get_image())
                 self.swap_canvas()
 
-                if current_priority > self.next_priority or self.now_playing is None:
+                if self.current_priority > self.next_priority or self.now_playing is None:
                     # If there's higher priority content or content has been stopped
                     LOGGER.debug(
                         "Content `%s` with priority %s is no longer playing: Now playing: %s; Next priority: %s",
                         content.content_id,
-                        current_priority,
+                        self.current_priority,
                         self.now_playing,
                         self.next_priority,
                     )
@@ -175,11 +187,11 @@ class Matrix:
             LOGGER.debug("Content `%s` complete", content.content_id)
 
             if content.persistent and self.now_playing is not None:
-                self._content_queue.put((current_priority, content))
+                self._content_queue.put((self.current_priority, content))
                 LOGGER.info(
                     "Content `%s` is persistent with priority %s",
                     content.content_id,
-                    current_priority,
+                    self.current_priority,
                 )
 
             self.reset_now_playing()
@@ -213,6 +225,7 @@ class Matrix:
     def reset_now_playing(self) -> None:
         """Reset the now playing content."""
         self.now_playing = None
+        self.current_priority = None
         self.next_priority = self.MAX_PRIORITY
 
         LOGGER.debug("Now playing: null; Next priority: %s", self.next_priority)
@@ -234,6 +247,16 @@ class Matrix:
     def width(self) -> int:
         """Return the width of the matrix."""
         return int(self.matrix.width)
+
+    @property
+    def current_priority(self) -> float | None:
+        """Return the priority of the currently playing content."""
+
+        return self._current_priority if self.now_playing is not None else None
+
+    @current_priority.setter
+    def current_priority(self, value: float | None) -> None:
+        self._current_priority = value
 
     def __del__(self) -> None:
         """Clear the matrix when the object is deleted."""
