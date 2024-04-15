@@ -150,7 +150,8 @@ class Setting(Generic[S]):
                 transition_amount,
             )
 
-            self.value = round(
+            # Not self.value because we don't want the MQTT callback to be triggered
+            value = round(
                 (
                     current_value + transition_amount
                     if current_value < self.target_value
@@ -158,6 +159,7 @@ class Setting(Generic[S]):
                 ),
                 self.fp_precision,
             )
+            setattr(self.grid, self.slug, value)
 
             tick_condition.wait()
 
