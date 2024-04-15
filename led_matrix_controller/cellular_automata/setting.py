@@ -138,6 +138,10 @@ class Setting(Generic[S]):
     def transition_value(self, value: S) -> None:
         self.target_value = value
 
+        if not self._has_received_first_message:
+            self.value = value
+            return
+
         if not (hasattr(self, "transition_thread") and self.transition_thread.is_alive()):
             self.transition_thread = Thread(target=self._transition_worker)
             self.transition_thread.start()
@@ -246,6 +250,7 @@ class Setting(Generic[S]):
         is still at its default value). This is to prevent the default value from being sent to the MQTT broker.
         """
         if self._disable_outgoing_mqtt_updates or not self._has_received_first_message:
+            self._has_received_first_message = True
             return
 
         self.matrix.mqtt_client.publish(
