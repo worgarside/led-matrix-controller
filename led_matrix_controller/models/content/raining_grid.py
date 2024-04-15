@@ -82,7 +82,7 @@ class RainingGrid(Automaton):
             rain_chance.transition_rate,
         )
 
-        rain_chance.transition_value_in_grid(0)
+        rain_chance.transition_value(0)
 
         for _ in islice(self, const.TICKS_PER_SECOND * 5):
             yield

@@ -75,7 +75,7 @@ class Rule:
 
         return bool(current_frequency) and i % current_frequency == 0
 
-    def refresh_mask_generator(self, grid: Automaton) -> None:
+    def refresh_mask_generator(self, automaton: Automaton) -> None:
         """Refresh the mask generator for the rule.
 
         Also sets the consumed_parameters attribute if it hasn't been set yet.
@@ -88,10 +88,10 @@ class Rule:
             self.consumed_parameters = {
                 va
                 for va in visitor.attributes
-                if isinstance(grid.settings.get(va), ParameterSetting)
+                if isinstance(automaton.settings.get(va), ParameterSetting)
             }
 
-        self.mask_generator = self.rule_func(grid, self.target_slice)
+        self.mask_generator = self.rule_func(automaton, self.target_slice)
 
     @property
     def rule_tuple(self) -> RuleTuple:

@@ -100,13 +100,13 @@ class Automaton(ContentBase, ABC):
                     setting = deepcopy(annotation)
                     setting.setup(
                         field_name=field_name,
-                        grid=self,
+                        automaton=self,
                         type_=field_type.__origin__,
                     )
 
                     self.settings[setting.slug] = setting
 
-        # Create the grid; 0 is the default state
+        # Create the automaton; 0 is the default state
         self.pixels = self.zeros()
 
         # Create mask generators after all setup is done
@@ -121,7 +121,7 @@ class Automaton(ContentBase, ABC):
 
         self.generate_frame_rulesets()
 
-    def generate_frame_rulesets(self, update_parameter: str | None = None) -> None:
+    def generate_frame_rulesets(self, update_setting: str | None = None) -> None:
         """Pre-calculate the a sequence of mask generators for each frame.
 
         The total number of frames (and thus rulesets) is the least common multiple of the frequencies of the
@@ -136,9 +136,9 @@ class Automaton(ContentBase, ABC):
             )
         )
 
-        if update_parameter:
+        if update_setting:
             for rule in self.rules:
-                if update_parameter in rule.consumed_parameters:
+                if update_setting in rule.consumed_parameters:
                     rule.refresh_mask_generator(self)
 
         self.frame_rulesets = tuple(
@@ -161,11 +161,11 @@ class Automaton(ContentBase, ABC):
         target_slice: TargetSliceDecVal = EVERYWHERE,
         frequency: int | str = 1,
     ) -> Callable[[Callable[[Any, TargetSlice], MaskGen]], Callable[[Self], MaskGen]]:
-        """Decorator to add a rule to the grid.
+        """Decorator to add a rule to the automaton.
 
         Args:
             to_state (StateBase): The state to change to.
-            target_slice (TargetSliceDecVal | None, optional): The slice to target. Defaults to entire grid.
+            target_slice (TargetSliceDecVal | None, optional): The slice to target. Defaults to entire automaton.
             frequency (int, optional): The frequency of the rule (in frames). Defaults to 1 (i.e. every frame). If
                 a string is provided, it references the name of a `FrequencySetting`.
         """
@@ -206,8 +206,8 @@ class Automaton(ContentBase, ABC):
             if const.DEBUG_MODE:
                 # This is just to enable testing/debugging/validation/etc.
                 @wraps(rule_func)
-                def wrapper(grid: Automaton) -> MaskGen:
-                    return rule_func(grid, actual_slice)
+                def wrapper(automaton: Automaton) -> MaskGen:
+                    return rule_func(automaton, actual_slice)
 
                 cls._RULE_FUNCTIONS.append(wrapper)
 
@@ -230,7 +230,7 @@ class Automaton(ContentBase, ABC):
         return np.zeros((self.height, self.width), dtype=dtype)
 
     def __iter__(self) -> Generator[None, None, None]:
-        """Generate the frames of the grid."""
+        """Generate the frames of the automaton."""
         while True:
             for ruleset in self.frame_rulesets:
                 masks = tuple(mask_gen() for _, mask_gen, _ in ruleset)
@@ -244,7 +244,7 @@ class Automaton(ContentBase, ABC):
 
     @property
     def str_repr(self) -> str:
-        """Return a string representation of the grid."""
+        """Return a string representation of the automaton."""
         return "\n".join(" ".join(state.char for state in row) for row in self.pixels)
 
     def translate_slice(
@@ -278,7 +278,7 @@ class Automaton(ContentBase, ABC):
 
     @property
     def shape(self) -> tuple[int, int]:
-        """Return the shape of the grid."""
+        """Return the shape of the automaton."""
         return self.pixels.shape  # type: ignore[return-value]
 
     def __getitem__(self, key: TargetSliceDecVal) -> NDArray[np.int_]:
@@ -333,14 +333,14 @@ def _translate_slice(
 def _translate_slice_start(*, current: int | None, delta: int, size: int) -> int | None:
     """Translate the start of a slice by a given delta.
 
-    Takes into account the limit of the grid: returns None if the slice goes out of bounds in a negative
+    Takes into account the limit of the automaton: returns None if the slice goes out of bounds in a negative
     direction; raises an error if the slice goes out of bounds in a positive direction (because this means
-    the entire slice has gone off the grid).
+    the entire slice has gone off the automaton).
 
     Args:
         delta (int): The translation delta.
         current (int | None): The current start of the slice.
-        size (int): The limit of the grid (either its height or width, depending on the slice direction)
+        size (int): The limit of the automaton (either its height or width, depending on the slice direction)
 
     Returns:
         int | None: The new start of the slice.
