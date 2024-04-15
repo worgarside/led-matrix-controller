@@ -160,4 +160,9 @@ class MqttClient:
             retain=retain or self._retain,
             properties=properties,
         )
-        LOGGER.debug("Published message to topic %s: %r", topic, payload)
+        LOGGER.debug(
+            "Published message to topic %s%s: %r",
+            topic,
+            " with retain flag set" if retain or self._retain else "",
+            payload,
+        )

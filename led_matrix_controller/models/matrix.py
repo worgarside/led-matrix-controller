@@ -290,7 +290,7 @@ class Matrix:
             payload=value.content_id if value is not None else None,
             retain=True,
         )
-        LOGGER.info("Now playing: %s", value)
+        LOGGER.info("Now playing: %s", value.id if value is not None else None)
 
     @property
     def current_priority(self) -> float | None:
