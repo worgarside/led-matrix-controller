@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from json import dumps
 from logging import DEBUG, getLogger
 from queue import PriorityQueue
 from threading import Condition, Thread
@@ -80,7 +79,7 @@ class Matrix:
             self._on_content_message,
         )
 
-        self.current_content_topic = self._mqtt_topic("current-content")
+        self.current_content_topic_root = self._mqtt_topic("current-content")
 
         self._content_queue: PriorityQueue[tuple[float, ContentBase]] = PriorityQueue()
         self._content_thread = Thread(target=self._content_loop)
@@ -94,6 +93,7 @@ class Matrix:
         self.tick_condition = Condition()
 
     def _mqtt_topic(self, suffix: str) -> str:
+        """Create an MQTT topic with the given suffix."""
         return "/" + "/".join(
             to_kebab_case(const.HOSTNAME, self.__class__.__name__, *suffix.split("/"))
         )
@@ -244,12 +244,6 @@ class Matrix:
 
             LOGGER.info("Added content with ID `%s`", c.content_id)
 
-        self.mqtt_client.publish(
-            topic="/homeassistant/select/mtrxpi-current-content/set-options",
-            payload=dumps(content_ids),
-            retain=True,
-        )
-
     def reset_now_playing(self) -> None:
         """Reset the now playing content."""
         self.current_content = None
@@ -285,8 +279,10 @@ class Matrix:
     def current_content(self, value: ContentBase | None) -> None:
         self._current_content = value
 
+        suffix = "get"  # Because everything else will get the state from this topic
+
         self.mqtt_client.publish(
-            topic=self.current_content_topic,
+            topic=f"{self.current_content_topic_root}/{suffix}",
             payload=value.content_id if value is not None else None,
             retain=True,
         )
