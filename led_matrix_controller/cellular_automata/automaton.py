@@ -8,7 +8,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import IntEnum
 from functools import lru_cache, wraps
-from itertools import islice
+from itertools import cycle, islice
 from logging import DEBUG, getLogger
 from typing import (
     Any,
@@ -231,16 +231,19 @@ class Automaton(ContentBase, ABC):
     def __iter__(self) -> Generator[None, None, None]:
         """Generate the frames of the automaton."""
         self._active = True
-        while self._active:
-            for ruleset in self.frame_rulesets:
-                masks = tuple(mask_gen() for _, mask_gen, _ in ruleset)
 
-                for mask, (target_view, _, state) in zip(masks, ruleset, strict=True):
-                    target_view[mask] = state
+        for ruleset in cycle(self.frame_rulesets):
+            masks = tuple(mask_gen() for _, mask_gen, _ in ruleset)
 
-                self.frame_index += 1
+            for mask, (target_view, _, state) in zip(masks, ruleset, strict=True):
+                target_view[mask] = state
 
-                yield
+            self.frame_index += 1
+
+            yield
+
+            if not self._active:
+                break
 
     @property
     def str_repr(self) -> str:

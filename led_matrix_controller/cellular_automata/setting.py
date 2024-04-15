@@ -9,7 +9,6 @@ from threading import Thread
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     ClassVar,
     Generic,
     Literal,
@@ -63,13 +62,6 @@ class Setting(Generic[S]):
     """The rate at which the setting will be changed per tick/frame.
 
     If None (or 0), the setting modification will be applied immediately.
-    """
-
-    callback: Callable[[S], None] = field(init=False)
-    """Callback called with any values received via MQTT.
-
-    This isn't directly defined as a method because it can vary by instance (e.g. transitioning) as well as
-    per subclass.
     """
 
     automaton: Automaton = field(init=False)
@@ -206,8 +198,6 @@ class Setting(Generic[S]):
         except Exception:
             LOGGER.exception("An unexpected error occurred while validating the payload")
             return
-
-        self.callback(payload)
 
         if (
             self.automaton._active

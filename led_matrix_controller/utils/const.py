@@ -18,7 +18,10 @@ DEBUG_MODE: Final[bool] = bool(int(getenv("DEBUG_MODE", "0")))
 MQTT_HOST: Final[str] = getenv("MQTT_HOST", "http://homeassistant.local")
 
 
-HOSTNAME: Final[str] = re.sub(r"[^a-z0-9]", "-", gethostname().lower())
+HOSTNAME: Final[str] = getenv(
+    "HOSTNAME_OVERRIDE",
+    re.sub(r"[^a-z0-9]", "-", gethostname().lower()),
+)
 
 HA_LED_MATRIX_PAYLOAD_TOPIC: Final[str] = "/homeassistant/led_matrix/display"
 HA_LED_MATRIX_BRIGHTNESS_TOPIC: Final[str] = "/homeassistant/led_matrix/brightness"
