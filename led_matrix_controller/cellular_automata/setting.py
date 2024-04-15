@@ -88,6 +88,9 @@ class Setting(Generic[S]):
     max: int | float | None = None
     """Inclusive upper bound for this setting."""
 
+    requires_rule_regeneration: bool = True
+    """Whether changing this setting requires the rules to be regenerated."""
+
     strict: bool = True
     """Apply strict validation to incoming payloads.
 
@@ -320,8 +323,10 @@ class Setting(Generic[S]):
         setattr(self.automaton, self.slug, value)
         LOGGER.info("Setting %s:%s to %s", self.automaton.id, self.slug, value)
 
-        # TODO could go in a separate thread?
-        self.automaton.generate_frame_rulesets(update_setting=self.slug)
+        if self.requires_rule_regeneration:
+            # TODO could go in a separate thread?
+            self.automaton.generate_frame_rulesets(update_setting=self.slug)
+
         self.send_value_update_message()
 
 
