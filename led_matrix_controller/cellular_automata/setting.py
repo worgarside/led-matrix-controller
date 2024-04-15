@@ -107,8 +107,18 @@ class Setting(Generic[S]):
 
     matrix: Matrix = field(init=False)
 
-    _mqtt_client: ClassVar[MqttClient]
     _disable_outgoing_mqtt_updates: bool = False
+    """Flag to disable outgoing MQTT updates when transitioning."""
+
+    _mqtt_client: ClassVar[MqttClient]
+    """The MQTT client to use for this setting."""
+
+    _has_received_first_message: bool = False
+    """Flag to indicate that the first message has been received.
+
+    This is used to prevent the setting from being updated with the default
+    value before the first message is received.
+    """
 
     def __post_init__(self) -> None:
         if not hasattr(self.__class__, "_mqtt_client"):
@@ -230,8 +240,12 @@ class Setting(Generic[S]):
         return coerced
 
     def send_value_update_message(self) -> None:
-        """Send a message with the current value of the setting."""
-        if self._disable_outgoing_mqtt_updates:
+        """Send a message with the current value of the setting.
+
+        Disabled if outgoing updates are disabled or if the first message has not been received (i.e. the setting
+        is still at its default value). This is to prevent the default value from being sent to the MQTT broker.
+        """
+        if self._disable_outgoing_mqtt_updates or not self._has_received_first_message:
             return
 
         self.matrix.mqtt_client.publish(
