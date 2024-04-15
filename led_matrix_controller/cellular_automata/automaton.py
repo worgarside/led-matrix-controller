@@ -233,9 +233,12 @@ class Automaton(ContentBase, ABC):
         """Generate the frames of the grid."""
         while True:
             for ruleset in self.frame_rulesets:
-                masks = tuple(mask_gen() for _, mask_gen, _ in ruleset)
+                masks = tuple(
+                    (target_view, mask_gen(), state)
+                    for target_view, mask_gen, state in ruleset
+                )
 
-                for mask, (target_view, _, state) in zip(masks, ruleset, strict=True):
+                for target_view, mask, state in masks:
                     target_view[mask] = state
 
                 self.frame_index += 1
