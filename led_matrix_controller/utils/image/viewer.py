@@ -59,5 +59,11 @@ class ImageViewer(ContentBase):
     def __iter__(self) -> Generator[None, None, None]:
         """Yield nothing; this is a static image."""
         yield
-        sleep(max(0, self.display_seconds - (2 * const.TICK_LENGTH)))
+
+        ticks_to_sleep = self.display_seconds / const.TICK_LENGTH
+
+        while self._active and ticks_to_sleep > 0:
+            sleep(const.TICK_LENGTH)
+            ticks_to_sleep -= 1
+
         yield

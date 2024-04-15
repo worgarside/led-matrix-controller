@@ -188,9 +188,9 @@ class Matrix:
                         self.current_content,
                         self.next_priority,
                     )
-                    break
-            else:
-                LOGGER.debug("Content `%s` complete", self.current_content.content_id)
+                    self.current_content.stop()
+
+            LOGGER.debug("Content `%s` complete", self.current_content.content_id)
 
             if (
                 self.current_content.HAS_TEARDOWN_SEQUENCE
@@ -200,6 +200,7 @@ class Matrix:
                 LOGGER.debug("Running teardown sequence for %s", self.current_content.id)
 
                 for _ in self.current_content.teardown():
+                    # TODO move into method
                     self.canvas.SetImage(get_image())
                     self.swap_canvas()
 

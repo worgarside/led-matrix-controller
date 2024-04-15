@@ -67,7 +67,6 @@ class Automaton(ContentBase, ABC):
     mqtt_client: MqttClient
 
     frame_index: int = field(init=False, default=-1)
-
     frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False)
     rules: list[Rule] = field(init=False)
     settings: dict[str, Setting[Any]] = field(default_factory=dict)
@@ -231,7 +230,8 @@ class Automaton(ContentBase, ABC):
 
     def __iter__(self) -> Generator[None, None, None]:
         """Generate the frames of the automaton."""
-        while True:
+        self._active = True
+        while self._active:
             for ruleset in self.frame_rulesets:
                 masks = tuple(mask_gen() for _, mask_gen, _ in ruleset)
 

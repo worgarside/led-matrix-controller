@@ -135,17 +135,6 @@ class Setting(Generic[S]):
         if isinstance(self.min, float):
             self.min = round(self.min, self.fp_precision)
 
-    def transition_value(self, value: S) -> None:
-        self.target_value = value
-
-        if not self._has_received_first_message:
-            self.value = value
-            return
-
-        if not (hasattr(self, "transition_thread") and self.transition_thread.is_alive()):
-            self.transition_thread = Thread(target=self._transition_worker)
-            self.transition_thread.start()
-
     def _transition_worker(self) -> None:
         LOGGER.info("Transitioning %s to %s", self.slug, self.target_value)
 
@@ -180,9 +169,6 @@ class Setting(Generic[S]):
         tick_condition.release()
         self._disable_outgoing_mqtt_updates = False
 
-    def _set_value(self, value: S) -> None:
-        self.value = value
-
     def setup(
         self,
         *,
@@ -194,12 +180,8 @@ class Setting(Generic[S]):
         self.slug = field_name
         self.automaton = automaton
         self.type_ = type_
-        self.callback = self._set_value
 
         if self.type_ in {int, float}:
-            if (self.transition_rate or 0) > 0:
-                self.callback = self.transition_value
-
             if self.type_ is int:
                 self.fp_precision = 0
 
@@ -226,6 +208,21 @@ class Setting(Generic[S]):
             return
 
         self.callback(payload)
+
+        if (
+            self.automaton._active
+            and self._has_received_first_message
+            and (self.transition_rate or 0) > 0
+        ):
+            self.target_value = payload
+
+            if not (
+                hasattr(self, "transition_thread") and self.transition_thread.is_alive()
+            ):
+                self.transition_thread = Thread(target=self._transition_worker)
+                self.transition_thread.start()
+        else:
+            self.value = payload
 
     def _coerce_and_format(self, payload: Any) -> S:
         coerced: S = payload if isinstance(payload, self.type_) else self.type_(payload)

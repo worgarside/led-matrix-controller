@@ -9,6 +9,7 @@ from functools import partial
 from typing import (
     ClassVar,
     Generator,
+    final,
 )
 
 import numpy as np
@@ -64,16 +65,21 @@ class ContentBase(ABC):
     width: int
 
     instance_id: str | None = None
-
-    colormap: NDArray[np.uint8] = field(init=False)
-    pixels: GridView = field(init=False)
     persistent: bool = field(default=False)
 
+    _active: bool = field(init=False, default=False)
     _image_getter: partial[Image.Image] = field(init=False)
+    colormap: NDArray[np.uint8] = field(init=False)
+    pixels: GridView = field(init=False)
 
     @abstractmethod
     def teardown(self) -> Generator[None, None, None]:
         """Perform any necessary cleanup."""
+
+    @final
+    def stop(self) -> None:
+        """Stop the content immediately."""
+        self._active = False
 
     @property
     def image_getter(self) -> partial[Image.Image]:
