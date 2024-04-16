@@ -214,7 +214,7 @@ class Setting(Generic[S]):
             ):
                 self.transition_thread = Thread(target=self._transition_worker)
                 self.transition_thread.start()
-        else:
+        elif payload != self.value:
             self.value = payload
 
     def _coerce_and_format(self, payload: Any) -> S:
@@ -244,7 +244,7 @@ class Setting(Generic[S]):
             return
 
         self.matrix.mqtt_client.publish(
-            self.mqtt_topic_outgoing,
+            self.mqtt_topic,
             self.value,
         )
 
@@ -278,39 +278,22 @@ class Setting(Generic[S]):
     def mqtt_topic(self) -> str:
         """The MQTT topic that this setting is subscribed to.
 
-        Auto-generated, in the form `/<hostname>/<automaton ID>/<setting type>/<kebab-case-slug>/set`
+        Auto-generated, in the form `/<hostname>/<automaton ID>/<setting type>/<kebab-case-slug>`
 
-        e.g. /mtrxpi/raining-grid/frequency/rain-speed/set
+        e.g. /mtrxpi/raining-grid/frequency/rain-speed
         """
 
         if not hasattr(self, "_mqtt_topic"):
             self._mqtt_topic = "/" + "/".join(
                 to_kebab_case(
-                    const.HOSTNAME, self.automaton.id, self.setting_type, self.slug, "set"
+                    const.HOSTNAME,
+                    self.automaton.id,
+                    self.setting_type,
+                    self.slug,
                 )
             )
 
         return self._mqtt_topic
-
-    _mqtt_topic_outgoing: str = field(init=False)
-
-    @property
-    def mqtt_topic_outgoing(self) -> str:
-        """The MQTT topic that this setting publishes to.
-
-        Auto-generated, in the form `/<hostname>/<automaton ID>/<setting type>/<kebab-case-slug>/get`
-
-        e.g. /mtrxpi/raining-grid/frequency/rain-speed/get
-        """
-
-        if not hasattr(self, "_mqtt_topic_outgoing"):
-            self._mqtt_topic_outgoing = "/" + "/".join(
-                to_kebab_case(
-                    const.HOSTNAME, self.automaton.id, self.setting_type, self.slug, "get"
-                )
-            )
-
-        return self._mqtt_topic_outgoing
 
     @property
     def value(self) -> S:

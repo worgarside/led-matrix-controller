@@ -73,13 +73,13 @@ class Matrix:
 
         self._content: dict[str, ContentBase] = {}
 
-        self.content_topic = self._mqtt_topic("content")
+        self.queue_content_topic = self._mqtt_topic("queue-content")
         self.mqtt_client.add_topic_callback(
-            self.content_topic,
+            self.queue_content_topic,
             self._on_content_message,
         )
 
-        self.current_content_topic_root = self._mqtt_topic("current-content")
+        self.current_content_topic = self._mqtt_topic("current-content")
 
         self._content_queue: PriorityQueue[tuple[float, ContentBase]] = PriorityQueue()
         self._content_thread = Thread(target=self._content_loop)
@@ -102,7 +102,7 @@ class Matrix:
         self,
         payload: ContentPayload,
     ) -> None:
-        """Callback for when a message is received on the content topic."""
+        """Add/remove content to/from the queue."""
 
         if payload["priority"] is None:
             for p, c in self._content_queue.queue:
@@ -280,10 +280,8 @@ class Matrix:
     def current_content(self, value: ContentBase | None) -> None:
         self._current_content = value
 
-        suffix = "get"  # Because everything else will get the state from this topic
-
         self.mqtt_client.publish(
-            topic=f"{self.current_content_topic_root}/{suffix}",
+            topic=self.current_content_topic,
             payload=value.content_id if value is not None else None,
             retain=True,
         )
