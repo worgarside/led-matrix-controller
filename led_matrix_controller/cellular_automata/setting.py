@@ -108,13 +108,6 @@ class Setting(Generic[S]):
     _mqtt_client: ClassVar[MqttClient]
     """The MQTT client to use for this setting."""
 
-    _has_received_first_message: bool = False
-    """Flag to indicate that the first message has been received.
-
-    This is used to prevent the setting from being updated with the default
-    value before the first message is received.
-    """
-
     def __post_init__(self) -> None:
         if not hasattr(self.__class__, "_mqtt_client"):
             self.__class__._mqtt_client = MqttClient.CLIENT
@@ -170,13 +163,9 @@ class Setting(Generic[S]):
 
         # Only transition if
         if (
-            self.automaton._active  # the automaton is currently displaying
-            and self._has_received_first_message  # the first message has been received*
+            self.automaton._active  # the automaton is currently displaying and
             and (self.transition_rate or 0) > 0  # a transition rate is set (obviously)
         ):
-            # *this is to prevent the setting from being updated with the default value before the
-            # first message is received
-
             LOGGER.debug("Set target value to %r", payload)
             self.target_value = payload
 
