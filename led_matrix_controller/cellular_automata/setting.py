@@ -168,11 +168,15 @@ class Setting(Generic[S]):
             LOGGER.exception("An unexpected error occurred while validating the payload")
             return
 
+        # Only transition if
         if (
-            self.automaton._active
-            and self._has_received_first_message
-            and (self.transition_rate or 0) > 0
+            self.automaton._active  # the automaton is currently displaying
+            and self._has_received_first_message  # the first message has been received*
+            and (self.transition_rate or 0) > 0  # a transition rate is set (obviously)
         ):
+            # *this is to prevent the setting from being updated with the default value before the
+            # first message is received
+
             LOGGER.debug("Set target value to %r", payload)
             self.target_value = payload
 
@@ -182,8 +186,13 @@ class Setting(Generic[S]):
                 self.transition_thread = Thread(target=self._transition_worker)
                 self.transition_thread.start()
                 LOGGER.debug("Started transition thread")
+            else:
+                LOGGER.debug("Transition thread already running")
         elif payload != self.value:
+            LOGGER.debug("Set value to %r", payload)
             self.value = payload
+        else:
+            LOGGER.debug("Value unchanged: %r", payload)
 
     def validate_payload(self, raw_payload: S) -> S:
         """Check that the incoming payload is a valid value for this Setting."""
