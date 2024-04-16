@@ -233,21 +233,6 @@ class Setting(Generic[S]):
 
         return coerced
 
-    def send_value_update_message(self) -> None:
-        """Send a message with the current value of the setting.
-
-        Disabled if outgoing updates are disabled or if the first message has not been received (i.e. the setting
-        is still at its default value). This is to prevent the default value from being sent to the MQTT broker.
-        """
-        if self._disable_outgoing_mqtt_updates or not self._has_received_first_message:
-            self._has_received_first_message = True
-            return
-
-        self.matrix.mqtt_client.publish(
-            self.mqtt_topic,
-            self.value,
-        )
-
     def validate(self, raw_payload: S) -> S:
         """Check that the incoming payload is a valid value for this Setting."""
         if isinstance(raw_payload, self.type_) and self.type_ not in {int, float}:
@@ -309,8 +294,6 @@ class Setting(Generic[S]):
         if self.requires_rule_regeneration:
             # TODO could go in a separate thread?
             self.automaton.generate_frame_rulesets(update_setting=self.slug)
-
-        self.send_value_update_message()
 
 
 @dataclass(kw_only=True, slots=True)
