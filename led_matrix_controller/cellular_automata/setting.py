@@ -231,10 +231,10 @@ class Setting(Generic[S]):
 
         self._disable_outgoing_mqtt_updates = True
         while (current_value := self.type_(self.value)) != self.target_value:
-            transition_amount = -int(current_value < self.target_value) * round(
+            transition_amount = round(
                 min(self.transition_rate, abs(current_value - self.target_value)),
                 self.fp_precision,
-            )
+            ) * (1 if self.target_value > current_value else -1)
 
             LOGGER.debug(
                 "%s: %s + %s => %s",
