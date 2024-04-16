@@ -130,40 +130,6 @@ class Setting(Generic[S]):
         if isinstance(self.min, float):
             self.min = round(self.min, self.fp_precision)
 
-    def _transition_worker(self) -> None:
-        LOGGER.info("Transitioning %s to %s", self.slug, self.target_value)
-
-        tick_condition = self.matrix.tick_condition
-        tick_condition.acquire()
-
-        self._disable_outgoing_mqtt_updates = True
-        while (current_value := self.type_(self.value)) != self.target_value:
-            transition_amount = round(
-                min(self.transition_rate, abs(current_value - self.target_value)),
-                self.fp_precision,
-            )
-            LOGGER.debug(
-                "%s: %s + %s => %s",
-                self.slug,
-                current_value,
-                transition_amount,
-                self.target_value,
-            )
-
-            self.value = round(
-                (
-                    current_value + transition_amount
-                    if current_value < self.target_value
-                    else current_value - transition_amount
-                ),
-                self.fp_precision,
-            )
-
-            tick_condition.wait()
-
-        tick_condition.release()
-        self._disable_outgoing_mqtt_updates = False
-
     def setup(
         self,
         *,
@@ -194,7 +160,7 @@ class Setting(Generic[S]):
             raw_payload: The decoded payload from the MQTT message
         """
         try:
-            payload = self.validate(raw_payload)
+            payload = self.validate_payload(raw_payload)
         except InvalidPayloadError:
             LOGGER.exception("Invalid payload")
             return
@@ -207,6 +173,7 @@ class Setting(Generic[S]):
             and self._has_received_first_message
             and (self.transition_rate or 0) > 0
         ):
+            LOGGER.debug("Set target value to %r", payload)
             self.target_value = payload
 
             if not (
@@ -214,26 +181,11 @@ class Setting(Generic[S]):
             ):
                 self.transition_thread = Thread(target=self._transition_worker)
                 self.transition_thread.start()
+                LOGGER.debug("Started transition thread")
         elif payload != self.value:
             self.value = payload
 
-    def _coerce_and_format(self, payload: Any) -> S:
-        coerced: S = payload if isinstance(payload, self.type_) else self.type_(payload)
-
-        # Check not out of bounds
-        if isinstance(coerced, float | int):
-            if self.max is not None and coerced > self.max:
-                coerced = self.type_(self.max)
-
-            if self.min is not None and coerced < self.min:
-                coerced = self.type_(self.min)
-
-        if isinstance(coerced, float):
-            coerced = round(coerced, self.fp_precision)
-
-        return coerced
-
-    def validate(self, raw_payload: S) -> S:
+    def validate_payload(self, raw_payload: S) -> S:
         """Check that the incoming payload is a valid value for this Setting."""
         if isinstance(raw_payload, self.type_) and self.type_ not in {int, float}:
             # Non-numeric type, decoded and parsed correctly
@@ -256,6 +208,56 @@ class Setting(Generic[S]):
             )
 
         return coerced_and_formatted
+
+    def _coerce_and_format(self, payload: Any) -> S:
+        coerced: S = payload if isinstance(payload, self.type_) else self.type_(payload)
+
+        # Check not out of bounds
+        if isinstance(coerced, float | int):
+            if self.max is not None and coerced > self.max:
+                coerced = self.type_(self.max)
+
+            if self.min is not None and coerced < self.min:
+                coerced = self.type_(self.min)
+
+        if isinstance(coerced, float):
+            coerced = round(coerced, self.fp_precision)
+
+        return coerced
+
+    def _transition_worker(self) -> None:
+        LOGGER.info("Transitioning %s to %s", self.slug, self.target_value)
+
+        tick_condition = self.matrix.tick_condition
+        tick_condition.acquire()
+
+        self._disable_outgoing_mqtt_updates = True
+        while (current_value := self.type_(self.value)) != self.target_value:
+            transition_amount = -int(current_value < self.target_value) * round(
+                min(self.transition_rate, abs(current_value - self.target_value)),
+                self.fp_precision,
+            )
+
+            LOGGER.debug(
+                "%s: %s + %s => %s",
+                self.slug,
+                current_value,
+                transition_amount,
+                self.target_value,
+            )
+
+            self.value = round(current_value + transition_amount, self.fp_precision)
+
+            tick_condition.wait()
+
+        tick_condition.release()
+        self._disable_outgoing_mqtt_updates = False
+        LOGGER.info(
+            'Transition complete: Automaton("%s").%s = %s',
+            self.automaton.id,
+            self.slug,
+            self.value,
+        )
 
     _mqtt_topic: str = field(init=False)
 
@@ -289,7 +291,7 @@ class Setting(Generic[S]):
     def value(self, value: S) -> None:
         """Set the setting's value in the automaton's attribute."""
         setattr(self.automaton, self.slug, value)
-        LOGGER.info("Setting %s:%s to %s", self.automaton.id, self.slug, value)
+        LOGGER.info('Automaton("%s").%s = %s', self.automaton.id, self.slug, value)
 
         if self.requires_rule_regeneration:
             # TODO could go in a separate thread?
