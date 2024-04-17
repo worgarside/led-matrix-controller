@@ -92,82 +92,22 @@ class Matrix:
         self.tick = 0
         self.tick_condition = Condition()
 
-    def _mqtt_topic(self, suffix: str) -> str:
-        """Create an MQTT topic with the given suffix."""
-        return "/" + "/".join(
-            to_kebab_case(const.HOSTNAME, self.__class__.__name__, *suffix.split("/"))
-        )
-
-    def _on_content_message(
-        self,
-        payload: ContentPayload,
-    ) -> None:
-        """Add/remove content to/from the queue."""
-
-        if payload["priority"] is None:
-            for p, c in self._content_queue.queue:
-                if c.content_id == payload["id"]:
-                    self._content_queue.queue.remove((p, c))
-                    LOGGER.info("Removed content with ID `%s` from queue", payload["id"])
-                    break
-
-            if (
-                self.current_content is not None
-                and self.current_content.content_id == payload["id"]
-            ):
-                self.reset_now_playing()
-                LOGGER.info(
-                    "Removed content with ID `%s` from now playing", payload["id"]
-                )
-
-            return
-
-        priority = max(
-            min(float(payload["priority"]), self.MAX_PRIORITY),
-            -self.MAX_PRIORITY,
-        )
-
-        if (
-            self.current_content is not None
-            and self.current_content.content_id == payload["id"]
-        ):
-            LOGGER.debug("Updating %s priority to %s", payload["id"], priority)
-            self.current_priority = priority
-            return
-
-        self.next_priority = min(self.next_priority, priority)
-
-        self._content_queue.put((priority, self._content[payload["id"]]))
-
-        LOGGER.info(
-            "Added content with ID `%s` to queue with priority %s",
-            payload["id"],
-            priority,
-        )
-
-        if not self._content_thread.is_alive():
-            try:
-                self._content_thread.start()
-            except RuntimeError as err:
-                if str(err) != "threads can only be started once":
-                    raise
-
-                self._content_thread = Thread(target=self._content_loop)
-                self._content_thread.start()
-
     def _content_loop(self) -> None:
         """Loop through the content queue."""
         while not self._content_queue.empty():
             self.current_priority, self.current_content = self._content_queue.get()
 
+            current_content_id = self.current_content.content_id
+
             LOGGER.debug(
                 "Content with ID `%s` from queue has priority %s",
-                self.current_content.content_id,
+                current_content_id,
                 self.current_priority,
             )
 
             LOGGER.info(
-                "Displaying content with ID `%s`", self.current_content.content_id
+                "Displaying content with ID `%s`",
+                current_content_id,
             )
 
             get_image = self.current_content.image_getter
@@ -183,14 +123,14 @@ class Matrix:
                     # If there's higher priority content or content has been stopped
                     LOGGER.debug(
                         "Content `%s` with priority %s is no longer playing: Now playing: %s; Next priority: %s",
-                        self.current_content.content_id,
+                        current_content_id,
                         self.current_priority,
                         self.current_content,
                         self.next_priority,
                     )
                     self.current_content.stop()
 
-            LOGGER.debug("Content `%s` complete", self.current_content.content_id)
+            LOGGER.debug("Content `%s` complete", current_content_id)
 
             if (
                 self.current_content.HAS_TEARDOWN_SEQUENCE
@@ -204,13 +144,13 @@ class Matrix:
                     self.canvas.SetImage(get_image())
                     self.swap_canvas()
 
-            LOGGER.debug("Content `%s` complete", self.current_content.content_id)
+            LOGGER.debug("Content `%s` complete", current_content_id)
 
             if self.current_content.persistent and self.current_content is not None:
                 self._content_queue.put((self.current_priority, self.current_content))
                 LOGGER.info(
                     "Content `%s` is persistent with priority %s",
-                    self.current_content.content_id,
+                    current_content_id,
                     self.current_priority,
                 )
 
@@ -218,6 +158,74 @@ class Matrix:
 
         self.reset_now_playing()
         self.clear_matrix()
+
+    def _mqtt_topic(self, suffix: str) -> str:
+        """Create an MQTT topic with the given suffix."""
+        return "/" + "/".join(
+            to_kebab_case(const.HOSTNAME, self.__class__.__name__, *suffix.split("/"))
+        )
+
+    def _on_content_message(
+        self,
+        payload: ContentPayload,
+    ) -> None:
+        """Add/remove content to/from the queue."""
+        if payload["priority"] is None:
+            return self._remove_content_from_queue(payload["id"])
+
+        priority = max(
+            min(float(payload["priority"]), self.MAX_PRIORITY),
+            -self.MAX_PRIORITY,
+        )
+
+        if (
+            self.current_content is not None
+            and self.current_content.content_id == payload["id"]
+        ):
+            LOGGER.debug("Updating %s priority to %s", payload["id"], priority)
+            self.current_priority = priority
+            return None
+
+        self.next_priority = min(self.next_priority, priority)
+
+        self._content_queue.put((priority, self._content[payload["id"]]))
+
+        LOGGER.info(
+            "Added content with ID `%s` to queue with priority %s",
+            payload["id"],
+            priority,
+        )
+
+        self._start_content_thread()
+
+        return None
+
+    def _remove_content_from_queue(self, content_id: str) -> None:
+        """Remove content from the queue."""
+        for p, c in self._content_queue.queue:
+            if c.content_id == content_id:
+                self._content_queue.queue.remove((p, c))
+                LOGGER.info("Removed content with ID `%s` from queue", content_id)
+                break
+
+        if (
+            self.current_content is not None
+            and self.current_content.content_id == content_id
+        ):
+            self.reset_now_playing()
+            LOGGER.info("Removed content with ID `%s` from now playing", content_id)
+
+    def _start_content_thread(self) -> None:
+        """Start the content thread. If it has already been started, do nothing."""
+        if not self._content_thread.is_alive():
+            try:
+                self._content_thread.start()
+            except RuntimeError as err:
+                if str(err) != "threads can only be started once":
+                    raise
+
+                self._content_thread = Thread(target=self._content_loop)
+                self._content_thread.start()
 
     def clear_matrix(self) -> None:
         """Clear the matrix."""
