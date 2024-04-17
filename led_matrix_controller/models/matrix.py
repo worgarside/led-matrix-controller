@@ -14,7 +14,7 @@ from wg_utilities.loggers import add_stream_handler
 from ._rgbmatrix import RGBMatrix, RGBMatrixOptions
 
 if TYPE_CHECKING:
-    from models.content.base import ContentBase
+    from models.content.base import ContentBase, ImageGetter
     from utils.mqtt import MqttClient
 
     from .led_matrix_options import LedMatrixOptions
@@ -113,8 +113,7 @@ class Matrix:
             get_image = self.current_content.image_getter
             # Actual loop through individual content instances:
             for _ in self.current_content:
-                self.canvas.SetImage(get_image())
-                self.swap_canvas()
+                self.swap_canvas(get_image)
 
                 if (
                     self.current_priority > self.next_priority
@@ -140,9 +139,7 @@ class Matrix:
                 LOGGER.debug("Running teardown sequence for %s", self.current_content.id)
 
                 for _ in self.current_content.teardown():
-                    # TODO move into method
-                    self.canvas.SetImage(get_image())
-                    self.swap_canvas()
+                    self.swap_canvas(get_image)
 
             LOGGER.debug("Content `%s` complete", current_content_id)
 
@@ -232,8 +229,11 @@ class Matrix:
         self.canvas.Clear()
         self.swap_canvas()
 
-    def swap_canvas(self) -> None:
+    def swap_canvas(self, get_image: ImageGetter | None = None, /) -> None:
         """Update the content of the canvas and increment the tick count."""
+        if get_image:
+            self.canvas.SetImage(get_image())
+
         self.canvas = self.matrix.SwapOnVSync(self.canvas)
         self.tick += 1
         self.tick_condition.acquire(timeout=const.TICK_LENGTH)

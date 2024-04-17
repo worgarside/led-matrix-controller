@@ -54,6 +54,9 @@ def _get_image(colormap: NDArray[np.uint8], grid: GridView) -> Image.Image:
     return Image.fromarray(colormap[grid], "RGB")
 
 
+ImageGetter = partial[Image.Image]
+
+
 @dataclass(kw_only=True, slots=True)
 class ContentBase(ABC):
     """Base class for content models."""
@@ -68,7 +71,7 @@ class ContentBase(ABC):
     persistent: bool = field(default=False)
 
     _active: bool = field(init=False, default=False)
-    _image_getter: partial[Image.Image] = field(init=False)
+    _image_getter: ImageGetter = field(init=False)
     colormap: NDArray[np.uint8] = field(init=False)
     pixels: GridView = field(init=False)
 
@@ -82,7 +85,7 @@ class ContentBase(ABC):
         self._active = False
 
     @property
-    def image_getter(self) -> partial[Image.Image]:
+    def image_getter(self) -> ImageGetter:
         """Return the image representation of the content."""
         if not hasattr(self, "_image_getter"):
             self._image_getter = partial(_get_image, self.colormap, self.pixels)
