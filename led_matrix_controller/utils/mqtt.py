@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from json import JSONDecodeError, loads
 from logging import DEBUG, getLogger
-from typing import TYPE_CHECKING, Any, Callable, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, TypeVar
 
 import paho.mqtt.client as mqtt
 from paho.mqtt.enums import CallbackAPIVersion
@@ -19,16 +19,30 @@ LOGGER = getLogger(__name__)
 LOGGER.setLevel(DEBUG)
 add_stream_handler(LOGGER)
 
+
+class Singleton(type):
+    """Singleton metaclass."""
+
+    _instances: ClassVar[dict[type[Any], Any]] = {}
+
+    def __call__(cls, *args: Any, **kwargs: Any) -> Any:
+        """Return the instance if it already exists, otherwise create it."""
+        if cls not in cls._instances:
+            cls._instances[cls] = super().__call__(*args, **kwargs)
+
+        return cls._instances[cls]
+
+
 T = TypeVar("T", bound=object)
 
 
-class MqttClient:
+class MqttClient(metaclass=Singleton):
     """MQTT Client wrapper class."""
 
-    CLIENT: MqttClient
+    _CLIENT: MqttClient
 
     def __init__(
-        self, *, connect: bool = True, userdata: Any = None, retain: bool = False
+        self, *, connect: bool = False, userdata: Any = None, retain: bool = False
     ) -> None:
         self._client = mqtt.Client(
             callback_api_version=CallbackAPIVersion.VERSION2,
@@ -55,7 +69,7 @@ class MqttClient:
             )
             self._client.connect(const.MQTT_HOST)
 
-        self.__class__.CLIENT = self
+        self.__class__._CLIENT = self
 
     def _on_connect(
         self,

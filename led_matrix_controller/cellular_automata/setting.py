@@ -110,7 +110,7 @@ class Setting(Generic[S]):
 
     def __post_init__(self) -> None:
         if not hasattr(self.__class__, "_mqtt_client"):
-            self.__class__._mqtt_client = MqttClient.CLIENT
+            self.__class__._mqtt_client = MqttClient()
 
         if self.min is not None and self.max is not None and self.min > self.max:
             raise InvalidSettingError(
