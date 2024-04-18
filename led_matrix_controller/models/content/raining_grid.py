@@ -54,7 +54,13 @@ class RainingGrid(Automaton):
 
     rain_chance: Annotated[
         float,
-        ParameterSetting(min=0, max=1, transition_rate=0.001, fp_precision=3),
+        ParameterSetting(
+            min=0,
+            max=1,
+            transition_rate=0.001,
+            fp_precision=3,
+            requires_rule_regeneration=False,
+        ),
     ] = 0.025
     rain_speed: Annotated[int, FrequencySetting()] = 1
     splash_speed: Annotated[int, FrequencySetting()] = 8
@@ -69,11 +75,10 @@ class RainingGrid(Automaton):
 
         rain_chance = self.settings["rain_chance"]
 
-        original_rain_chance = rain_chance.get_value_from_grid()
+        total_change = original_rain_chance = rain_chance.value
         original_transition_rate = rain_chance.transition_rate
 
         ticks = 0.5 * const.TICKS_PER_SECOND
-        total_change = rain_chance.get_value_from_grid()
 
         rain_chance.transition_rate = total_change / ticks
 
@@ -83,7 +88,7 @@ class RainingGrid(Automaton):
             rain_chance.transition_rate,
         )
 
-        rain_chance.transition_value_in_grid(0)
+        rain_chance.value = 0
 
         for _ in islice(self, const.TICKS_PER_SECOND * 5):
             yield
@@ -91,7 +96,7 @@ class RainingGrid(Automaton):
             if np.all(self.pixels == 0):
                 break
 
-        rain_chance.set_value_in_grid(original_rain_chance)
+        rain_chance.value = original_rain_chance
         rain_chance.transition_rate = original_transition_rate
 
         LOGGER.debug(
@@ -103,8 +108,8 @@ class RainingGrid(Automaton):
         return
 
 
-def generate_raindrops_mask(shape: tuple[int, int], chance: float) -> Mask:
-    return const.RNG.random(shape) < chance
+def generate_raindrops_mask(shape: tuple[int, int], ca: RainingGrid) -> Mask:
+    return const.RNG.random(shape) < ca.rain_chance
 
 
 @RainingGrid.rule(State.RAINDROP, target_slice=0, frequency="rain_speed")
@@ -114,7 +119,7 @@ def generate_raindrops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     return partial(
         generate_raindrops_mask,
         shape=ca.pixels[target_slice].shape,
-        chance=ca.rain_chance,
+        ca=ca,
     )
 
 

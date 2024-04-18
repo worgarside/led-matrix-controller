@@ -9,7 +9,7 @@ from threading import Thread
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
+    ClassVar,
     Generic,
     Literal,
     TypeVar,
@@ -17,6 +17,8 @@ from typing import (
 )
 
 from utils import const
+from utils.helpers import to_kebab_case
+from utils.mqtt import MqttClient
 from wg_utilities.loggers import add_stream_handler
 
 if TYPE_CHECKING:
@@ -62,15 +64,8 @@ class Setting(Generic[S]):
     If None (or 0), the setting modification will be applied immediately.
     """
 
-    callback: Callable[[S], None] = field(init=False)
-    """Callback called with any values received via MQTT.
-
-    This isn't directly defined as a method because it can vary by instance (e.g. transitioning) as well as
-    per subclass.
-    """
-
-    grid: Automaton = field(init=False)
-    """The grid to which the setting applies."""
+    automaton: Automaton = field(init=False)
+    """The automaton to which the setting applies."""
 
     slug: str = field(init=False)
     """The field name/slug of the setting."""
@@ -93,6 +88,9 @@ class Setting(Generic[S]):
     max: int | float | None = None
     """Inclusive upper bound for this setting."""
 
+    requires_rule_regeneration: bool = True
+    """Whether changing this setting requires the rules to be regenerated."""
+
     strict: bool = True
     """Apply strict validation to incoming payloads.
 
@@ -104,7 +102,16 @@ class Setting(Generic[S]):
 
     matrix: Matrix = field(init=False)
 
+    _disable_outgoing_mqtt_updates: bool = False
+    """Flag to disable outgoing MQTT updates when transitioning."""
+
+    _mqtt_client: ClassVar[MqttClient]
+    """The MQTT client to use for this setting."""
+
     def __post_init__(self) -> None:
+        if not hasattr(self.__class__, "_mqtt_client"):
+            self.__class__._mqtt_client = MqttClient()
+
         if self.min is not None and self.max is not None and self.min > self.max:
             raise InvalidSettingError(
                 f"The 'min' value ({self.min}) cannot be greater than the 'max' value ({self.max})."
@@ -116,73 +123,19 @@ class Setting(Generic[S]):
         if isinstance(self.min, float):
             self.min = round(self.min, self.fp_precision)
 
-    def get_value_from_grid(self) -> S:
-        """Get the setting's value from the grid's attribute."""
-        return cast(S, getattr(self.grid, self.slug))
-
-    def set_value_in_grid(self, value: S) -> None:
-        setattr(self.grid, self.slug, value)
-
-    def transition_value_in_grid(self, value: S) -> None:
-        self.target_value = value
-
-        if not (hasattr(self, "transition_thread") and self.transition_thread.is_alive()):
-            self.transition_thread = Thread(target=self._transition_value)
-            self.transition_thread.start()
-
-    def _transition_value(self) -> None:
-        LOGGER.debug("Transitioning %s to %s", self.slug, self.target_value)
-
-        tick_condition = self.matrix.tick_condition
-        tick_condition.acquire()
-
-        while (
-            current_value := self.type_(self.get_value_from_grid())
-        ) != self.target_value:
-            transition_amount = round(
-                min(self.transition_rate, abs(current_value - self.target_value)),
-                self.fp_precision,
-            )
-            LOGGER.debug(
-                "Transitioning %s from %s to %s by %s",
-                self.slug,
-                current_value,
-                self.target_value,
-                transition_amount,
-            )
-
-            self.set_value_in_grid(
-                round(
-                    (
-                        current_value + transition_amount
-                        if current_value < self.target_value
-                        else current_value - transition_amount
-                    ),
-                    self.fp_precision,
-                )
-            )
-
-            tick_condition.wait()
-
-        tick_condition.release()
-
     def setup(
         self,
         *,
         field_name: str,
-        grid: Automaton,
+        automaton: Automaton,
         type_: type[S],
     ) -> None:
         """Set up the setting."""
         self.slug = field_name
-        self.grid = grid
+        self.automaton = automaton
         self.type_ = type_
-        self.callback = self.set_value_in_grid
 
         if self.type_ in {int, float}:
-            if (self.transition_rate or 0) > 0:
-                self.callback = self.transition_value_in_grid
-
             if self.type_ is int:
                 self.fp_precision = 0
 
@@ -191,7 +144,7 @@ class Setting(Generic[S]):
             if self.min:
                 self.min = round(self.min, self.fp_precision)
 
-        self.grid.mqtt_client.add_topic_callback(self.mqtt_topic, self.on_message)
+        self.automaton.mqtt_client.add_topic_callback(self.mqtt_topic, self.on_message)
 
     def on_message(self, raw_payload: S) -> None:
         """Handle an MQTT message.
@@ -200,33 +153,37 @@ class Setting(Generic[S]):
             raw_payload: The decoded payload from the MQTT message
         """
         try:
-            payload = self.validate(raw_payload)
+            payload = self.validate_payload(raw_payload)
         except InvalidPayloadError:
-            LOGGER.exception("Invalid payload")
+            LOGGER.exception("Invalid payload: %r", raw_payload)
             return
         except Exception:
             LOGGER.exception("An unexpected error occurred while validating the payload")
             return
 
-        self.callback(payload)
+        # Only transition if
+        if (
+            self.automaton._active  # the automaton is currently displaying and
+            and (self.transition_rate or 0) > 0  # a transition rate is set (obviously)
+        ):
+            LOGGER.debug("Set target value to %r", payload)
+            self.target_value = payload
 
-    def _coerce_and_format(self, payload: Any) -> S:
-        coerced: S = payload if isinstance(payload, self.type_) else self.type_(payload)
+            if not (
+                hasattr(self, "transition_thread") and self.transition_thread.is_alive()
+            ):
+                self.transition_thread = Thread(target=self._transition_worker)
+                self.transition_thread.start()
+                LOGGER.debug("Started transition thread")
+            else:
+                LOGGER.debug("Transition thread already running")
+        elif payload != self.value:
+            LOGGER.debug("Set value to %r", payload)
+            self.value = payload
+        else:
+            LOGGER.debug("Value unchanged: %r", payload)
 
-        # Check not out of bounds
-        if isinstance(coerced, float | int):
-            if self.max is not None and coerced > self.max:
-                coerced = self.type_(self.max)
-
-            if self.min is not None and coerced < self.min:
-                coerced = self.type_(self.min)
-
-        if isinstance(coerced, float):
-            coerced = round(coerced, self.fp_precision)
-
-        return coerced
-
-    def validate(self, raw_payload: S) -> S:
+    def validate_payload(self, raw_payload: S) -> S:
         """Check that the incoming payload is a valid value for this Setting."""
         if isinstance(raw_payload, self.type_) and self.type_ not in {int, float}:
             # Non-numeric type, decoded and parsed correctly
@@ -250,15 +207,93 @@ class Setting(Generic[S]):
 
         return coerced_and_formatted
 
+    def _coerce_and_format(self, payload: Any) -> S:
+        coerced: S = payload if isinstance(payload, self.type_) else self.type_(payload)
+
+        # Check not out of bounds
+        if isinstance(coerced, float | int):
+            if self.max is not None and coerced > self.max:
+                coerced = self.type_(self.max)
+
+            if self.min is not None and coerced < self.min:
+                coerced = self.type_(self.min)
+
+        if isinstance(coerced, float):
+            coerced = round(coerced, self.fp_precision)
+
+        return coerced
+
+    def _transition_worker(self) -> None:
+        LOGGER.info("Transitioning %s to %s", self.slug, self.target_value)
+
+        tick_condition = self.matrix.tick_condition
+        tick_condition.acquire()
+
+        self._disable_outgoing_mqtt_updates = True
+        while (current_value := self.type_(self.value)) != self.target_value:
+            transition_amount = round(
+                min(self.transition_rate, abs(current_value - self.target_value)),
+                self.fp_precision,
+            ) * (1 if self.target_value > current_value else -1)
+
+            LOGGER.debug(
+                "%s: %s + %s => %s",
+                self.slug,
+                current_value,
+                transition_amount,
+                self.target_value,
+            )
+
+            self.value = round(current_value + transition_amount, self.fp_precision)
+
+            tick_condition.wait()
+
+        tick_condition.release()
+        self._disable_outgoing_mqtt_updates = False
+        LOGGER.info(
+            'Transition complete: Automaton("%s").%s = %s',
+            self.automaton.id,
+            self.slug,
+            self.value,
+        )
+
+    _mqtt_topic: str = field(init=False)
+
     @property
     def mqtt_topic(self) -> str:
         """The MQTT topic that this setting is subscribed to.
 
-        Auto-generated, in the form `/<hostname>/<grid ID>/<setting type>/<kebab-case-slug>`
+        Auto-generated, in the form `/<hostname>/<automaton ID>/<setting type>/<kebab-case-slug>`
 
         e.g. /mtrxpi/raining-grid/frequency/rain-speed
         """
-        return f"/{const.HOSTNAME}/{self.grid.id}/{self.setting_type}/{self.slug.replace('_', '-')}"
+
+        if not hasattr(self, "_mqtt_topic"):
+            self._mqtt_topic = "/" + "/".join(
+                to_kebab_case(
+                    const.HOSTNAME,
+                    self.automaton.id,
+                    self.setting_type,
+                    self.slug,
+                )
+            )
+
+        return self._mqtt_topic
+
+    @property
+    def value(self) -> S:
+        """Get the setting's value from the automaton's attribute."""
+        return cast(S, getattr(self.automaton, self.slug))
+
+    @value.setter
+    def value(self, value: S) -> None:
+        """Set the setting's value in the automaton's attribute."""
+        setattr(self.automaton, self.slug, value)
+        LOGGER.info('Automaton("%s").%s = %s', self.automaton.id, self.slug, value)
+
+        if self.requires_rule_regeneration:
+            # TODO could go in a separate thread?
+            self.automaton.generate_frame_rulesets(update_setting=self.slug)
 
 
 @dataclass(kw_only=True, slots=True)
@@ -269,25 +304,12 @@ class FrequencySetting(Setting[int]):
     type_: type[int] = int
     min: Literal[0] = 0
 
-    def set_value_in_grid(self, payload: S) -> None:
-        """Set the rule's frequency and re-generate the rules loop."""
-        setattr(self.grid, self.slug, payload)
-
-        self.grid.generate_frame_rulesets()
-
 
 @dataclass(kw_only=True, slots=True)
 class ParameterSetting(Setting[S]):
     """Set a parameter for a rule."""
 
     setting_type: Literal[SettingType.PARAMETER] = SettingType.PARAMETER
-
-    def set_value_in_grid(self, value: S) -> None:
-        """Set the parameter and re-generate the rules loop."""
-        LOGGER.debug("Setting %s to %s", self.slug, value)
-        setattr(self.grid, self.slug, value)
-
-        self.grid.generate_frame_rulesets(update_parameter=self.slug)
 
 
 __all__ = ["FrequencySetting", "ParameterSetting"]
