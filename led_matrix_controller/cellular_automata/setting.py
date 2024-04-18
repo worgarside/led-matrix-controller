@@ -155,7 +155,7 @@ class Setting(Generic[S]):
         try:
             payload = self.validate_payload(raw_payload)
         except InvalidPayloadError:
-            LOGGER.exception("Invalid payload")
+            LOGGER.exception("Invalid payload: %r", raw_payload)
             return
         except Exception:
             LOGGER.exception("An unexpected error occurred while validating the payload")
