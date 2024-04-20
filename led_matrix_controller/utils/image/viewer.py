@@ -38,10 +38,10 @@ class ImageViewer(ContentBase):
         img_array = np.array(self._image)
 
         unique_colors, pixels = np.unique(
-            img_array.reshape(-1, 3), axis=0, return_inverse=True
+            img_array.reshape(-1, 3), axis=0, return_inverse=True,
         )
         self.colormap = np.array(
-            [tuple(color) for color in unique_colors], dtype=np.uint8
+            [tuple(color) for color in unique_colors], dtype=np.uint8,
         )
         self.pixels = pixels.reshape(self.height, self.width)
 
@@ -49,7 +49,7 @@ class ImageViewer(ContentBase):
     def content_id(self) -> str:
         """Return the ID of the content."""
         return "image-" + to_kebab_case(
-            self.path.relative_to(self.BITMAP_DIRECTORY).with_suffix("").as_posix()
+            self.path.relative_to(self.BITMAP_DIRECTORY).with_suffix("").as_posix(),
         )
 
     def teardown(self) -> Generator[None, None, None]:

@@ -42,7 +42,7 @@ class MqttClient(metaclass=Singleton):
     _CLIENT: MqttClient
 
     def __init__(
-        self, *, connect: bool = False, userdata: Any = None, retain: bool = False
+        self, *, connect: bool = False, userdata: Any = None, retain: bool = False,
     ) -> None:
         self._client = mqtt.Client(
             callback_api_version=CallbackAPIVersion.VERSION2,
@@ -102,7 +102,7 @@ class MqttClient(metaclass=Singleton):
         LOGGER.info("Disconnected with reason code: %s", rc)
 
     def _on_message(
-        self, client: mqtt.Client, userdata: Any, message: mqtt.MQTTMessage
+        self, client: mqtt.Client, userdata: Any, message: mqtt.MQTTMessage,
     ) -> None:
         _ = client, userdata
         LOGGER.info("Received message: %s", message.payload)

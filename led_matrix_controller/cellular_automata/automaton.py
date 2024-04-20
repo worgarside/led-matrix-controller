@@ -111,7 +111,7 @@ class Automaton(ContentBase, ABC):
         # Create mask generators after all setup is done
         for rule in self.rules:
             if isinstance(rule.frequency, str) and isinstance(
-                freq_setting := self.settings.get(rule.frequency), FrequencySetting
+                freq_setting := self.settings.get(rule.frequency), FrequencySetting,
             ):
                 rule._frequency_setting = freq_setting
 
@@ -132,7 +132,7 @@ class Automaton(ContentBase, ABC):
                 setting.value
                 for setting in self.settings.values()
                 if isinstance(setting, FrequencySetting)
-            )
+            ),
         )
 
         if update_setting:
@@ -199,7 +199,7 @@ class Automaton(ContentBase, ABC):
                     rule_func=rule_func,
                     to_state=to_state,
                     frequency=frequency,
-                )
+                ),
             )
 
             if const.DEBUG_MODE:
