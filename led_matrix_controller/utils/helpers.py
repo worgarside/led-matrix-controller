@@ -32,13 +32,13 @@ def to_kebab_case(*string: str) -> str | tuple[str, ...]:  # type: ignore[misc]
 
     if len(string) == 1:
         return _remove_multiple_hyphens(
-            Patterns.NOT_LETTERS.sub("-", string[0]).casefold()
+            Patterns.NOT_LETTERS.sub("-", string[0]).casefold(),
         )
 
     return tuple(
         _remove_multiple_hyphens(
-            *(Patterns.NOT_LETTERS.sub("-", s).casefold() for s in string)
-        )
+            *(Patterns.NOT_LETTERS.sub("-", s).casefold() for s in string),
+        ),
     )
 
 
@@ -58,8 +58,8 @@ def camel_to_kebab_case(*string: str) -> str | tuple[str, ...]:  # type: ignore[
 
     return tuple(
         _remove_multiple_hyphens(
-            *(Patterns.CAMELCASE.sub("-", s).casefold() for s in string)
-        )
+            *(Patterns.CAMELCASE.sub("-", s).casefold() for s in string),
+        ),
     )
 
 

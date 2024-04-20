@@ -143,7 +143,6 @@ lint.ignore = [
   "S314",   # https://docs.astral.sh/ruff/rules/suspicious-xml-element-tree-usage/
   "TRY003", # https://docs.astral.sh/ruff/rules/raise-vanilla-args/
   "ISC001", # https://docs.astral.sh/ruff/rules/single-line-implicit-string-concatenation/
-  "COM812", # https://docs.astral.sh/ruff/rules/missing-trailing-comma/
 ]
 
 [tool.ruff.lint.per-file-ignores]

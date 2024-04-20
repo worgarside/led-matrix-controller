@@ -21,8 +21,8 @@ FONT.LoadFont(
         Path(__file__).parents[2]
         / "assets"
         / "fonts"
-        / f"{const.FONT_WIDTH}x{const.FONT_HEIGHT}.bdf"
-    )
+        / f"{const.FONT_WIDTH}x{const.FONT_HEIGHT}.bdf",
+    ),
 )
 
 
@@ -167,7 +167,7 @@ class Text:
 
         # Otherwise center the text on the screen
         return int(
-            (self.matrix_width - (len(self.original_content) * const.FONT_WIDTH)) / 2
+            (self.matrix_width - (len(self.original_content) * const.FONT_WIDTH)) / 2,
         )
 
     def __len__(self) -> int:

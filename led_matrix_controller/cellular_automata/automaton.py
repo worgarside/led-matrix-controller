@@ -133,7 +133,7 @@ class Automaton(DynamicContent, ABC):
                 setting.value
                 for setting in self.settings.values()
                 if isinstance(setting, FrequencySetting)
-            )
+            ),
         )
 
         if update_setting:
@@ -200,7 +200,7 @@ class Automaton(DynamicContent, ABC):
                     rule_func=rule_func,
                     to_state=to_state,
                     frequency=frequency,
-                )
+                ),
             )
 
             if const.DEBUG_MODE:
