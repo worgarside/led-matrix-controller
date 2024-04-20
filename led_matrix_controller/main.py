@@ -5,10 +5,9 @@ from __future__ import annotations
 from contextlib import suppress
 from pathlib import Path
 
-from models.content import RainingGrid
-from models.matrix import Matrix
-from utils import ImageViewer, MqttClient
-from utils.gif.viewer import GifViewer
+from models import Matrix
+from models.content import GifViewer, ImageViewer, RainingGrid
+from utils import MqttClient
 
 
 def main() -> None:

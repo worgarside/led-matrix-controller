@@ -14,4 +14,6 @@ __all__ = [
     "RGBMatrix",
     "RGBMatrixOptions",
     "Canvas",
+    "GifViewer",
+    "ImageViewer",
 ]
