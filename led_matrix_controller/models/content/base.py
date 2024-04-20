@@ -71,9 +71,9 @@ class ContentBase(ABC):
     persistent: bool = field(default=False)
 
     _active: bool = field(init=False, default=False)
-    _image_getter: ImageGetter = field(init=False)
-    colormap: NDArray[np.uint8] = field(init=False)
-    pixels: GridView = field(init=False)
+    _image_getter: ImageGetter = field(init=False, repr=False)
+    colormap: NDArray[np.uint8] = field(init=False, repr=False)
+    pixels: GridView = field(init=False, repr=False)
 
     @abstractmethod
     def teardown(self) -> Generator[None, None, None]:
