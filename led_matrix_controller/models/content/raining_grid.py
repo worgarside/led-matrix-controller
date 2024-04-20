@@ -166,7 +166,7 @@ def top_of_rain_down_mask(
                 & (below_slice == raindrop)
             ),
             (last_row == raindrop) & (penultimate_row != raindrop),
-        )
+        ),
     )
 
 

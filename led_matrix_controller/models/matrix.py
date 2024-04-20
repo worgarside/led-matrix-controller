@@ -159,7 +159,7 @@ class Matrix:
     def _mqtt_topic(self, suffix: str) -> str:
         """Create an MQTT topic with the given suffix."""
         return "/" + "/".join(
-            to_kebab_case(const.HOSTNAME, self.__class__.__name__, *suffix.split("/"))
+            to_kebab_case(const.HOSTNAME, self.__class__.__name__, *suffix.split("/")),
         )
 
     def _on_content_message(

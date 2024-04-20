@@ -26,7 +26,7 @@ class ArtworkImage:
     """Class for the creation, caching, and management of artwork images."""
 
     ARTWORK_DIR: Final[Path] = force_mkdir(
-        Path(getenv("ARTWORK_DIR", "/var/cache/led-matrix-controller/artwork")).resolve()
+        Path(getenv("ARTWORK_DIR", "/var/cache/led-matrix-controller/artwork")).resolve(),
     )
     ALPHANUM_PATTERN: ClassVar[Pattern[str]] = compile_regex(r"[\W_]+")
 
@@ -72,7 +72,10 @@ class ArtworkImage:
         self.cache_in_progress = False
 
     def _get_artwork_pil_image(
-        self, size: int | None = None, *, ignore_cache: bool = False
+        self,
+        size: int | None = None,
+        *,
+        ignore_cache: bool = False,
     ) -> Image:
         """Get the Image of the artwork image from the cache/local file/remote URL.
 
@@ -106,7 +109,8 @@ class ArtworkImage:
         """Download the image from the URL to store it locally for future use."""
 
         self.ARTWORK_DIR.joinpath(self.artist_directory).mkdir(
-            parents=True, exist_ok=True
+            parents=True,
+            exist_ok=True,
         )
 
         if Path(self.url).is_file():
@@ -191,7 +195,9 @@ class ArtworkImage:
 
 
 NULL_IMAGE = ArtworkImage(
-    "null", "null", str(Path(__file__).parents[3] / "assets" / "images" / "null.png")
+    "null",
+    "null",
+    str(Path(__file__).parents[3] / "assets" / "images" / "null.png"),
 )
 
 

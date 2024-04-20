@@ -42,7 +42,11 @@ class InvalidPayloadError(ValueError):
     """Raised when an invalid MQTT payload is received."""
 
     def __init__(
-        self, *, raw_payload: Any, strict: bool, coerced: Any | Exception
+        self,
+        *,
+        raw_payload: Any,
+        strict: bool,
+        coerced: Any | Exception,
     ) -> None:
         super().__init__(f"Invalid payload with {strict=}: {raw_payload=}, {coerced=}")
 
@@ -114,7 +118,7 @@ class Setting(Generic[S]):
 
         if self.min is not None and self.max is not None and self.min > self.max:
             raise InvalidSettingError(
-                f"The 'min' value ({self.min}) cannot be greater than the 'max' value ({self.max})."
+                f"The 'min' value ({self.min}) cannot be greater than the 'max' value ({self.max}).",
             )
 
         if isinstance(self.max, float):
@@ -275,7 +279,7 @@ class Setting(Generic[S]):
                     self.automaton.id,
                     self.setting_type,
                     self.slug,
-                )
+                ),
             )
 
         return self._mqtt_topic
