@@ -42,7 +42,11 @@ class InvalidPayloadError(ValueError):
     """Raised when an invalid MQTT payload is received."""
 
     def __init__(
-        self, *, raw_payload: Any, strict: bool, coerced: Any | Exception,
+        self,
+        *,
+        raw_payload: Any,
+        strict: bool,
+        coerced: Any | Exception,
     ) -> None:
         super().__init__(f"Invalid payload with {strict=}: {raw_payload=}, {coerced=}")
 

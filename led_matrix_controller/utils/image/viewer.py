@@ -38,10 +38,13 @@ class ImageViewer(ContentBase):
         img_array = np.array(self._image)
 
         unique_colors, pixels = np.unique(
-            img_array.reshape(-1, 3), axis=0, return_inverse=True,
+            img_array.reshape(-1, 3),
+            axis=0,
+            return_inverse=True,
         )
         self.colormap = np.array(
-            [tuple(color) for color in unique_colors], dtype=np.uint8,
+            [tuple(color) for color in unique_colors],
+            dtype=np.uint8,
         )
         self.pixels = pixels.reshape(self.height, self.width)
 
