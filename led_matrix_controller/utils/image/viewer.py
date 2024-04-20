@@ -26,7 +26,7 @@ class ImageViewer(ContentBase):
 
     has_teardown_sequence: Literal[False] = False
 
-    _image: Image.Image = field(init=False)
+    _image: Image.Image = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         """Initialize the image."""

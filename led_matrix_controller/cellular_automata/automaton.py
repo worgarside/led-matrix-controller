@@ -67,8 +67,8 @@ class Automaton(ContentBase, ABC):
     mqtt_client: MqttClient
 
     frame_index: int = field(init=False, default=-1)
-    frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False)
-    rules: list[Rule] = field(init=False)
+    frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False, repr=False)
+    rules: list[Rule] = field(init=False, repr=False)
     settings: dict[str, Setting[Any]] = field(default_factory=dict)
 
     class OutOfBoundsError(ValueError):

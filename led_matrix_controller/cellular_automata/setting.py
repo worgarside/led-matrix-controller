@@ -64,22 +64,22 @@ class Setting(Generic[S]):
     If None (or 0), the setting modification will be applied immediately.
     """
 
-    automaton: Automaton = field(init=False)
+    automaton: Automaton = field(init=False, repr=False)
     """The automaton to which the setting applies."""
 
-    slug: str = field(init=False)
+    slug: str = field(init=False, repr=False)
     """The field name/slug of the setting."""
 
-    target_value: S = field(init=False)
+    target_value: S = field(init=False, repr=False)
     """The target value for a setting.
 
     Used to enable transition functionality.
     """
 
-    transition_thread: Thread = field(init=False)
+    transition_thread: Thread = field(init=False, repr=False)
     """Thread for transitioning values over a non-zero period of time."""
 
-    type_: type[S] = field(init=False)
+    type_: type[S] = field(init=False, repr=False)
     """The type of the setting's value (e.g. int, float, bool)."""
 
     min: int | float | None = None
@@ -100,7 +100,7 @@ class Setting(Generic[S]):
     fp_precision: int = 6
     """The number of decimal places to round floats to during processing."""
 
-    matrix: Matrix = field(init=False)
+    matrix: Matrix = field(init=False, repr=False)
 
     _disable_outgoing_mqtt_updates: bool = False
     """Flag to disable outgoing MQTT updates when transitioning."""
@@ -257,7 +257,7 @@ class Setting(Generic[S]):
             self.value,
         )
 
-    _mqtt_topic: str = field(init=False)
+    _mqtt_topic: str = field(init=False, repr=False)
 
     @property
     def mqtt_topic(self) -> str:
