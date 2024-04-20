@@ -53,16 +53,16 @@ class Rule:
     frequency: int | str
     """The frequency of the rule in frames. If a string is provided, it references a `FrequencySetting` by name."""
 
-    _frequency_setting: FrequencySetting = field(init=False)
+    _frequency_setting: FrequencySetting = field(init=False, repr=False)
     """Optional frequency setting for the rule. Only set if `frequency` is a string."""
 
-    target_view: GridView = field(init=False)
+    target_view: GridView = field(init=False, repr=False)
     """The view of the grid which the rule applies to."""
 
-    mask_generator: MaskGen = field(init=False)
+    mask_generator: MaskGen = field(init=False, repr=False)
     """The mask generator for the rule."""
 
-    consumed_parameters: set[str] = field(init=False)
+    consumed_parameters: set[str] = field(init=False, repr=False)
     """The slugs of the ParameterSettings consumed by the rule function."""
 
     def active_on_frame(self, i: int, /) -> bool:

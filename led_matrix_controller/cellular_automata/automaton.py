@@ -20,7 +20,7 @@ from typing import (
 )
 
 import numpy as np
-from models.content.base import ContentBase, GridView, StateBase
+from models.content.base import DynamicContent, GridView, StateBase
 from numpy.typing import DTypeLike, NDArray
 from utils import const
 from utils.mqtt import MqttClient  # noqa: TCH002
@@ -56,7 +56,7 @@ FrameRuleSet = tuple[RuleTuple, ...]
 
 
 @dataclass(kw_only=True, slots=True)
-class Automaton(ContentBase, ABC):
+class Automaton(DynamicContent, ABC):
     """Base class for a grid of cells."""
 
     STATE: ClassVar[type[StateBase]]
@@ -67,8 +67,8 @@ class Automaton(ContentBase, ABC):
     mqtt_client: MqttClient
 
     frame_index: int = field(init=False, default=-1)
-    frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False)
-    rules: list[Rule] = field(init=False)
+    frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False, repr=False)
+    rules: list[Rule] = field(init=False, repr=False)
     settings: dict[str, Setting[Any]] = field(default_factory=dict)
 
     class OutOfBoundsError(ValueError):
@@ -111,7 +111,8 @@ class Automaton(ContentBase, ABC):
         # Create mask generators after all setup is done
         for rule in self.rules:
             if isinstance(rule.frequency, str) and isinstance(
-                freq_setting := self.settings.get(rule.frequency), FrequencySetting
+                freq_setting := self.settings.get(rule.frequency),
+                FrequencySetting,
             ):
                 rule._frequency_setting = freq_setting
 

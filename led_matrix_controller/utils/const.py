@@ -10,10 +10,10 @@ from typing import Final
 
 import numpy as np
 
+DEBUG_MODE: Final[bool] = bool(int(getenv("DEBUG_MODE", "0")))
+
 MQTT_USERNAME: Final[str] = environ["MQTT_USERNAME"]
 MQTT_PASSWORD: Final[str] = environ["MQTT_PASSWORD"]
-
-DEBUG_MODE: Final[bool] = bool(int(getenv("DEBUG_MODE", "0")))
 
 MQTT_HOST: Final[str] = getenv("MQTT_HOST", "http://homeassistant.local")
 
@@ -38,6 +38,7 @@ BOOLEANS: Final[np.typing.NDArray[np.bool_]] = np.array([False, True], dtype=np.
 RNG = np.random.default_rng(830003040)
 
 REPO_PATH: Final[Path] = Path(__file__).parents[2]
+IMAGE_DIRECTORY: Final[Path] = REPO_PATH / "assets" / "images" / "64x64"
 
 TICKS_PER_SECOND: Final[int] = 100
 TICK_LENGTH: Final[float] = 1 / TICKS_PER_SECOND
