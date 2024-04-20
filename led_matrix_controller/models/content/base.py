@@ -6,22 +6,31 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import partial
+from logging import DEBUG, getLogger
 from typing import (
+    Callable,
     ClassVar,
     Generator,
+    Iterator,
     final,
 )
 
 import numpy as np
+from models import Canvas
 from numpy.typing import NDArray
 from PIL import Image
+from wg_utilities.loggers import add_stream_handler
 
 _BY_VALUE: dict[int, StateBase] = {}
 
 GridView = NDArray[np.int_]
 
 
-# TODO can this be an ABC?
+LOGGER = getLogger(__name__)
+LOGGER.setLevel(DEBUG)
+add_stream_handler(LOGGER)
+
+
 class StateBase(Enum):
     """Base class for the states of a cell."""
 
@@ -57,6 +66,7 @@ def _get_image(colormap: NDArray[np.uint8], grid: GridView) -> Image.Image:
     return Image.fromarray(colormap[grid], "RGB")
 
 
+CanvasGetter = partial[Canvas]
 ImageGetter = partial[Image.Image]
 
 
@@ -64,7 +74,6 @@ ImageGetter = partial[Image.Image]
 class ContentBase(ABC):
     """Base class for content models."""
 
-    STATE: ClassVar[type[StateBase]]
     HAS_TEARDOWN_SEQUENCE: ClassVar[bool] = False
 
     height: int
@@ -82,32 +91,74 @@ class ContentBase(ABC):
     def teardown(self) -> Generator[None, None, None]:
         """Perform any necessary cleanup."""
 
-    @final
-    def stop(self) -> None:
-        """Stop the content immediately."""
-        self._active = False
-
-    @property
-    def image_getter(self) -> ImageGetter:
-        """Return the image representation of the content."""
-        if not hasattr(self, "_image_getter"):
-            self._image_getter = partial(_get_image, self.colormap, self.pixels)
-
-        return self._image_getter
-
     @property
     @abstractmethod
     def content_id(self) -> str:
         """Return the ID of the content."""
 
     @property
-    def id(self) -> str:
-        """Return the ID of the content."""
-        return self.instance_id or self.content_id
+    @abstractmethod
+    def content_getter(self) -> CanvasGetter | ImageGetter:
+        """Return the image representation of the content."""
 
     @abstractmethod
     def __iter__(self) -> Generator[None, None, None]:
         """Iterate over the frames."""
 
+    @final
+    @property
+    def active(self) -> bool:
+        """Return whether the content is active."""
+        return self._active
 
-__all__ = ["StateBase", "ContentBase", "GridView"]
+    @final
+    def stop(self) -> None:
+        """Stop the content immediately."""
+        self._active = False
+        LOGGER.info("Stopped content with ID `%s`", self.content_id)
+
+    @final
+    @property
+    def id(self) -> str:
+        """Return the ID of the content."""
+        return self.instance_id or self.content_id
+
+
+@dataclass(kw_only=True, slots=True)
+class DynamicContent(ContentBase, ABC):
+    """Base class for content which is dynamically created."""
+
+    @final
+    @property
+    def content_getter(self) -> ImageGetter:
+        """Return the image representation of the content."""
+        if not hasattr(self, "_image_getter"):
+            self._image_getter = partial(_get_image, self.colormap, self.pixels)
+
+        return self._image_getter
+
+
+@dataclass(kw_only=True, slots=True)
+class PreDefinedContent(ContentBase, ABC):
+    """Base class for content for which all frames are already known."""
+
+    canvases: tuple[Canvas, ...] = field(init=False, repr=False)
+
+    _iter_canvases: Iterator[Canvas] = field(init=False, repr=False)
+
+    @abstractmethod
+    def generate_canvases(
+        self,
+        new_canvas: Callable[[Image.Image | None], Canvas],
+    ) -> None:
+        """Generate the canvases for the content."""
+
+    @final
+    @property
+    def content_getter(self) -> CanvasGetter:
+        """Return the image representation of the content."""
+
+        return partial(next, iter(self.canvases))
+
+
+__all__ = ["StateBase", "ContentBase", "DynamicContent", "PreDefinedContent", "GridView"]

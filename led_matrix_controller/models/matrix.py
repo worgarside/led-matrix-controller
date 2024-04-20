@@ -2,19 +2,27 @@
 
 from __future__ import annotations
 
+from functools import partial
 from logging import DEBUG, getLogger
 from queue import PriorityQueue
 from threading import Condition, Thread
-from typing import TYPE_CHECKING, ClassVar, TypedDict
+from typing import TYPE_CHECKING, ClassVar, Literal, TypedDict, cast
 
+from models.content.base import (
+    CanvasGetter,
+    ContentBase,
+    DynamicContent,
+    ImageGetter,
+    PreDefinedContent,
+)
 from utils import const
 from utils.helpers import to_kebab_case
 from wg_utilities.loggers import add_stream_handler
 
-from ._rgbmatrix import RGBMatrix, RGBMatrixOptions
+from ._rgbmatrix import Canvas, RGBMatrix, RGBMatrixOptions
 
 if TYPE_CHECKING:
-    from models.content.base import ContentBase, ImageGetter
+    from PIL import Image
     from utils.mqtt import MqttClient
 
     from .led_matrix_options import LedMatrixOptions
@@ -55,6 +63,8 @@ class Matrix:
 
     MAX_PRIORITY: ClassVar[float] = 1e10
 
+    canvas: Canvas
+
     def __init__(
         self,
         *,
@@ -82,78 +92,81 @@ class Matrix:
         self.current_content_topic = self._mqtt_topic("current-content")
 
         self._content_queue: PriorityQueue[tuple[float, ContentBase]] = PriorityQueue()
+
         self._content_thread = Thread(target=self._content_loop)
 
         self._current_content: ContentBase | None = None
 
-        self._current_priority: float | None = None
-        self.next_priority = self.MAX_PRIORITY
+        self.current_priority: float = self.MAX_PRIORITY  # Lower value = higher priority
 
         self.tick = 0
         self.tick_condition = Condition()
 
+    def get_canvas_swap_canvas(self, get_canvas: CanvasGetter) -> None:
+        """Get the canvas and swap it."""
+        self.swap_canvas(get_canvas())
+
+    def set_image_swap_canvas(self, get_image: ImageGetter) -> None:
+        """Set the image and swap the canvas."""
+        self.canvas.SetImage(get_image())
+
+        self.swap_canvas(self.canvas)
+
+    def swap_canvas(self, content: Canvas | None = None, /) -> None:
+        """Update the content of the canvas and increment the tick count."""
+        self.canvas = self.matrix.SwapOnVSync(content or self.canvas)
+
+        self.tick += 1
+
+        self.tick_condition.acquire(timeout=const.TICK_LENGTH)
+        self.tick_condition.notify_all()
+        self.tick_condition.release()
+
     def _content_loop(self) -> None:
         """Loop through the content queue."""
         while not self._content_queue.empty():
-            self.current_priority, self.current_content = self._content_queue.get()
+            orig_prio, self.current_content = self._content_queue.get()
 
-            current_content_id = self.current_content.content_id
-
-            LOGGER.debug(
-                "Content with ID `%s` from queue has priority %s",
-                current_content_id,
-                self.current_priority,
-            )
+            self.current_priority = orig_prio
 
             LOGGER.info(
-                "Displaying content with ID `%s`",
-                current_content_id,
+                "Displaying content with ID `%s` at priority %s",
+                self.current_content.id,
+                orig_prio,
             )
 
-            get_image = self.current_content.image_getter
+            if isinstance(self.current_content, DynamicContent):
+                set_content = partial(
+                    self.set_image_swap_canvas,
+                    self.current_content.content_getter,
+                )
+            else:
+                set_content = partial(
+                    self.get_canvas_swap_canvas,
+                    self.current_content.content_getter,
+                )
+
             # Actual loop through individual content instances:
             for _ in self.current_content:
-                self.swap_canvas(get_image)
+                set_content()
 
-                if (
-                    self.current_priority > self.next_priority
-                    or self.current_content is None
-                ):
-                    # If there's higher priority content or content has been stopped
-                    LOGGER.debug(
-                        "Content `%s` with priority %s is no longer playing: Now playing: %s; Next priority: %s",
-                        current_content_id,
-                        self.current_priority,
-                        self.current_content,
-                        self.next_priority,
-                    )
-                    self.current_content.stop()
-
-            LOGGER.debug("Content `%s` complete", current_content_id)
-
-            if (
-                self.current_content.HAS_TEARDOWN_SEQUENCE
-                and self.current_content is None
-            ):
+            if self.current_content.HAS_TEARDOWN_SEQUENCE:
                 # Only run teardown if the stop isn't due to higher priority content
-                LOGGER.debug("Running teardown sequence for %s", self.current_content.id)
+                LOGGER.info("Running teardown sequence for %s", self.current_content.id)
 
                 for _ in self.current_content.teardown():
-                    self.swap_canvas(get_image)
+                    set_content()
 
-            LOGGER.debug("Content `%s` complete", current_content_id)
+            LOGGER.info("Content `%s` complete", self.current_content.id)
 
-            if self.current_content.persistent and self.current_content is not None:
-                self._content_queue.put((self.current_priority, self.current_content))
-                LOGGER.info(
+            if self.current_content.persistent:
+                self._content_queue.put((orig_prio, self.current_content))
+                LOGGER.debug(
                     "Content `%s` is persistent with priority %s",
-                    current_content_id,
+                    self.current_content.id,
                     self.current_priority,
                 )
 
-            self.reset_now_playing()
-
-        self.reset_now_playing()
         self.clear_matrix()
 
     def _mqtt_topic(self, suffix: str) -> str:
@@ -175,23 +188,26 @@ class Matrix:
             -self.MAX_PRIORITY,
         )
 
-        if (
-            self.current_content is not None
-            and self.current_content.content_id == payload["id"]
-        ):
+        if (curr_cont := self.is_active()) and curr_cont.id == payload["id"]:
             LOGGER.debug("Updating %s priority to %s", payload["id"], priority)
             self.current_priority = priority
             return None
 
-        self.next_priority = min(self.next_priority, priority)
-
-        self._content_queue.put((priority, self._content[payload["id"]]))
+        try:
+            self._content_queue.put((priority, self._content[payload["id"]]))
+        except KeyError:
+            LOGGER.exception("Content with ID `%s` not found", payload["id"])
+            return None
 
         LOGGER.info(
             "Added content with ID `%s` to queue with priority %s",
             payload["id"],
             priority,
         )
+
+        # Lower value = higher priority
+        if (curr_cont := self.is_active()) and priority < self.current_priority:
+            curr_cont.stop()
 
         self._start_content_thread()
 
@@ -205,12 +221,8 @@ class Matrix:
                 LOGGER.info("Removed content with ID `%s` from queue", content_id)
                 break
 
-        if (
-            self.current_content is not None
-            and self.current_content.content_id == content_id
-        ):
-            self.reset_now_playing()
-            LOGGER.info("Removed content with ID `%s` from now playing", content_id)
+        if (curr_cont := self.is_active()) and curr_cont.content_id == content_id:
+            curr_cont.stop()
 
     def _start_content_thread(self) -> None:
         """Start the content thread. If it has already been started, do nothing."""
@@ -226,19 +238,20 @@ class Matrix:
 
     def clear_matrix(self) -> None:
         """Clear the matrix."""
+        self._current_content = None
+        self._current_priority = self.MAX_PRIORITY
+
         self.canvas.Clear()
         self.swap_canvas()
 
-    def swap_canvas(self, get_image: ImageGetter | None = None, /) -> None:
-        """Update the content of the canvas and increment the tick count."""
-        if get_image:
-            self.canvas.SetImage(get_image())
+    def new_canvas(self, image: Image.Image | None = None) -> Canvas:
+        """Return a new canvas, optionally with an image."""
+        canvas = cast(Canvas, self.matrix.CreateFrameCanvas())
 
-        self.canvas = self.matrix.SwapOnVSync(self.canvas)
-        self.tick += 1
-        self.tick_condition.acquire(timeout=const.TICK_LENGTH)
-        self.tick_condition.notify_all()
-        self.tick_condition.release()
+        if image is not None:
+            canvas.SetImage(image.convert("RGB"))
+
+        return canvas
 
     def register_content(self, *content: ContentBase) -> None:
         """Add content to the matrix."""
@@ -253,13 +266,8 @@ class Matrix:
 
             LOGGER.info("Added content with ID `%s`", c.content_id)
 
-    def reset_now_playing(self) -> None:
-        """Reset the now playing content."""
-        self.current_content = None
-        self.current_priority = None
-        self.next_priority = self.MAX_PRIORITY
-
-        LOGGER.debug("Now playing: null; Next priority: %s", self.next_priority)
+            if isinstance(c, PreDefinedContent):
+                c.generate_canvases(self.new_canvas)
 
     @property
     def dimensions(self) -> Dimensions:
@@ -295,15 +303,12 @@ class Matrix:
         )
         LOGGER.info("Now playing: %s", value.id if value is not None else None)
 
-    @property
-    def current_priority(self) -> float | None:
-        """Return the priority of the currently playing content."""
+    def is_active(self) -> ContentBase | Literal[False]:
+        """Return whether content is currently playing."""
+        if (curr_cont := self.current_content) is not None:
+            return curr_cont
 
-        return self._current_priority if self.current_content is not None else None
-
-    @current_priority.setter
-    def current_priority(self, value: float | None) -> None:
-        self._current_priority = value
+        return False
 
     def __del__(self) -> None:
         """Clear the matrix when the object is deleted."""

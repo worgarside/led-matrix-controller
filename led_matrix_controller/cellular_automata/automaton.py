@@ -20,7 +20,7 @@ from typing import (
 )
 
 import numpy as np
-from models.content.base import ContentBase, GridView, StateBase
+from models.content.base import DynamicContent, GridView, StateBase
 from numpy.typing import DTypeLike, NDArray
 from utils import const
 from utils.mqtt import MqttClient  # noqa: TCH002
@@ -56,7 +56,7 @@ FrameRuleSet = tuple[RuleTuple, ...]
 
 
 @dataclass(kw_only=True, slots=True)
-class Automaton(ContentBase, ABC):
+class Automaton(DynamicContent, ABC):
     """Base class for a grid of cells."""
 
     STATE: ClassVar[type[StateBase]]

@@ -186,4 +186,5 @@ docstring-code-line-length = "dynamic"
 [tool.vulture]
 min_confidence = 70
 paths = ["tests", "led_matrix_controller"]
+exclude = ["led_matrix_controller/models/_rgbmatrix.py"]
 sort_by_size = true
