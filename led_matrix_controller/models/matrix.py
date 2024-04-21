@@ -14,6 +14,7 @@ from models.content.base import (
     DynamicContent,
     ImageGetter,
     PreDefinedContent,
+    StopType,
 )
 from utils import const
 from utils.helpers import to_kebab_case
@@ -150,7 +151,10 @@ class Matrix:
             for _ in self.current_content:
                 set_content()
 
-            if self.current_content.HAS_TEARDOWN_SEQUENCE:
+            if (
+                self.current_content.HAS_TEARDOWN_SEQUENCE
+                and self.current_content.stop_reason != StopType.PRIORITY
+            ):
                 # Only run teardown if the stop isn't due to higher priority content
                 LOGGER.info("Running teardown sequence for %s", self.current_content.id)
 
@@ -159,8 +163,11 @@ class Matrix:
 
             LOGGER.info("Content `%s` complete", self.current_content.id)
 
-            if self.current_content.persistent:
-                self._content_queue.put((orig_prio, self.current_content))
+            if (
+                self.current_content.persistent
+                and self.current_content.stop_reason != StopType.CANCEL
+            ):
+                self._content_queue.put((self.current_priority, self.current_content))
                 LOGGER.debug(
                     "Content `%s` is persistent with priority %s",
                     self.current_content.id,
@@ -180,49 +187,49 @@ class Matrix:
         payload: ContentPayload,
     ) -> None:
         """Add/remove content to/from the queue."""
+        content_id = payload["id"]
+
         if payload["priority"] is None:
-            return self._remove_content_from_queue(payload["id"])
+            for p, c in self._content_queue.queue:
+                if c.content_id == content_id:
+                    self._content_queue.queue.remove((p, c))
+                    LOGGER.info("Removed content with ID `%s` from queue", content_id)
+                    break
+
+            if (curr_cont := self.is_active()) and curr_cont.content_id == content_id:
+                curr_cont.stop(StopType.CANCEL)
+
+            return
 
         priority = max(
             min(float(payload["priority"]), self.MAX_PRIORITY),
             -self.MAX_PRIORITY,
         )
 
-        if (curr_cont := self.is_active()) and curr_cont.id == payload["id"]:
-            LOGGER.debug("Updating %s priority to %s", payload["id"], priority)
+        if (curr_cont := self.is_active()) and curr_cont.id == content_id:
+            LOGGER.debug("Updating %s priority to %s", content_id, priority)
             self.current_priority = priority
-            return None
+            return
 
         try:
-            self._content_queue.put((priority, self._content[payload["id"]]))
+            self._content_queue.put((priority, self._content[content_id]))
         except KeyError:
-            LOGGER.exception("Content with ID `%s` not found", payload["id"])
-            return None
+            LOGGER.exception("Content with ID `%s` not found", content_id)
+            return
 
         LOGGER.info(
             "Added content with ID `%s` to queue with priority %s",
-            payload["id"],
+            content_id,
             priority,
         )
 
         # Lower value = higher priority
         if (curr_cont := self.is_active()) and priority < self.current_priority:
-            curr_cont.stop()
+            curr_cont.stop(StopType.PRIORITY)
 
         self._start_content_thread()
 
-        return None
-
-    def _remove_content_from_queue(self, content_id: str) -> None:
-        """Remove content from the queue."""
-        for p, c in self._content_queue.queue:
-            if c.content_id == content_id:
-                self._content_queue.queue.remove((p, c))
-                LOGGER.info("Removed content with ID `%s` from queue", content_id)
-                break
-
-        if (curr_cont := self.is_active()) and curr_cont.content_id == content_id:
-            curr_cont.stop()
+        return
 
     def _start_content_thread(self) -> None:
         """Start the content thread. If it has already been started, do nothing."""
