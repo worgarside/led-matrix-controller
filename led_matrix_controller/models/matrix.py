@@ -224,15 +224,20 @@ class Matrix:
 
     def _start_content_thread(self) -> None:
         """Start the content thread. If it has already been started, do nothing."""
-        if not self._content_thread.is_alive():
+        if self._content_thread.is_alive():
+            LOGGER.debug("Content thread already running")
+        else:
             try:
                 self._content_thread.start()
+                LOGGER.info("Started existing content thread")
             except RuntimeError as err:
                 if str(err) != "threads can only be started once":
                     raise
 
                 self._content_thread = Thread(target=self._content_loop)
                 self._content_thread.start()
+
+                LOGGER.info("Started new content thread")
 
     def clear_matrix(self) -> None:
         """Clear the matrix."""
