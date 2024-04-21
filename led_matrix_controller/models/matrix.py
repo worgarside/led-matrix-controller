@@ -126,14 +126,12 @@ class Matrix:
     def _content_loop(self) -> None:
         """Loop through the content queue."""
         while not self._content_queue.empty():
-            orig_prio, self.current_content = self._content_queue.get()
-
-            self.current_priority = orig_prio
+            self.current_priority, self.current_content = self._content_queue.get()
 
             LOGGER.info(
                 "Displaying content with ID `%s` at priority %s",
                 self.current_content.id,
-                orig_prio,
+                self.current_priority,
             )
 
             if isinstance(self.current_content, DynamicContent):
@@ -233,9 +231,12 @@ class Matrix:
 
     def _start_content_thread(self) -> None:
         """Start the content thread. If it has already been started, do nothing."""
-        if not self._content_thread.is_alive():
+        if self._content_thread.is_alive():
+            LOGGER.debug("Content thread already running")
+        else:
             try:
                 self._content_thread.start()
+                LOGGER.info("Started existing content thread")
             except RuntimeError as err:
                 if str(err) != "threads can only be started once":
                     raise
@@ -243,13 +244,17 @@ class Matrix:
                 self._content_thread = Thread(target=self._content_loop)
                 self._content_thread.start()
 
+                LOGGER.info("Started new content thread")
+
     def clear_matrix(self) -> None:
         """Clear the matrix."""
-        self._current_content = None
-        self._current_priority = self.MAX_PRIORITY
+        self.current_content = None
+        self.current_priority = self.MAX_PRIORITY
 
         self.canvas.Clear()
         self.swap_canvas()
+
+        LOGGER.info("Matrix cleared")
 
     def new_canvas(self, image: Image.Image | None = None) -> Canvas:
         """Return a new canvas, optionally with an image."""
