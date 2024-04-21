@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import Enum, auto
 from functools import partial
 from logging import DEBUG, getLogger
 from typing import (
@@ -70,6 +70,13 @@ CanvasGetter = partial[Canvas]
 ImageGetter = partial[Image.Image]
 
 
+class StopType(Enum):
+    """Type of stop for content."""
+
+    CANCEL = auto()
+    PRIORITY = auto()
+
+
 @dataclass(kw_only=True, slots=True)
 class ContentBase(ABC):
     """Base class for content models."""
@@ -86,6 +93,8 @@ class ContentBase(ABC):
     _image_getter: ImageGetter = field(init=False, repr=False)
     colormap: NDArray[np.uint8] = field(init=False, repr=False)
     pixels: GridView = field(init=False, repr=False)
+
+    stop_reason: StopType | None = field(init=False, repr=False)
 
     @abstractmethod
     def teardown(self) -> Generator[None, None, None]:
@@ -112,10 +121,12 @@ class ContentBase(ABC):
         return self._active
 
     @final
-    def stop(self) -> None:
+    def stop(self, stop_type: StopType, /) -> None:
         """Stop the content immediately."""
         self._active = False
-        LOGGER.info("Stopped content with ID `%s`", self.content_id)
+        self.stop_reason = stop_type
+
+        LOGGER.info("Stopped content with ID `%s`: %r", self.content_id, stop_type)
 
     @final
     @property
