@@ -106,9 +106,6 @@ class Setting(Generic[S]):
 
     matrix: Matrix = field(init=False, repr=False)
 
-    _disable_value_update_messaging: bool = False
-    """Flag to disable outgoing MQTT updates and logs when transitioning."""
-
     _mqtt_client: ClassVar[MqttClient]
     """The MQTT client to use for this setting."""
 
@@ -182,7 +179,7 @@ class Setting(Generic[S]):
             else:
                 LOGGER.debug("Transition thread already running")
         elif payload != self.value:
-            LOGGER.debug("Set value to %r", payload)
+            LOGGER.info("Set value to %r", payload)
             self.value = payload
         else:
             LOGGER.debug("Value unchanged: %r", payload)
@@ -233,7 +230,6 @@ class Setting(Generic[S]):
         tick_condition = self.matrix.tick_condition
         tick_condition.acquire()
 
-        self._disable_value_update_messaging = True
         while (current_value := self.type_(self.value)) != self.target_value:
             transition_amount = round(
                 min(self.transition_rate, abs(current_value - self.target_value)),
@@ -253,7 +249,7 @@ class Setting(Generic[S]):
             tick_condition.wait()
 
         tick_condition.release()
-        self._disable_value_update_messaging = False
+
         LOGGER.info(
             'Transition complete: Automaton("%s").%s = %s',
             self.automaton.id,
@@ -293,8 +289,6 @@ class Setting(Generic[S]):
     def value(self, value: S) -> None:
         """Set the setting's value in the automaton's attribute."""
         setattr(self.automaton, self.slug, value)
-        if not self._disable_value_update_messaging:
-            LOGGER.info('Automaton("%s").%s = %s', self.automaton.id, self.slug, value)
 
         if self.requires_rule_regeneration:
             # TODO could go in a separate thread?
