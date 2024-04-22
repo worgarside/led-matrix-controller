@@ -36,6 +36,8 @@ class GifViewer(PreDefinedContent):
 
         self.image = Image.open(self.path)
 
+        self.canvas_count = self.image.n_frames
+
     def generate_canvases(
         self,
         new_canvas: Callable[[Image.Image | None], Canvas],
@@ -45,7 +47,7 @@ class GifViewer(PreDefinedContent):
         https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/bindings/python/samples/gif-viewer.py
         """
         canvases = []
-        for frame_index in range(self.frame_count):
+        for frame_index in range(self.canvas_count):
             self.image.seek(frame_index)
 
             canvases.append(new_canvas(self.image))
@@ -63,12 +65,7 @@ class GifViewer(PreDefinedContent):
             self.path.relative_to(const.IMAGE_DIRECTORY).with_suffix("").as_posix(),
         )
 
-    @property
-    def frame_count(self) -> int:
-        """Return the number of frames in the GIF."""
-        return self.image.n_frames
-
     def __iter__(self) -> Generator[None, None, None]:
         """Iterate once per each frame of the GIF."""
-        for _ in range(self.frame_count):
+        for _ in range(self.canvas_count):
             yield

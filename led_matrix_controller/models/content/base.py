@@ -134,6 +134,36 @@ class ContentBase(ABC):
         """Return the ID of the content."""
         return self.instance_id or self.content_id
 
+    def __gt__(self, other: ContentBase) -> bool:
+        """Return whether this content should be de-prioritized over another."""
+        if type(self) != type(other):
+            # If the other content is pre-defined (finite) and this one is not, the other should be prioritized
+            return isinstance(other, PreDefinedContent) and isinstance(
+                self,
+                DynamicContent,
+            )
+
+        if isinstance(other, PreDefinedContent) and isinstance(self, PreDefinedContent):
+            return self.canvas_count > other.canvas_count
+
+        # Not sure of the best way to compare dynamic content yet
+        return False
+
+    def __lt__(self, other: ContentBase) -> bool:
+        """Return whether this content should be prioritized over another."""
+        if type(self) != type(other):
+            # If the other content is pre-defined (finite) and this one is not, the other should be prioritized
+            return isinstance(other, PreDefinedContent) and isinstance(
+                self,
+                DynamicContent,
+            )
+
+        if isinstance(other, PreDefinedContent) and isinstance(self, PreDefinedContent):
+            return self.canvas_count < other.canvas_count
+
+        # Not sure of the best way to compare dynamic content yet
+        return False
+
 
 @dataclass(kw_only=True, slots=True)
 class DynamicContent(ContentBase, ABC):
@@ -153,6 +183,7 @@ class DynamicContent(ContentBase, ABC):
 class PreDefinedContent(ContentBase, ABC):
     """Base class for content for which all frames are already known."""
 
+    canvas_count: int = field(init=False)
     canvases: tuple[Canvas, ...] = field(init=False, repr=False)
 
     _iter_canvases: Iterator[Canvas] = field(init=False, repr=False)
