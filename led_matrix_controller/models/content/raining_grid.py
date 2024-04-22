@@ -57,8 +57,8 @@ class RainingGrid(Automaton):
         ParameterSetting(
             min=0,
             max=1,
-            transition_rate=0.001,
-            fp_precision=3,
+            transition_rate=0.0001,
+            fp_precision=4,
             requires_rule_regeneration=False,
         ),
     ] = 0.025
