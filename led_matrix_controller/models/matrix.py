@@ -145,6 +145,8 @@ class Matrix:
                     self.current_content.content_getter,
                 )
 
+            self.current_content.active = True
+
             # Actual loop through individual content instances:
             for _ in self.current_content:
                 set_content()
@@ -158,6 +160,8 @@ class Matrix:
 
                 for _ in self.current_content.teardown():
                     set_content()
+
+            self.current_content.active = False
 
             LOGGER.info("Content `%s` complete", self.current_content.id)
 

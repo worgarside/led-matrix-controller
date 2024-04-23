@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from logging import DEBUG, getLogger
 from time import sleep
-from typing import TYPE_CHECKING, Callable, Generator
+from typing import TYPE_CHECKING, Callable, Generator, Literal
 
 from models.content.base import PreDefinedContent
 from PIL import Image
@@ -29,6 +29,7 @@ class ImageViewer(PreDefinedContent):
     display_seconds: int
     path: Path
 
+    canvas_count: Literal[2] = field(init=False, default=2)
     image: Image.Image = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
