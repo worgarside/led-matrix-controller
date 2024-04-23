@@ -233,14 +233,6 @@ class Setting(Generic[S]):
                 self.fp_precision,
             ) * (1 if self.target_value > current_value else -1)
 
-            LOGGER.debug(
-                "%s: %s + %s => %s",
-                self.slug,
-                current_value,
-                transition_amount,
-                self.target_value,
-            )
-
             self.value = round(current_value + transition_amount, self.fp_precision)
 
             tick_condition.wait()
