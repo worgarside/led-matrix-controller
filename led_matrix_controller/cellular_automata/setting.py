@@ -9,6 +9,7 @@ from threading import Thread
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     ClassVar,
     Generic,
     Literal,
@@ -73,6 +74,12 @@ class Setting(Generic[S]):
 
     slug: str = field(init=False, repr=False)
     """The field name/slug of the setting."""
+
+    payload_modifier: Callable[[S], S] | None = field(repr=False, default=None)
+    """Function to modify the payload before it is validated.
+
+    Allows for scaling, conversion, etc. relative to Home Assistant's inputs.
+    """
 
     target_value: S = field(init=False, repr=False)
     """The target value for a setting.
@@ -161,6 +168,10 @@ class Setting(Generic[S]):
         except Exception:
             LOGGER.exception("An unexpected error occurred while validating the payload")
             return
+
+        if self.payload_modifier:
+            LOGGER.debug("Applying payload modifier to %r", payload)
+            payload = self.payload_modifier(payload)
 
         # Only transition if the automaton is currently displaying and a transition rate is set
         if self.automaton.active and (self.transition_rate or 0) > 0:
