@@ -162,10 +162,11 @@ class Setting(Generic[S]):
             LOGGER.exception("An unexpected error occurred while validating the payload")
             return
 
-        # Only transition if
+        # Only transition if the automaton is currently displaying
         if (
-            self.automaton._active  # the automaton is currently displaying and
-            and (self.transition_rate or 0) > 0  # a transition rate is set (obviously)
+            self.matrix.current_content == self.automaton
+            and (self.transition_rate or 0)
+            > 0  # and a transition rate is set (obviously)
         ):
             LOGGER.debug("Set target value to %r", payload)
             self.target_value = payload
