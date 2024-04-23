@@ -60,6 +60,7 @@ class RainingGrid(Automaton):
             transition_rate=0.0001,
             fp_precision=4,
             requires_rule_regeneration=False,
+            payload_modifier=lambda x: x * 10,  # Anything above 0.1 is too much rain!
         ),
     ] = 0.025
     rain_speed: Annotated[int, FrequencySetting()] = 1
