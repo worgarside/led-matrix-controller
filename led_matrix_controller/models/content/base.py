@@ -114,16 +114,20 @@ class ContentBase(ABC):
     def __iter__(self) -> Generator[None, None, None]:
         """Iterate over the frames."""
 
-    @final
     @property
     def active(self) -> bool:
         """Return whether the content is active."""
         return self._active
 
+    @active.setter
+    def active(self, value: bool) -> None:
+        """Set the active state of the content."""
+        self._active = value
+
     @final
     def stop(self, stop_type: StopType, /) -> None:
         """Stop the content immediately."""
-        self._active = False
+        self.active = False
         self.stop_reason = stop_type
 
         LOGGER.info("Stopped content with ID `%s`: %r", self.content_id, stop_type)
