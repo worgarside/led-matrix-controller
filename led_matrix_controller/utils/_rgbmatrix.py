@@ -59,4 +59,11 @@ class Canvas(ABC):
         """Set the image on the canvas."""
 
 
-__all__ = ["Color", "Font", "RGBMatrix", "RGBMatrixOptions", "DrawText", "Canvas"]
+__all__ = [
+    "Color",
+    "Font",
+    "RGBMatrix",
+    "RGBMatrixOptions",
+    "DrawText",
+    "Canvas",
+]

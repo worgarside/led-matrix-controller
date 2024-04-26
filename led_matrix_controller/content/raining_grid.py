@@ -10,14 +10,14 @@ from logging import DEBUG, getLogger
 from typing import TYPE_CHECKING, Annotated, Generator, Literal
 
 import numpy as np
-from cellular_automata.automaton import (
+from models.automaton import (
     Automaton,
     Direction,
     Mask,
     MaskGen,
     TargetSlice,
 )
-from cellular_automata.setting import (  # noqa: TCH002
+from models.setting import (  # noqa: TCH002
     FrequencySetting,
     ParameterSetting,
 )
@@ -27,7 +27,7 @@ from wg_utilities.loggers import add_stream_handler
 from .base import StateBase
 
 if TYPE_CHECKING:
-    from models.content.base import GridView
+    from content.base import GridView
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel(DEBUG)
@@ -55,8 +55,8 @@ class RainingGrid(Automaton):
     rain_chance: Annotated[
         float,
         ParameterSetting(
-            min=0,
-            max=1,
+            minimum=0,
+            maximum=1,
             transition_rate=0.0001,
             fp_precision=4,
             requires_rule_regeneration=False,

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from ._rgbmatrix import Canvas, RGBMatrix, RGBMatrixOptions
 from .artwork_image import NULL_IMAGE, ArtworkImage
+from .automaton import Automaton
 from .matrix import Matrix
 from .text_label import FONT, Text
 
@@ -11,7 +11,6 @@ __all__ = [
     "Matrix",
     "NULL_IMAGE",
     "Text",
-    "RGBMatrix",
-    "RGBMatrixOptions",
     "Canvas",
+    "Automaton",
 ]

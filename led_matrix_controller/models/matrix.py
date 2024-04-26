@@ -6,9 +6,9 @@ from functools import partial
 from logging import DEBUG, getLogger
 from queue import PriorityQueue
 from threading import Condition, Thread
-from typing import TYPE_CHECKING, ClassVar, Literal, TypedDict, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Final, TypedDict, cast
 
-from models.content.base import (
+from content.base import (
     CanvasGetter,
     ContentBase,
     DynamicContent,
@@ -16,11 +16,10 @@ from models.content.base import (
     PreDefinedContent,
     StopType,
 )
-from utils import const
+from models.setting import ParameterSetting
+from utils import const, mtrx
 from utils.helpers import to_kebab_case
 from wg_utilities.loggers import add_stream_handler
-
-from ._rgbmatrix import Canvas, RGBMatrix, RGBMatrixOptions
 
 if TYPE_CHECKING:
     from PIL import Image
@@ -64,7 +63,9 @@ class Matrix:
 
     MAX_PRIORITY: ClassVar[float] = 1e10
 
-    canvas: Canvas
+    canvas: mtrx.Canvas
+
+    id: Final[str] = const.HOSTNAME
 
     def __init__(
         self,
@@ -74,12 +75,24 @@ class Matrix:
     ) -> None:
         self.mqtt_client = mqtt_client
 
-        all_options = RGBMatrixOptions()
+        self._brightness_setting = ParameterSetting(
+            minimum=0,
+            maximum=100,
+            transition_rate=1,
+            fp_precision=0,
+            requires_rule_regeneration=False,
+        ).setup(
+            field_name="brightness",
+            automaton=self,
+            type_=int,
+        )
+        self._brightness = options["brightness"]
 
+        all_options = mtrx.RGBMatrixOptions()
         for name, value in options.items():
             setattr(all_options, name, value)
 
-        self.matrix = RGBMatrix(options=all_options)
+        self.matrix = mtrx.RGBMatrix(options=all_options)
         self.canvas = self.matrix.CreateFrameCanvas()
 
         self._content: dict[str, ContentBase] = {}
@@ -113,7 +126,7 @@ class Matrix:
 
         self.swap_canvas(self.canvas)
 
-    def swap_canvas(self, content: Canvas | None = None, /) -> None:
+    def swap_canvas(self, content: mtrx.Canvas | None = None, /) -> None:
         """Update the content of the canvas and increment the tick count."""
         self.canvas = self.matrix.SwapOnVSync(content or self.canvas)
 
@@ -198,8 +211,8 @@ class Matrix:
                     LOGGER.info("Removed content with ID `%s` from queue", content_id)
                     break
 
-            if (curr_cont := self.is_active()) and curr_cont.content_id == content_id:
-                curr_cont.stop(StopType.CANCEL)
+            if self.current_content and self.current_content.content_id == content_id:
+                self.current_content.stop(StopType.CANCEL)
 
             return
 
@@ -208,7 +221,7 @@ class Matrix:
             -self.MAX_PRIORITY,
         )
 
-        if (curr_cont := self.is_active()) and curr_cont.id == content_id:
+        if self.current_content and self.current_content.id == content_id:
             LOGGER.debug("Updating %s priority to %s", content_id, priority)
             self.current_priority = priority
             return
@@ -226,8 +239,8 @@ class Matrix:
         )
 
         # Lower value = higher priority
-        if (curr_cont := self.is_active()) and priority < self.current_priority:
-            curr_cont.stop(StopType.PRIORITY)
+        if self.current_content and priority < self.current_priority:
+            self.current_content.stop(StopType.PRIORITY)
 
         self._start_content_thread()
 
@@ -260,9 +273,9 @@ class Matrix:
 
         LOGGER.info("Matrix cleared")
 
-    def new_canvas(self, image: Image.Image | None = None) -> Canvas:
+    def new_canvas(self, image: Image.Image | None = None) -> mtrx.Canvas:
         """Return a new canvas, optionally with an image."""
-        canvas = cast(Canvas, self.matrix.CreateFrameCanvas())
+        canvas = cast(mtrx.Canvas, self.matrix.CreateFrameCanvas())
 
         if image is not None:
             canvas.SetImage(image.convert("RGB"))
@@ -286,6 +299,11 @@ class Matrix:
                 c.generate_canvases(self.new_canvas)
 
     @property
+    def active(self) -> bool:
+        """Return whether content is currently playing."""
+        return self.current_content is not None and self.current_content.active
+
+    @property
     def dimensions(self) -> Dimensions:
         """Return the dimensions of the matrix."""
         return {
@@ -304,6 +322,17 @@ class Matrix:
         return int(self.matrix.width)
 
     @property
+    def brightness(self) -> int:
+        """Return the brightness of the matrix."""
+        return self._brightness
+
+    @brightness.setter
+    def brightness(self, value: int) -> None:
+        """Set the brightness of the matrix."""
+
+        self._brightness = value
+
+    @property
     def current_content(self) -> ContentBase | None:
         """Return the currently displaying content."""
         return self._current_content
@@ -319,13 +348,10 @@ class Matrix:
         )
         LOGGER.info("Now playing: %s", value.id if value is not None else None)
 
-    def is_active(self) -> ContentBase | Literal[False]:
-        """Return whether content is currently playing."""
-        if (curr_cont := self.current_content) is not None:
-            return curr_cont
-
-        return False
-
     def __del__(self) -> None:
         """Clear the matrix when the object is deleted."""
         self.clear_matrix()
+
+    def generate_frame_rulesets(self, *_: Any, **__: Any) -> None:
+        """Generate the frame rulesets for the matrix."""
+        raise NotImplementedError

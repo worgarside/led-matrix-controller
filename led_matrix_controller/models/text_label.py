@@ -5,17 +5,15 @@ from __future__ import annotations
 from logging import DEBUG, getLogger
 from pathlib import Path
 
-from utils import const
+from utils import const, mtrx
 from wg_utilities.loggers import add_stream_handler
-
-from ._rgbmatrix import Color, Font
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel(DEBUG)
 add_stream_handler(LOGGER)
 
 
-FONT = Font()
+FONT = mtrx.Font()
 FONT.LoadFont(
     str(
         Path(__file__).parents[2]
@@ -29,14 +27,14 @@ FONT.LoadFont(
 class Text:
     """Class for displaying text on the matrix."""
 
-    DEFAULT_TEXT_COLOR = Color(255, 255, 255)  # white
-    CLEAR_TEXT_COLOR = Color()  # black
+    DEFAULT_TEXT_COLOR = mtrx.Color(255, 255, 255)  # white
+    CLEAR_TEXT_COLOR = mtrx.Color()  # black
 
     def __init__(
         self,
         content: str,
         y_pos: int,
-        color: Color | None = None,
+        color: mtrx.Color | None = None,
         *,
         matrix_width: int | None = None,
     ):

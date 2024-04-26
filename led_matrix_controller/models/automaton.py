@@ -20,7 +20,7 @@ from typing import (
 )
 
 import numpy as np
-from models.content.base import DynamicContent, GridView, StateBase
+from content.base import DynamicContent, GridView, StateBase
 from numpy.typing import DTypeLike, NDArray
 from utils import const
 from utils.mqtt import MqttClient  # noqa: TCH002

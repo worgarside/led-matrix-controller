@@ -5,8 +5,8 @@ from __future__ import annotations
 from contextlib import suppress
 from pathlib import Path
 
+from content import GifViewer, ImageViewer, RainingGrid
 from models import Matrix
-from models.content import GifViewer, ImageViewer, RainingGrid
 from utils import MqttClient
 
 

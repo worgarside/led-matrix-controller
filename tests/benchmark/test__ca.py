@@ -7,10 +7,10 @@ from itertools import islice, product
 from typing import TYPE_CHECKING, Callable
 
 import pytest
-from models.content import RainingGrid
+from content import RainingGrid
 
 if TYPE_CHECKING:
-    from cellular_automata.automaton import MaskGen
+    from models.automaton import MaskGen
     from pytest_codspeed import BenchmarkFixture  # type: ignore[import-untyped]
     from utils import MqttClient
 

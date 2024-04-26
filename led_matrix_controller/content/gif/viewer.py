@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from logging import DEBUG, getLogger
 from typing import TYPE_CHECKING, Callable, Generator
 
-from models.content.base import PreDefinedContent
+from content.base import PreDefinedContent
 from PIL import Image
 from utils import const, to_kebab_case
 from wg_utilities.loggers import add_stream_handler
@@ -14,7 +14,7 @@ from wg_utilities.loggers import add_stream_handler
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from models import Canvas
+    from utils import mtrx
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel(DEBUG)
@@ -40,7 +40,7 @@ class GifViewer(PreDefinedContent):
 
     def generate_canvases(
         self,
-        new_canvas: Callable[[Image.Image | None], Canvas],
+        new_canvas: Callable[[Image.Image | None], mtrx.Canvas],
     ) -> None:
         """Generate the canvases for the content.
 
