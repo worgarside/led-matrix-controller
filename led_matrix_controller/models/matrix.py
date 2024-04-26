@@ -6,7 +6,7 @@ from functools import partial
 from logging import DEBUG, getLogger
 from queue import PriorityQueue
 from threading import Condition, Thread
-from typing import TYPE_CHECKING, Any, ClassVar, Final, TypedDict, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal, TypedDict, cast
 
 from content.base import (
     CanvasGetter,
@@ -65,7 +65,7 @@ class Matrix:
 
     canvas: mtrx.Canvas
 
-    id: Final[str] = const.HOSTNAME
+    id: Final[Literal["matrix"]] = "matrix"
 
     def __init__(
         self,
