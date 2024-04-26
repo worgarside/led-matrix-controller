@@ -86,6 +86,7 @@ class Matrix:
             automaton=self,
             type_=int,
         )
+        self._brightness_setting.matrix = self
         self._brightness = options["brightness"]
 
         all_options = mtrx.RGBMatrixOptions()
