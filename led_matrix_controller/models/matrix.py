@@ -334,7 +334,8 @@ class Matrix:
         self._brightness = value
         self.matrix.brightness = value
 
-        self.swap_canvas()
+        if not self.active:
+            self.swap_canvas()
 
     @property
     def current_content(self) -> ContentBase | None:
