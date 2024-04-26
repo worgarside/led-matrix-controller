@@ -264,7 +264,8 @@ class Setting(Generic[S]):
         tick_condition.release()
 
         LOGGER.info(
-            'Transition complete: Automaton("%s").%s = %s',
+            'Transition complete: %s("%s").%s = %s',
+            self.instance.__class__.__name__,
             self.instance.id,
             self.slug,
             self.value,

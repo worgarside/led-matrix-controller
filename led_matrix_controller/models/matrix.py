@@ -332,6 +332,9 @@ class Matrix:
         """Set the brightness of the matrix."""
 
         self._brightness = value
+        self.matrix.brightness = value
+
+        self.swap_canvas()
 
     @property
     def current_content(self) -> ContentBase | None:
