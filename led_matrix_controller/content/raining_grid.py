@@ -56,7 +56,7 @@ class RainingGrid(Automaton):
         float,
         ParameterSetting(
             minimum=0,
-            maximum=1,
+            maximum=100,
             transition_rate=0.0001,
             fp_precision=4,
             requires_rule_regeneration=False,
