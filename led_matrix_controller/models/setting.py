@@ -184,7 +184,17 @@ class Setting(Generic[S]):
 
         if self.payload_modifier:
             LOGGER.debug("Applying payload modifier to %r", payload)
-            payload = self.payload_modifier(payload)
+
+            try:
+                payload = self.validate_payload(self.payload_modifier(payload))
+            except InvalidPayloadError:
+                LOGGER.exception("Invalid payload modifier output: %r", raw_payload)
+                return
+            except Exception:
+                LOGGER.exception(
+                    "An unexpected error occurred while modifying/validating the payload",
+                )
+                return
 
         # Only transition if the automaton is currently displaying and a transition rate is set
         if self.instance.active and (self.transition_rate or 0) > 0:
