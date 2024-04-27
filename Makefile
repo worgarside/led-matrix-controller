@@ -53,7 +53,7 @@ stop:
 	sudo systemctl stop led_matrix_controller.service
 
 tail:
-	sudo journalctl -u led_matrix_controller.service -f -n 20
+	clear && sudo journalctl -u led_matrix_controller.service -f -n 50
 
 test:
 	poetry run pytest

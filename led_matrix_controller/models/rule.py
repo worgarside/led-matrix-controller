@@ -7,10 +7,10 @@ import inspect
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from cellular_automata.setting import FrequencySetting, ParameterSetting
+from models.setting import FrequencySetting, ParameterSetting
 
 if TYPE_CHECKING:
-    from models.content.base import GridView, StateBase
+    from content.base import GridView, StateBase
 
     from .automaton import (
         Automaton,

@@ -11,14 +11,13 @@ from typing import (
     Callable,
     ClassVar,
     Generator,
-    Iterator,
     final,
 )
 
 import numpy as np
-from models import Canvas
 from numpy.typing import NDArray
 from PIL import Image
+from utils import mtrx
 from wg_utilities.loggers import add_stream_handler
 
 _BY_VALUE: dict[int, StateBase] = {}
@@ -66,7 +65,7 @@ def _get_image(colormap: NDArray[np.uint8], grid: GridView) -> Image.Image:
     return Image.fromarray(colormap[grid], "RGB")
 
 
-CanvasGetter = partial[Canvas]
+CanvasGetter = partial[mtrx.Canvas]
 ImageGetter = partial[Image.Image]
 
 
@@ -88,6 +87,7 @@ class ContentBase(ABC):
 
     instance_id: str | None = None
     persistent: bool = field(default=False)
+    is_sleeping: bool = field(default=False, init=False, repr=False)
 
     _active: bool = field(init=False, default=False)
     _image_getter: ImageGetter = field(init=False, repr=False)
@@ -188,14 +188,12 @@ class PreDefinedContent(ContentBase, ABC):
     """Base class for content for which all frames are already known."""
 
     canvas_count: int = field(init=False)
-    canvases: tuple[Canvas, ...] = field(init=False, repr=False)
-
-    _iter_canvases: Iterator[Canvas] = field(init=False, repr=False)
+    canvases: tuple[mtrx.Canvas, ...] = field(init=False, repr=False)
 
     @abstractmethod
     def generate_canvases(
         self,
-        new_canvas: Callable[[Image.Image | None], Canvas],
+        new_canvas: Callable[[Image.Image | None], mtrx.Canvas],
     ) -> None:
         """Generate the canvases for the content."""
 

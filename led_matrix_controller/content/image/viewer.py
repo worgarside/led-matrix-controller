@@ -7,7 +7,7 @@ from logging import DEBUG, getLogger
 from time import sleep
 from typing import TYPE_CHECKING, Callable, Generator, Literal
 
-from models.content.base import PreDefinedContent
+from content.base import PreDefinedContent
 from PIL import Image
 from utils import const, to_kebab_case
 from wg_utilities.loggers import add_stream_handler
@@ -15,7 +15,7 @@ from wg_utilities.loggers import add_stream_handler
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from models import Canvas
+    from utils import mtrx
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel(DEBUG)
@@ -32,6 +32,8 @@ class ImageViewer(PreDefinedContent):
     canvas_count: Literal[2] = field(init=False, default=2)
     image: Image.Image = field(init=False, repr=False)
 
+    ticks_to_sleep: int = field(init=False)
+
     def __post_init__(self) -> None:
         """Initialize the image."""
         if not self.path.is_absolute():
@@ -39,16 +41,17 @@ class ImageViewer(PreDefinedContent):
 
         self.image = Image.open(self.path).convert("RGB")
 
+        self.ticks_to_sleep = int(self.display_seconds / const.TICK_LENGTH)
+
     def generate_canvases(
         self,
-        new_canvas: Callable[[Image.Image | None], Canvas],
+        new_canvas: Callable[[Image.Image | None], mtrx.Canvas],
     ) -> None:
-        """Generate the canvases for the content ahead of time.
+        """Generate the canvas for the content ahead of time.
 
-        This is a static image, so we only need to generate the canvas once. It is included twice to
-        account for the two `yield` statements in ImageContent.__iter__.
+        This is a static image, so we only need to generate the canvas once.
         """
-        self.canvases = (new_canvas(self.image), new_canvas(self.image))
+        self.canvases = (new_canvas(self.image),)
 
     @property
     def content_id(self) -> str:
@@ -63,25 +66,24 @@ class ImageViewer(PreDefinedContent):
 
     def __iter__(self) -> Generator[None, None, None]:
         """Yield nothing; this is a static image."""
+        tts = self.ticks_to_sleep
+
         yield
 
-        ticks_to_sleep = self.display_seconds / const.TICK_LENGTH
+        self.is_sleeping = True
 
         LOGGER.debug(
             "Sleeping for %d ticks whilst displaying %s",
-            ticks_to_sleep,
+            tts,
             self.path,
         )
 
-        self._active = True
-        while ticks_to_sleep > 0:
+        while tts > 0:
             sleep(const.TICK_LENGTH)
-            ticks_to_sleep -= 1
+            tts -= 1
 
             # Allow `stop` override
             if not self._active:
                 break
 
-        self._active = False
-
-        yield
+        self.is_sleeping = False

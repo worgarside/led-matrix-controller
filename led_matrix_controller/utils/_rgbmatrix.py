@@ -1,10 +1,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from PIL import Image
 
 try:
     from rgbmatrix import RGBMatrix, RGBMatrixOptions  # type: ignore[import-not-found]
@@ -18,6 +14,11 @@ except ImportError:
 
     if gethostname() == "mtrxpi":
         raise
+
+    from typing import TYPE_CHECKING
+
+    if TYPE_CHECKING:
+        from PIL import Image
 
     from RGBMatrixEmulator import (  # type: ignore[import-untyped]
         RGBMatrix,
@@ -59,4 +60,11 @@ class Canvas(ABC):
         """Set the image on the canvas."""
 
 
-__all__ = ["Color", "Font", "RGBMatrix", "RGBMatrixOptions", "DrawText", "Canvas"]
+__all__ = [
+    "Color",
+    "Font",
+    "RGBMatrix",
+    "RGBMatrixOptions",
+    "DrawText",
+    "Canvas",
+]

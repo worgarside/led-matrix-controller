@@ -20,7 +20,7 @@ from typing import (
 )
 
 import numpy as np
-from models.content.base import DynamicContent, GridView, StateBase
+from content.base import DynamicContent, GridView, StateBase
 from numpy.typing import DTypeLike, NDArray
 from utils import const
 from utils.mqtt import MqttClient  # noqa: TCH002
@@ -285,6 +285,14 @@ class Automaton(DynamicContent, ABC):
     def shape(self) -> tuple[int, int]:
         """Return the shape of the automaton."""
         return self.pixels.shape  # type: ignore[return-value]
+
+    @property
+    def current_content(self) -> Self:
+        """Return this automaton.
+
+        Bit of a workaround to get Settings to play nice between Matrix and Automaton instances.
+        """
+        return self
 
     def __getitem__(self, key: TargetSliceDecVal) -> NDArray[np.int_]:
         """Get an item from the grid."""

@@ -13,6 +13,7 @@ from typing import (
     ClassVar,
     Generic,
     Literal,
+    Self,
     TypeVar,
     cast,
 )
@@ -23,8 +24,8 @@ from utils.mqtt import MqttClient
 from wg_utilities.loggers import add_stream_handler
 
 if TYPE_CHECKING:
-    from cellular_automata.automaton import Automaton
-    from models.matrix import Matrix
+    from .automaton import Automaton
+    from .matrix import Matrix
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel(DEBUG)
@@ -69,8 +70,8 @@ class Setting(Generic[S]):
     If None (or 0), the setting modification will be applied immediately.
     """
 
-    automaton: Automaton = field(init=False, repr=False)
-    """The automaton to which the setting applies."""
+    instance: Automaton | Matrix = field(init=False, repr=False)
+    """The Automaton or Matrix instance to which the setting applies."""
 
     slug: str = field(init=False, repr=False)
     """The field name/slug of the setting."""
@@ -93,10 +94,10 @@ class Setting(Generic[S]):
     type_: type[S] = field(init=False, repr=False)
     """The type of the setting's value (e.g. int, float, bool)."""
 
-    min: int | float | None = None
+    minimum: int | float | None = None
     """Inclusive lower bound for this setting."""
 
-    max: int | float | None = None
+    maximum: int | float | None = None
     """Inclusive upper bound for this setting."""
 
     requires_rule_regeneration: bool = True
@@ -120,39 +121,51 @@ class Setting(Generic[S]):
         if not hasattr(self.__class__, "_mqtt_client"):
             self.__class__._mqtt_client = MqttClient()
 
-        if self.min is not None and self.max is not None and self.min > self.max:
+        if (
+            self.minimum is not None
+            and self.maximum is not None
+            and self.minimum > self.maximum
+        ):
             raise InvalidSettingError(
-                f"The 'min' value ({self.min}) cannot be greater than the 'max' value ({self.max}).",
+                f"The 'min' value ({self.minimum}) cannot be greater than the 'max' value ({self.maximum}).",
             )
 
-        if isinstance(self.max, float):
-            self.max = round(self.max, self.fp_precision)
+        if isinstance(self.maximum, float):
+            self.maximum = round(self.maximum, self.fp_precision)
 
-        if isinstance(self.min, float):
-            self.min = round(self.min, self.fp_precision)
+        if isinstance(self.minimum, float):
+            self.minimum = round(self.minimum, self.fp_precision)
 
     def setup(
         self,
         *,
         field_name: str,
-        automaton: Automaton,
+        automaton: Automaton | Matrix,
         type_: type[S],
-    ) -> None:
-        """Set up the setting."""
+    ) -> Self:
+        """Set up the setting.
+
+        Args:
+            field_name: The field name/slug of the setting.
+            automaton: The automaton to which the setting applies.
+            type_: The type of the setting's value (e.g. int, float, bool).
+        """
         self.slug = field_name
-        self.automaton = automaton
+        self.instance = automaton
         self.type_ = type_
 
         if self.type_ in {int, float}:
             if self.type_ is int:
                 self.fp_precision = 0
 
-            if self.max:
-                self.max = round(self.max, self.fp_precision)
-            if self.min:
-                self.min = round(self.min, self.fp_precision)
+            if self.maximum:
+                self.maximum = round(self.maximum, self.fp_precision)
+            if self.minimum:
+                self.minimum = round(self.minimum, self.fp_precision)
 
-        self.automaton.mqtt_client.add_topic_callback(self.mqtt_topic, self.on_message)
+        self.instance.mqtt_client.add_topic_callback(self.mqtt_topic, self.on_message)
+
+        return self
 
     def on_message(self, raw_payload: S) -> None:
         """Handle an MQTT message.
@@ -174,7 +187,7 @@ class Setting(Generic[S]):
             payload = self.payload_modifier(payload)
 
         # Only transition if the automaton is currently displaying and a transition rate is set
-        if self.automaton.active and (self.transition_rate or 0) > 0:
+        if self.instance.active and (self.transition_rate or 0) > 0:
             LOGGER.debug("Set target value to %r", payload)
             self.target_value = payload
 
@@ -221,11 +234,11 @@ class Setting(Generic[S]):
 
         # Check not out of bounds
         if isinstance(coerced, float | int):
-            if self.max is not None and coerced > self.max:
-                coerced = self.type_(self.max)
+            if self.maximum is not None and coerced > self.maximum:
+                coerced = self.type_(self.maximum)
 
-            if self.min is not None and coerced < self.min:
-                coerced = self.type_(self.min)
+            if self.minimum is not None and coerced < self.minimum:
+                coerced = self.type_(self.minimum)
 
         if isinstance(coerced, float):
             coerced = round(coerced, self.fp_precision)
@@ -238,6 +251,8 @@ class Setting(Generic[S]):
         tick_condition = self.matrix.tick_condition
         tick_condition.acquire()
 
+        cc = self.instance.current_content
+
         while (current_value := self.type_(self.value)) != self.target_value:
             transition_amount = round(
                 min(self.transition_rate, abs(current_value - self.target_value)),
@@ -246,13 +261,18 @@ class Setting(Generic[S]):
 
             self.value = round(current_value + transition_amount, self.fp_precision)
 
-            tick_condition.wait()
+            if not (cc and cc.is_sleeping):
+                # If the content is sleeping, then it isn't yielding, so the canvas isn't being
+                # swapped, and that means that no ticks are happening...
+                # So only wait for a tick notification if the content is not sleeping!
+                tick_condition.wait()
 
         tick_condition.release()
 
         LOGGER.info(
-            'Transition complete: Automaton("%s").%s = %s',
-            self.automaton.id,
+            'Transition complete: %s("%s").%s = %s',
+            self.instance.__class__.__name__,
+            self.instance.id,
             self.slug,
             self.value,
         )
@@ -272,7 +292,7 @@ class Setting(Generic[S]):
             self._mqtt_topic = "/" + "/".join(
                 to_kebab_case(
                     const.HOSTNAME,
-                    self.automaton.id,
+                    self.instance.id,
                     self.setting_type,
                     self.slug,
                 ),
@@ -283,32 +303,38 @@ class Setting(Generic[S]):
     @property
     def value(self) -> S:
         """Get the setting's value from the automaton's attribute."""
-        return cast(S, getattr(self.automaton, self.slug))
+        return cast(S, getattr(self.instance, self.slug))
 
     @value.setter
     def value(self, value: S) -> None:
         """Set the setting's value in the automaton's attribute."""
-        setattr(self.automaton, self.slug, value)
+        setattr(self.instance, self.slug, value)
 
         if self.requires_rule_regeneration:
             # TODO could go in a separate thread?
-            self.automaton.generate_frame_rulesets(update_setting=self.slug)
+            self.instance.generate_frame_rulesets(update_setting=self.slug)
 
 
 @dataclass(kw_only=True, slots=True)
 class FrequencySetting(Setting[int]):
     """Set a rule's frequency."""
 
-    setting_type: Literal[SettingType.FREQUENCY] = SettingType.FREQUENCY
-    type_: type[int] = int
-    min: Literal[0] = 0
+    setting_type: Literal[SettingType.FREQUENCY] = field(
+        init=False,
+        default=SettingType.FREQUENCY,
+    )
+    type_: type[int] = field(init=False, repr=False, default=int)
+    min: Literal[0] = field(init=False, default=0)
 
 
 @dataclass(kw_only=True, slots=True)
 class ParameterSetting(Setting[S]):
     """Set a parameter for a rule."""
 
-    setting_type: Literal[SettingType.PARAMETER] = SettingType.PARAMETER
+    setting_type: Literal[SettingType.PARAMETER] = field(
+        init=False,
+        default=SettingType.PARAMETER,
+    )
 
 
 __all__ = ["FrequencySetting", "ParameterSetting"]
