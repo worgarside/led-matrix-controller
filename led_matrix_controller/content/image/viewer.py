@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from logging import DEBUG, getLogger
 from time import sleep
-from typing import TYPE_CHECKING, Callable, Generator, Literal
+from typing import TYPE_CHECKING, Callable, ClassVar, Generator, Literal
 
 from content.base import PreDefinedContent
 from PIL import Image
@@ -26,10 +26,12 @@ add_stream_handler(LOGGER)
 class ImageViewer(PreDefinedContent):
     """Content for viewing static image."""
 
+    IMAGE_DIRECTORY: ClassVar[Path] = const.ASSETS_DIRECTORY / "images" / "64x64"
+
     display_seconds: int
     path: Path
 
-    canvas_count: Literal[2] = field(init=False, default=2)
+    canvas_count: Literal[1] = field(init=False, default=1)
     image: Image.Image = field(init=False, repr=False)
 
     ticks_to_sleep: int = field(init=False)
@@ -37,7 +39,7 @@ class ImageViewer(PreDefinedContent):
     def __post_init__(self) -> None:
         """Initialize the image."""
         if not self.path.is_absolute():
-            self.path = const.IMAGE_DIRECTORY / self.path
+            self.path = self.IMAGE_DIRECTORY / self.path
 
         self.image = Image.open(self.path).convert("RGB")
 
@@ -57,7 +59,7 @@ class ImageViewer(PreDefinedContent):
     def content_id(self) -> str:
         """Return the ID of the content."""
         return "image-" + to_kebab_case(
-            self.path.relative_to(const.IMAGE_DIRECTORY).with_suffix("").as_posix(),
+            self.path.relative_to(self.IMAGE_DIRECTORY).with_suffix("").as_posix(),
         )
 
     def teardown(self) -> Generator[None, None, None]:
