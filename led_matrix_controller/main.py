@@ -12,7 +12,6 @@ from utils import MqttClient
 
 def main() -> None:
     """Run the rain simulation."""
-
     mqtt_client = MqttClient(connect=True)
 
     matrix = Matrix(mqtt_client=mqtt_client)
