@@ -19,6 +19,7 @@ from content.base import (
 from models.setting import ParameterSetting
 from utils import const, mtrx
 from utils.helpers import to_kebab_case
+from wg_utilities.decorators import process_exception
 from wg_utilities.loggers import add_stream_handler
 
 if TYPE_CHECKING:
@@ -37,6 +38,7 @@ class ContentPayload(TypedDict):
 
     id: str
     priority: float | None
+    parameters: dict[str, Any]
 
 
 class Dimensions(TypedDict):
@@ -64,6 +66,7 @@ class Matrix:
     MAX_PRIORITY: ClassVar[float] = 1e10
 
     canvas: mtrx.Canvas
+    tick_condition: Condition
 
     id: Final[Literal["matrix"]] = "matrix"
 
@@ -106,7 +109,13 @@ class Matrix:
 
         self.current_content_topic = self._mqtt_topic("current-content")
 
-        self._content_queue: PriorityQueue[tuple[float, ContentBase]] = PriorityQueue()
+        self._content_queue: PriorityQueue[
+            tuple[
+                float,
+                ContentBase,
+                dict[str, Any],
+            ]
+        ] = PriorityQueue()
 
         self._content_thread = Thread(target=self._content_loop)
 
@@ -140,7 +149,11 @@ class Matrix:
     def _content_loop(self) -> None:
         """Loop through the content queue."""
         while not self._content_queue.empty():
-            self.current_priority, self.current_content = self._content_queue.get()
+            (
+                self.current_priority,
+                self.current_content,
+                parameters,
+            ) = self._content_queue.get()
 
             LOGGER.info(
                 "Displaying content with ID `%s` at priority %s",
@@ -183,7 +196,9 @@ class Matrix:
                 self.current_content.persistent
                 and self.current_content.stop_reason != StopType.CANCEL
             ):
-                self._content_queue.put((self.current_priority, self.current_content))
+                self._content_queue.put(
+                    (self.current_priority, self.current_content, parameters),
+                )
                 LOGGER.debug(
                     "Content `%s` is persistent with priority %s",
                     self.current_content.id,
@@ -198,44 +213,45 @@ class Matrix:
             to_kebab_case(const.HOSTNAME, self.__class__.__name__, *suffix.split("/")),
         )
 
+    @process_exception(logger=LOGGER, raise_after_processing=False)
     def _on_content_message(
         self,
         payload: ContentPayload,
     ) -> None:
         """Add/remove content to/from the queue."""
-        content_id = payload["id"]
+        target_content = self._content[payload["id"]]
+        parameters = payload.get("parameters", {})
 
-        if payload["priority"] is None:
-            for p, c in self._content_queue.queue:
-                if c.content_id == content_id:
-                    self._content_queue.queue.remove((p, c))
-                    LOGGER.info("Removed content with ID `%s` from queue", content_id)
+        if (priority := payload["priority"]) is None:
+            for prio, ctnt, prms in self._content_queue.queue:
+                if ctnt is target_content:
+                    self._content_queue.queue.remove((prio, ctnt, prms))
+                    LOGGER.info(
+                        "Removed content with ID `%s` from queue",
+                        target_content.id,
+                    )
                     break
 
-            if self.current_content and self.current_content.content_id == content_id:
+            if self.current_content is target_content:
                 self.current_content.stop(StopType.CANCEL)
 
             return
 
         priority = max(
-            min(float(payload["priority"]), self.MAX_PRIORITY),
+            min(float(priority), self.MAX_PRIORITY),
             -self.MAX_PRIORITY,
         )
 
-        if self.current_content and self.current_content.id == content_id:
-            LOGGER.debug("Updating %s priority to %s", content_id, priority)
+        if self.current_content is target_content:
+            LOGGER.debug("Updating %s priority to %s", target_content, priority)
             self.current_priority = priority
             return
 
-        try:
-            self._content_queue.put((priority, self._content[content_id]))
-        except KeyError:
-            LOGGER.exception("Content with ID `%s` not found", content_id)
-            return
+        self._content_queue.put((priority, target_content, parameters))
 
         LOGGER.info(
             "Added content with ID `%s` to queue with priority %s",
-            content_id,
+            target_content.id,
             priority,
         )
 
