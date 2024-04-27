@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from logging import DEBUG, getLogger
-from typing import TYPE_CHECKING, Callable, Generator
+from typing import TYPE_CHECKING, Callable, ClassVar, Generator
 
 from content.base import PreDefinedContent
 from PIL import Image
@@ -25,6 +25,8 @@ add_stream_handler(LOGGER)
 class GifViewer(PreDefinedContent):
     """Content for playing an animated GIF."""
 
+    GIF_DIRECTORY: ClassVar[Path] = const.ASSETS_DIRECTORY / "gifs" / "64x64"
+
     path: Path
 
     image: Image.Image = field(init=False, repr=False)
@@ -32,7 +34,7 @@ class GifViewer(PreDefinedContent):
     def __post_init__(self) -> None:
         """Initialize the image."""
         if not self.path.is_absolute():
-            self.path = const.IMAGE_DIRECTORY / self.path
+            self.path = self.GIF_DIRECTORY / self.path
 
         self.image = Image.open(self.path)
 
@@ -62,7 +64,7 @@ class GifViewer(PreDefinedContent):
     def content_id(self) -> str:
         """Return the ID of the content."""
         return "gif-" + to_kebab_case(
-            self.path.relative_to(const.IMAGE_DIRECTORY).with_suffix("").as_posix(),
+            self.path.relative_to(self.GIF_DIRECTORY).with_suffix("").as_posix(),
         )
 
     def __iter__(self) -> Generator[None, None, None]:
