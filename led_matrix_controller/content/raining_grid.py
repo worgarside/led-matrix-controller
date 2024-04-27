@@ -106,8 +106,6 @@ class RainingGrid(Automaton):
             original_transition_rate,
         )
 
-        return
-
 
 def generate_raindrops_mask(shape: tuple[int, int], ca: RainingGrid) -> Mask:
     return const.RNG.random(shape) < ca.rain_chance
