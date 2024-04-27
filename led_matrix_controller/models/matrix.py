@@ -334,7 +334,11 @@ class Matrix:
         self._brightness = value
         self.matrix.brightness = value
 
-        if not self.active:
+        LOGGER.debug("Set brightness to %s (%i)", value, self.tick)
+
+        # If there is no content playing, actively swap the canvas to update the brightness
+        # Otherwise the brightness will be updated on each tick anyway
+        if self.current_content is None or self.current_content.is_sleeping:
             self.swap_canvas()
 
     @property

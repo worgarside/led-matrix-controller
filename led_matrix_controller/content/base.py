@@ -11,7 +11,6 @@ from typing import (
     Callable,
     ClassVar,
     Generator,
-    Iterator,
     final,
 )
 
@@ -88,6 +87,7 @@ class ContentBase(ABC):
 
     instance_id: str | None = None
     persistent: bool = field(default=False)
+    is_sleeping: bool = field(default=False, init=False, repr=False)
 
     _active: bool = field(init=False, default=False)
     _image_getter: ImageGetter = field(init=False, repr=False)
@@ -189,8 +189,6 @@ class PreDefinedContent(ContentBase, ABC):
 
     canvas_count: int = field(init=False)
     canvases: tuple[mtrx.Canvas, ...] = field(init=False, repr=False)
-
-    _iter_canvases: Iterator[mtrx.Canvas] = field(init=False, repr=False)
 
     @abstractmethod
     def generate_canvases(

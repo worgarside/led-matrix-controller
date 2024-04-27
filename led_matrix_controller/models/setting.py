@@ -251,6 +251,8 @@ class Setting(Generic[S]):
         tick_condition = self.matrix.tick_condition
         tick_condition.acquire()
 
+        cc = self.instance.current_content
+
         while (current_value := self.type_(self.value)) != self.target_value:
             transition_amount = round(
                 min(self.transition_rate, abs(current_value - self.target_value)),
@@ -259,7 +261,11 @@ class Setting(Generic[S]):
 
             self.value = round(current_value + transition_amount, self.fp_precision)
 
-            tick_condition.wait()
+            if not (cc and cc.is_sleeping):
+                # If the content is sleeping, then it isn't yielding, so the canvas isn't being
+                # swapped, and that means that no ticks are happening...
+                # So only wait for a tick notification if the content is not sleeping!
+                tick_condition.wait()
 
         tick_condition.release()
 

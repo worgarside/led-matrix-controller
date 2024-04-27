@@ -286,6 +286,14 @@ class Automaton(DynamicContent, ABC):
         """Return the shape of the automaton."""
         return self.pixels.shape  # type: ignore[return-value]
 
+    @property
+    def current_content(self) -> Self:
+        """Return this automaton.
+
+        Bit of a workaround to get Settings to play nice between Matrix and Automaton instances.
+        """
+        return self
+
     def __getitem__(self, key: TargetSliceDecVal) -> NDArray[np.int_]:
         """Get an item from the grid."""
         return self.pixels[key]
