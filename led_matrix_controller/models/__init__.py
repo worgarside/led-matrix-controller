@@ -11,6 +11,5 @@ __all__ = [
     "Matrix",
     "NULL_IMAGE",
     "Text",
-    "Canvas",
     "Automaton",
 ]
