@@ -119,7 +119,8 @@ class Matrix:
 
         self._content_thread = Thread(target=self._content_loop)
 
-        self._current_content: ContentBase | None = None
+        # Setting via property to trigger MQTT update
+        self.current_content: ContentBase | None = None
 
         self.current_priority: float = self.MAX_PRIORITY  # Lower value = higher priority
 
