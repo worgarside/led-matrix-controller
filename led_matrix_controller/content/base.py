@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -18,6 +19,7 @@ import numpy as np
 from numpy.typing import NDArray
 from PIL import Image
 from utils import mtrx
+from utils.helpers import camel_to_kebab_case
 from wg_utilities.loggers import add_stream_handler
 
 _BY_VALUE: dict[int, StateBase] = {}
@@ -88,6 +90,7 @@ class ContentBase(ABC):
     instance_id: str | None = None
     persistent: bool = field(default=False)
     is_sleeping: bool = field(default=False, init=False, repr=False)
+    canvas_count: int | None = field(init=False)
 
     _active: bool = field(init=False, default=False)
     _image_getter: ImageGetter = field(init=False, repr=False)
@@ -101,9 +104,9 @@ class ContentBase(ABC):
         """Perform any necessary cleanup."""
 
     @property
-    @abstractmethod
     def content_id(self) -> str:
         """Return the ID of the content."""
+        return camel_to_kebab_case(self.__class__.__name__)
 
     @property
     @abstractmethod
@@ -140,47 +143,11 @@ class ContentBase(ABC):
 
     def __gt__(self, other: ContentBase) -> bool:
         """Return whether this content should be de-prioritized over another."""
-        if type(self) != type(other):
-            # If the other content is pre-defined (finite) and this one is not, the other should be prioritized
-            return isinstance(other, PreDefinedContent) and isinstance(
-                self,
-                DynamicContent,
-            )
-
-        if isinstance(other, PreDefinedContent) and isinstance(self, PreDefinedContent):
-            return self.canvas_count > other.canvas_count
-
-        # Not sure of the best way to compare dynamic content yet
-        return False
+        return (self.canvas_count or math.inf) > (other.canvas_count or math.inf)
 
     def __lt__(self, other: ContentBase) -> bool:
         """Return whether this content should be prioritized over another."""
-        if type(self) != type(other):
-            # If the other content is pre-defined (finite) and this one is not, the other should be prioritized
-            return isinstance(other, PreDefinedContent) and isinstance(
-                self,
-                DynamicContent,
-            )
-
-        if isinstance(other, PreDefinedContent) and isinstance(self, PreDefinedContent):
-            return self.canvas_count < other.canvas_count
-
-        # Not sure of the best way to compare dynamic content yet
-        return False
-
-
-@dataclass(kw_only=True, slots=True)
-class DynamicContent(ContentBase, ABC):
-    """Base class for content which is dynamically created."""
-
-    @final
-    @property
-    def content_getter(self) -> ImageGetter:
-        """Return the image representation of the content."""
-        if not hasattr(self, "_image_getter"):
-            self._image_getter = partial(_get_image, self.colormap, self.pixels)
-
-        return self._image_getter
+        return (self.canvas_count or math.inf) < (other.canvas_count or math.inf)
 
 
 @dataclass(kw_only=True, slots=True)
@@ -205,4 +172,4 @@ class PreDefinedContent(ContentBase, ABC):
         return partial(next, iter(self.canvases))
 
 
-__all__ = ["StateBase", "ContentBase", "DynamicContent", "PreDefinedContent", "GridView"]
+__all__ = ["StateBase", "ContentBase", "PreDefinedContent", "GridView"]

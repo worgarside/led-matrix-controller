@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from logging import DEBUG, getLogger
 from threading import Thread
+from time import sleep
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -24,7 +25,8 @@ from utils.mqtt import MqttClient
 from wg_utilities.loggers import add_stream_handler
 
 if TYPE_CHECKING:
-    from .automaton import Automaton
+    from content.dynamic_content import DynamicContent
+
     from .matrix import Matrix
 
 LOGGER = getLogger(__name__)
@@ -70,7 +72,7 @@ class Setting(Generic[S]):
     If None (or 0), the setting modification will be applied immediately.
     """
 
-    instance: Automaton | Matrix = field(init=False, repr=False)
+    instance: DynamicContent | Matrix = field(init=False, repr=False)
     """The Automaton or Matrix instance to which the setting applies."""
 
     slug: str = field(init=False, repr=False)
@@ -140,18 +142,23 @@ class Setting(Generic[S]):
         self,
         *,
         field_name: str,
-        automaton: Automaton | Matrix,
+        instance: DynamicContent | Matrix,
         type_: type[S],
     ) -> Self:
         """Set up the setting.
 
         Args:
             field_name: The field name/slug of the setting.
-            automaton: The automaton to which the setting applies.
+            instance: The automaton to which the setting applies.
             type_: The type of the setting's value (e.g. int, float, bool).
         """
+        if hasattr(self, "slug"):
+            raise InvalidSettingError(
+                f"Setting `{self.slug}` already set up for {self.instance}",
+            )
+
         self.slug = field_name
-        self.instance = automaton
+        self.instance = instance
         self.type_ = type_
 
         if self.type_ in {int, float}:
@@ -162,8 +169,6 @@ class Setting(Generic[S]):
                 self.maximum = round(self.maximum, self.fp_precision)
             if self.minimum:
                 self.minimum = round(self.minimum, self.fp_precision)
-
-        self.instance.mqtt_client.add_topic_callback(self.mqtt_topic, self.on_message)
 
         return self
 
@@ -261,7 +266,7 @@ class Setting(Generic[S]):
         tick_condition = self.matrix.tick_condition
         tick_condition.acquire()
 
-        cc = self.instance.current_content
+        cc = self.matrix.current_content
 
         while (current_value := self.type_(self.value)) != self.target_value:
             transition_amount = round(
@@ -276,6 +281,8 @@ class Setting(Generic[S]):
                 # swapped, and that means that no ticks are happening...
                 # So only wait for a tick notification if the content is not sleeping!
                 tick_condition.wait()
+            else:
+                sleep(const.TICK_LENGTH)
 
         tick_condition.release()
 
@@ -320,7 +327,10 @@ class Setting(Generic[S]):
         """Set the setting's value in the automaton's attribute."""
         setattr(self.instance, self.slug, value)
 
-        if self.requires_rule_regeneration:
+        if self.requires_rule_regeneration and hasattr(
+            self.instance,
+            "generate_frame_rulesets",
+        ):
             # TODO could go in a separate thread?
             self.instance.generate_frame_rulesets(update_setting=self.slug)
 

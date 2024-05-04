@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from functools import partial
 from logging import DEBUG, getLogger
+from math import inf
 from queue import PriorityQueue
 from threading import Condition, Thread
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal, TypedDict, cast
@@ -11,7 +12,6 @@ from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal, TypedDict, cast
 from content.base import (
     CanvasGetter,
     ContentBase,
-    DynamicContent,
     ImageGetter,
     PreDefinedContent,
     StopType,
@@ -86,9 +86,14 @@ class Matrix:
             requires_rule_regeneration=False,
         ).setup(
             field_name="brightness",
-            automaton=self,
+            instance=self,
             type_=int,
         )
+        self.mqtt_client.add_topic_callback(
+            self._brightness_setting.mqtt_topic,
+            self._brightness_setting.on_message,
+        )
+
         self._brightness_setting.matrix = self
         self._brightness = options["brightness"]
 
@@ -162,7 +167,7 @@ class Matrix:
                 self.current_priority,
             )
 
-            if isinstance(self.current_content, DynamicContent):
+            if self.current_content.canvas_count == inf:
                 set_content = partial(
                     self.set_image_swap_canvas,
                     self.current_content.content_getter,
@@ -315,6 +320,9 @@ class Matrix:
 
             if isinstance(c, PreDefinedContent):
                 c.generate_canvases(self.new_canvas)
+
+            if hasattr(c, "mqtt_topic") and hasattr(c, "on_message"):
+                self.mqtt_client.add_topic_callback(c.mqtt_topic, c.on_message)
 
     @property
     def active(self) -> bool:

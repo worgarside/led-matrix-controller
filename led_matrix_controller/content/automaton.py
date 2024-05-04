@@ -16,18 +16,16 @@ from typing import (
     ClassVar,
     Generator,
     Self,
-    get_type_hints,
 )
 
 import numpy as np
-from content.base import DynamicContent, GridView, StateBase
+from content.base import GridView, StateBase
+from content.dynamic_content import DynamicContent
+from models.rule import Rule
+from models.setting import FrequencySetting
 from numpy.typing import DTypeLike, NDArray
 from utils import const
-from utils.mqtt import MqttClient  # noqa: TCH002
 from wg_utilities.loggers import add_stream_handler
-
-from .rule import Rule
-from .setting import FrequencySetting, Setting
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel(DEBUG)
@@ -64,12 +62,9 @@ class Automaton(DynamicContent, ABC):
     if const.DEBUG_MODE:
         _RULE_FUNCTIONS: ClassVar[list[Callable[..., MaskGen]]] = []
 
-    mqtt_client: MqttClient
-
     frame_index: int = field(init=False, default=-1)
     frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False, repr=False)
     rules: list[Rule] = field(init=False, repr=False)
-    settings: dict[str, Setting[Any]] = field(default_factory=dict)
 
     class OutOfBoundsError(ValueError):
         """Error for when a slice goes out of bounds."""
@@ -85,25 +80,10 @@ class Automaton(DynamicContent, ABC):
 
     def __post_init__(self) -> None:
         """Set the calculated attributes of the Grid."""
+        DynamicContent.__post_init__(self)
+
         self.colormap = self.STATE.colormap()
-
         self.rules = deepcopy(self._RULES_SOURCE)
-
-        # Compile settings from type hints
-        for field_name, field_type in get_type_hints(
-            self.__class__,
-            include_extras=True,
-        ).items():
-            for annotation in getattr(field_type, "__metadata__", ()):
-                if isinstance(annotation, Setting):
-                    setting = deepcopy(annotation)
-                    setting.setup(
-                        field_name=field_name,
-                        automaton=self,
-                        type_=field_type.__origin__,
-                    )
-
-                    self.settings[setting.slug] = setting
 
         # Create the automaton; 0 is the default state
         self.pixels = self.zeros()

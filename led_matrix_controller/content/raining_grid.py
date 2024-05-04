@@ -10,7 +10,7 @@ from logging import DEBUG, getLogger
 from typing import TYPE_CHECKING, Annotated, Generator, Literal
 
 import numpy as np
-from models.automaton import (
+from content.automaton import (
     Automaton,
     Direction,
     Mask,
@@ -65,11 +65,6 @@ class RainingGrid(Automaton):
     ] = 0.025
     rain_speed: Annotated[int, FrequencySetting()] = 1
     splash_speed: Annotated[int, FrequencySetting()] = 8
-
-    @property
-    def content_id(self) -> str:
-        """Return the ID of the grid."""
-        return "raining-grid"
 
     def teardown(self) -> Generator[None, None, None]:
         """Transition the rain chance to 0 then run the simulation until the grid is clear."""
