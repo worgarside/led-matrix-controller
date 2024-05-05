@@ -141,7 +141,7 @@ class Setting(Generic[S]):
     def _set_value_from_payload(self, payload: S) -> None:
         """Set the value of the setting from the payload."""
         if payload != self.value:
-            LOGGER.info("Set value to %r", payload)
+            LOGGER.info("Set `%s` value to %r", self.slug, payload)
             self.value = payload
         else:
             LOGGER.debug("Value unchanged: %r", payload)
