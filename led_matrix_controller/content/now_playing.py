@@ -170,6 +170,7 @@ class NowPlaying(DynamicContent):
     def refresh_content(self) -> Generator[None, None, None]:
         """Refresh the content."""
         if self.track_metadata != self.active_track:
+            self.is_sleeping = False
             self.active_track = self.track_metadata
             yield
 
@@ -181,6 +182,7 @@ class NowPlaying(DynamicContent):
             ):
                 self.stop(StopType.EXPIRED)
         else:
+            self.is_sleeping = True
             sleep(const.TICK_LENGTH)
 
     def teardown(self) -> Generator[None, None, None]:

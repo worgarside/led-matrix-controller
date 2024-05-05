@@ -1,9 +1,15 @@
 include .env
 export
 
+artwork:
+	find ./assets/artwork/ -type f ! -name '.gitkeep' -delete
+	find ./assets/artwork/ -type d ! -path './assets/artwork/' -empty -delete
+
 clean:
 	sudo rm -rf .venv
 	sudo rm -rf rpi-rgb-led-matrix
+	find ./assets/artwork/ -type f ! -name '.gitkeep' -delete
+	find ./assets/artwork/ -type d ! -path './assets/artwork/' -empty -delete
 
 create:
 	virtualenv -p 3.11 .venv
