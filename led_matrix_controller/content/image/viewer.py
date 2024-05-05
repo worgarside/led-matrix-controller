@@ -85,7 +85,7 @@ class ImageViewer(PreDefinedContent):
             tts -= 1
 
             # Allow `stop` override
-            if not self._active:
+            if not self.active:
                 break
 
         self.is_sleeping = False

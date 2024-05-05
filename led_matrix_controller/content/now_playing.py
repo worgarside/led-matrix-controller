@@ -11,6 +11,7 @@ from re import compile as compile_regex
 from time import sleep
 from typing import Annotated, ClassVar, Final, Generator, TypedDict
 
+from content.base import StopType
 from httpx import URL, get
 from models.setting import ParameterSetting  # noqa: TCH002
 from PIL import Image
@@ -25,10 +26,10 @@ LOGGER = get_streaming_logger(__name__)
 class TrackMeta(TypedDict):
     """Type definition for the track metadata."""
 
-    title: str
-    album: str
-    artist: str
-    artwork_uri: URL
+    title: str | None
+    album: str | None
+    artist: str | None
+    artwork_uri: URL | None
 
 
 _INITIAL_TRACK_META: Final[TrackMeta] = {
@@ -68,6 +69,9 @@ class NowPlaying(DynamicContent):
         Returns:
             Image: Image instance of the artwork image
         """
+        if not self.file_path:
+            raise ValueError("No file path available for artwork image")
+
         if self.file_path.is_file():
             LOGGER.debug("Opening image from path %s for %s", self.file_path, self.album)
             return Image.open(self.file_path)
@@ -77,7 +81,12 @@ class NowPlaying(DynamicContent):
     def download(self) -> Image.Image:
         """Download the image from the URL to store it locally for future use."""
 
-        if not str(self.artwork_uri):
+        if (
+            self.artwork_uri is None
+            or not str(self.artwork_uri)
+            or not self.artist_directory
+            or not self.file_path
+        ):
             return const.EMPTY_IMAGE
 
         self.ARTWORK_DIRECTORY.joinpath(self.artist_directory).mkdir(
@@ -109,30 +118,39 @@ class NowPlaying(DynamicContent):
         return image
 
     @property
-    def artist_directory(self) -> str:
+    def artist_directory(self) -> str | None:
         """Return the artist name, with all non-alphanumeric characters removed.
 
         Returns:
             str: the artist name, with all non-alphanumeric characters removed
         """
+        if not self.artist:
+            return None
+
         return self.ALPHANUM_PATTERN.sub("", self.artist).lower()
 
     @property
-    def filename(self) -> str:
+    def filename(self) -> str | None:
         """Return the album name, with all non-alphanumeric characters removed.
 
         Returns:
             str: the filename of the artwork image
         """
+        if not self.album:
+            return None
+
         return self.ALPHANUM_PATTERN.sub("", self.album).lower() + ".png"
 
     @property
-    def file_path(self) -> Path:
+    def file_path(self) -> Path | None:
         """Return the local path to the artwork image.
 
         Returns:
             Path: fully-qualified path to the artwork image
         """
+        if not self.artist_directory or not self.filename:
+            return None
+
         return self.ARTWORK_DIRECTORY / self.artist_directory / self.filename
 
     def __hash__(self) -> int:
@@ -154,6 +172,14 @@ class NowPlaying(DynamicContent):
         if self.track_metadata != self.active_track:
             self.active_track = self.track_metadata
             yield
+
+            if (
+                self.artist is None
+                or self.album is None
+                or self.title is None
+                or self.artwork_uri is None
+            ):
+                self.stop(StopType.EXPIRED)
         else:
             sleep(const.TICK_LENGTH)
 
@@ -162,21 +188,21 @@ class NowPlaying(DynamicContent):
         yield
 
     @property
-    def album(self) -> str:
+    def album(self) -> str | None:
         """Return the album name."""
-        return self.track_metadata.get("album", "")
+        return self.track_metadata.get("album")
 
     @property
-    def artist(self) -> str:
+    def artist(self) -> str | None:
         """Return the artist name."""
-        return self.track_metadata.get("artist", "")
+        return self.track_metadata.get("artist")
 
     @property
-    def artwork_uri(self) -> URL:
+    def artwork_uri(self) -> URL | None:
         """Return the URL of the artwork."""
-        return self.track_metadata.get("artwork_uri", URL(""))
+        return self.track_metadata.get("artwork_uri")
 
     @property
-    def title(self) -> str:
+    def title(self) -> str | None:
         """Return the title of the track."""
-        return self.track_metadata.get("title", "")
+        return self.track_metadata.get("title")

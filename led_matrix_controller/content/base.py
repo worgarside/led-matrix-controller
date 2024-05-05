@@ -75,7 +75,16 @@ class StopType(Enum):
     """Type of stop for content."""
 
     CANCEL = auto()
+    """Content was stopped via an MQTT message."""
+
     PRIORITY = auto()
+    """Higher priority content was started."""
+
+    EXPIRED = auto()
+    """Content expired naturally.
+
+    e.g. rain chance becoming 0 or music stopping
+    """
 
 
 @dataclass(kw_only=True, slots=True)
@@ -92,7 +101,7 @@ class ContentBase(ABC):
     is_sleeping: bool = field(default=False, init=False, repr=False)
     canvas_count: int | None = field(init=False)
 
-    _active: bool = field(init=False, default=False)
+    active: bool = field(init=False, default=False)
     _image_getter: ImageGetter = field(init=False, repr=False)
     colormap: NDArray[np.uint8] = field(init=False, repr=False)
     pixels: GridView = field(init=False, repr=False)
@@ -116,16 +125,6 @@ class ContentBase(ABC):
     @abstractmethod
     def __iter__(self) -> Generator[None, None, None]:
         """Iterate over the frames."""
-
-    @property
-    def active(self) -> bool:
-        """Return whether the content is active."""
-        return self._active
-
-    @active.setter
-    def active(self, value: bool) -> None:
-        """Set the active state of the content."""
-        self._active = value
 
     @final
     def stop(self, stop_type: StopType, /) -> None:

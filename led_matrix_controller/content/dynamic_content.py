@@ -53,7 +53,7 @@ class DynamicContent(ContentBase, ABC):
     @final
     def __iter__(self) -> Generator[None, None, None]:
         """Iterate over the frames."""
-        self._active = True
+        self.active = True
 
-        while self._active:
+        while self.active:
             yield from self.refresh_content()
