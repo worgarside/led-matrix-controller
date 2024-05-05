@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import suppress
 from dataclasses import dataclass, field
 from functools import partial
 from io import BytesIO
@@ -14,7 +15,7 @@ from typing import Annotated, ClassVar, Final, Generator, TypedDict
 from content.base import StopType
 from httpx import URL, get
 from models.setting import ParameterSetting  # noqa: TCH002
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from utils import const
 from wg_utilities.functions import force_mkdir
 from wg_utilities.loggers import get_streaming_logger
@@ -75,7 +76,8 @@ class NowPlaying(DynamicContent):
 
         if self.file_path.is_file():
             LOGGER.debug("Opening image from path %s for %s", self.file_path, self.album)
-            return Image.open(self.file_path)
+            with suppress(UnidentifiedImageError):
+                return Image.open(self.file_path)
 
         LOGGER.debug("Image not found at %s for %s", self.file_path, self.album)
 
