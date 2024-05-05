@@ -109,7 +109,7 @@ class NowPlaying(DynamicContent):
 
         image = Image.open(BytesIO(artwork_bytes)).resize(
             (64, 64),
-            Image.Resampling.LANCZOS,
+            # Image.Resampling.LANCZOS,
         )
         image.save(
             self.file_path,
