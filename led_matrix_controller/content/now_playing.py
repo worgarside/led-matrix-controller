@@ -70,13 +70,21 @@ class NowPlaying(DynamicContent):
             Image: Image instance of the artwork image
         """
         if not self.file_path:
-            raise ValueError("No file path available for artwork image")
+            return const.EMPTY_IMAGE
 
         if self.file_path.is_file():
             LOGGER.debug("Opening image from path %s for %s", self.file_path, self.album)
             return Image.open(self.file_path)
 
-        return self.download()
+        try:
+            return self.download()
+        except Exception:
+            LOGGER.exception(
+                "Failed to download artwork from %s for album %s",
+                self.artwork_uri,
+                self.album,
+            )
+            return const.EMPTY_IMAGE
 
     def download(self) -> Image.Image:
         """Download the image from the URL to store it locally for future use."""
