@@ -199,7 +199,8 @@ class Matrix:
 
             if (
                 self.current_content.persistent
-                and self.current_content.stop_reason != StopType.CANCEL
+                and self.current_content.stop_reason
+                not in {StopType.CANCEL, StopType.EXPIRED}
             ):
                 self._content_queue.put(
                     (self.current_priority, self.current_content, parameters),

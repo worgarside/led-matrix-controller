@@ -107,14 +107,8 @@ class NowPlaying(DynamicContent):
         res.raise_for_status()
         artwork_bytes = res.content
 
-        image = Image.open(BytesIO(artwork_bytes)).resize(
-            (64, 64),
-            # Image.Resampling.LANCZOS,
-        )
-        image.save(
-            self.file_path,
-            "PNG",
-        )
+        image = Image.open(BytesIO(artwork_bytes)).resize((self.width, self.height))
+        image.save(self.file_path, "PNG")
 
         LOGGER.info(
             "New image from %s saved at %s for album %s",
