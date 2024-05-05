@@ -175,17 +175,12 @@ class NowPlaying(DynamicContent):
             self.is_sleeping = False
             self.active_track = self.track_metadata
             yield
-
-            if (
-                self.artist is None
-                or self.album is None
-                or self.title is None
-                or self.artwork_uri is None
-            ):
-                self.stop(StopType.EXPIRED)
         else:
             self.is_sleeping = True
             sleep(const.TICK_LENGTH)
+
+        if None in self.track_metadata.values():
+            self.stop(StopType.EXPIRED)
 
     def teardown(self) -> Generator[None, None, None]:
         """No teardown needed."""
