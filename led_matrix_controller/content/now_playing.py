@@ -6,7 +6,7 @@ from contextlib import suppress
 from dataclasses import dataclass, field
 from functools import partial
 from io import BytesIO
-from pathlib import Path  # noqa: TCH003
+from pathlib import Path
 from re import Pattern
 from re import compile as compile_regex
 from time import sleep
@@ -46,7 +46,7 @@ _INITIAL_TRACK_META: Final[TrackMeta] = {
 class NowPlaying(DynamicContent):
     """Class for the creation, caching, and management of artwork images."""
 
-    ARTWORK_DIRECTORY: ClassVar[Path] = const.ASSETS_DIRECTORY / "artwork"
+    ARTWORK_DIRECTORY: ClassVar[Path] = Path("/var/lib/led-matrix-controller/artwork/")
 
     ALPHANUM_PATTERN: ClassVar[Pattern[str]] = compile_regex(r"[\W_]+")
 
