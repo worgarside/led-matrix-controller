@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import math
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from functools import partial
+from json import JSONEncoder, dumps
 from logging import DEBUG, getLogger
+from os import PathLike
 from typing import (
+    Any,
     Callable,
     ClassVar,
     Generator,
@@ -16,6 +20,7 @@ from typing import (
 )
 
 import numpy as np
+from httpx import URL
 from numpy.typing import NDArray
 from PIL import Image
 from utils import mtrx
@@ -87,6 +92,20 @@ class StopType(Enum):
     """
 
 
+class ContentEncoder(JSONEncoder):
+    def default(self, obj: Any) -> Any:
+        if hasattr(obj, "__json__"):
+            return obj.__json__()
+
+        if isinstance(obj, PathLike | URL):
+            return str(obj)
+
+        if isinstance(obj, re.Pattern):
+            return obj.pattern
+
+        return super().default(obj)
+
+
 @dataclass(kw_only=True, slots=True)
 class ContentBase(ABC):
     """Base class for content models."""
@@ -121,6 +140,19 @@ class ContentBase(ABC):
     @abstractmethod
     def content_getter(self) -> CanvasGetter | ImageGetter:
         """Return the image representation of the content."""
+
+    @property
+    def mqtt_attributes(self) -> str:
+        """Return extra attributes for the MQTT message."""
+
+        return dumps(
+            {
+                key: getattr(self, key)
+                for key, dc_field in self.__dataclass_fields__.items()
+                if hasattr(self, key) and dc_field.repr
+            },
+            cls=ContentEncoder,
+        )
 
     @abstractmethod
     def __iter__(self) -> Generator[None, None, None]:

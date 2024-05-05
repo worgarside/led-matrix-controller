@@ -16,6 +16,7 @@ from httpx import URL, get
 from models.setting import ParameterSetting  # noqa: TCH002
 from PIL import Image
 from utils import const
+from wg_utilities.functions import force_mkdir
 from wg_utilities.loggers import get_streaming_logger
 
 from .dynamic_content import DynamicContent
@@ -52,7 +53,7 @@ class NowPlaying(DynamicContent):
         default_factory=lambda: _INITIAL_TRACK_META,
     )
 
-    active_track: TrackMeta = field(
+    previous_track: TrackMeta = field(
         init=False,
         default_factory=lambda: _INITIAL_TRACK_META,
     )
@@ -110,6 +111,7 @@ class NowPlaying(DynamicContent):
         artwork_bytes = res.content
 
         image = Image.open(BytesIO(artwork_bytes)).resize((self.width, self.height))
+        force_mkdir(self.file_path, path_is_file=True).touch(exist_ok=True, mode=777)
         image.save(self.file_path, "PNG")
 
         LOGGER.info(
@@ -173,9 +175,9 @@ class NowPlaying(DynamicContent):
 
     def refresh_content(self) -> Generator[None, None, None]:
         """Refresh the content."""
-        if self.track_metadata != self.active_track:
+        if self.track_metadata != self.previous_track:
             self.is_sleeping = False
-            self.active_track = self.track_metadata
+            self.previous_track = self.track_metadata
             yield
         else:
             self.is_sleeping = True

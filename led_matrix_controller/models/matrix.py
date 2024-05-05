@@ -385,7 +385,18 @@ class Matrix:
             payload=value.content_id if value is not None else None,
             retain=True,
         )
-        LOGGER.info("Now playing: %s", value.id if value is not None else None)
+        LOGGER.info("Current Content: %s", value.id if value is not None else None)
+
+        self.publish_attributes()
+
+    def publish_attributes(self) -> None:
+        """Publish the attributes of the current content."""
+        self.mqtt_client.publish(
+            topic=f"{self.current_content_topic}/attributes",
+            payload=self.current_content.mqtt_attributes
+            if self.current_content is not None
+            else "{}",
+        )
 
     def __del__(self) -> None:
         """Clear the matrix when the object is deleted."""

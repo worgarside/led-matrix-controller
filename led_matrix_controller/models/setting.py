@@ -146,6 +146,8 @@ class Setting(Generic[S]):
         else:
             LOGGER.debug("Value unchanged: %r", payload)
 
+        self.matrix.publish_attributes()
+
     def on_message(self, raw_payload: S) -> None:
         """Handle an MQTT message.
 
@@ -304,6 +306,16 @@ class Setting(Generic[S]):
             # TODO could go in a separate thread?
             self.instance.generate_frame_rulesets(update_setting=self.slug)
 
+    def __json__(self) -> dict[str, Any]:
+        """Return the setting as a JSON-serializable dictionary."""
+        return {
+            "slug": self.slug,
+            "minimum": self.minimum,
+            "maximum": self.maximum,
+            "type": self.type_.__name__,
+            "mqtt_topic": self.mqtt_topic,
+        }
+
 
 T = TypeVar("T", int, float)
 
@@ -374,6 +386,8 @@ class TransitionableSettingMixin(Setting[T]):
             self.slug,
             self.value,
         )
+
+        self.matrix.publish_attributes()
 
 
 @dataclass(kw_only=True)
