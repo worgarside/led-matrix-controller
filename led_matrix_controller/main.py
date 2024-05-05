@@ -17,10 +17,10 @@ def main() -> None:
     matrix = Matrix(mqtt_client=mqtt_client)
 
     matrix.register_content(
-        RainingGrid(**matrix.dimensions, persistent=True),
         ImageViewer(path=Path("door/closed.bmp"), **matrix.dimensions, display_seconds=5),
         GifViewer(path=Path("door/animated.gif"), **matrix.dimensions),
-        NowPlaying(**matrix.dimensions),
+        RainingGrid(**matrix.dimensions, persistent=True),
+        NowPlaying(**matrix.dimensions, persistent=True),
     )
 
     mqtt_client.loop_forever()

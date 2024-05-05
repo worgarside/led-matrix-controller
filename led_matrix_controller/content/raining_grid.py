@@ -7,7 +7,7 @@ from enum import unique
 from functools import partial
 from itertools import islice
 from logging import DEBUG, getLogger
-from typing import TYPE_CHECKING, Annotated, Generator, Literal
+from typing import TYPE_CHECKING, Annotated, Generator, Literal, cast
 
 import numpy as np
 from content.automaton import (
@@ -17,9 +17,9 @@ from content.automaton import (
     MaskGen,
     TargetSlice,
 )
-from models.setting import (  # noqa: TCH002
+from models.setting import (
     FrequencySetting,
-    ParameterSetting,
+    TransitionableParameterSetting,
 )
 from utils import const
 from wg_utilities.loggers import add_stream_handler
@@ -54,7 +54,7 @@ class RainingGrid(Automaton):
 
     rain_chance: Annotated[
         float,
-        ParameterSetting(
+        TransitionableParameterSetting(
             minimum=0,
             maximum=100,
             transition_rate=0.0001,
@@ -69,22 +69,25 @@ class RainingGrid(Automaton):
     def teardown(self) -> Generator[None, None, None]:
         """Transition the rain chance to 0 then run the simulation until the grid is clear."""
 
-        rain_chance = self.settings["rain_chance"]
+        rain_chance_setting = cast(
+            TransitionableParameterSetting[float],
+            self.settings["rain_chance"],
+        )
 
-        total_change = original_rain_chance = rain_chance.value
-        original_transition_rate = rain_chance.transition_rate
+        total_change = original_rain_chance = rain_chance_setting.value
+        original_transition_rate = rain_chance_setting.transition_rate
 
         ticks = 0.5 * const.TICKS_PER_SECOND
 
-        rain_chance.transition_rate = total_change / ticks
+        rain_chance_setting.transition_rate = total_change / ticks
 
         LOGGER.debug(
             "Modified `rain_chance` transition rate from %f to %f",
             original_transition_rate,
-            rain_chance.transition_rate,
+            rain_chance_setting.transition_rate,
         )
 
-        rain_chance.value = 0
+        rain_chance_setting.value = 0
 
         for _ in islice(self, const.TICKS_PER_SECOND * 5):
             yield
@@ -92,8 +95,8 @@ class RainingGrid(Automaton):
             if np.all(self.pixels == 0):
                 break
 
-        rain_chance.value = original_rain_chance
-        rain_chance.transition_rate = original_transition_rate
+        rain_chance_setting.value = original_rain_chance
+        rain_chance_setting.transition_rate = original_transition_rate
 
         LOGGER.debug(
             "Reset `rain_chance` to %f and transition rate to %f",

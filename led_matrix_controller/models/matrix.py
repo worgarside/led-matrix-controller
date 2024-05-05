@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from functools import partial
 from logging import DEBUG, getLogger
-from math import inf
 from queue import PriorityQueue
 from threading import Condition, Thread
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal, TypedDict, cast
@@ -16,7 +15,7 @@ from content.base import (
     PreDefinedContent,
     StopType,
 )
-from models.setting import ParameterSetting
+from models.setting import Setting, TransitionableParameterSetting
 from utils import const, mtrx
 from utils.helpers import to_kebab_case
 from wg_utilities.decorators import process_exception
@@ -78,7 +77,7 @@ class Matrix:
     ) -> None:
         self.mqtt_client = mqtt_client
 
-        self._brightness_setting = ParameterSetting(
+        self._brightness_setting = TransitionableParameterSetting(
             minimum=0,
             maximum=100,
             transition_rate=1,
@@ -167,7 +166,7 @@ class Matrix:
                 self.current_priority,
             )
 
-            if self.current_content.canvas_count == inf:
+            if self.current_content.canvas_count is None:
                 set_content = partial(
                     self.set_image_swap_canvas,
                     self.current_content.content_getter,
@@ -313,6 +312,7 @@ class Matrix:
             self._content[c.content_id] = c
             content_ids.append(c.content_id)
 
+            setting: Setting[Any]
             for setting in getattr(c, "settings", {}).values():
                 setting.matrix = self
 
@@ -321,8 +321,12 @@ class Matrix:
             if isinstance(c, PreDefinedContent):
                 c.generate_canvases(self.new_canvas)
 
-            if hasattr(c, "mqtt_topic") and hasattr(c, "on_message"):
-                self.mqtt_client.add_topic_callback(c.mqtt_topic, c.on_message)
+            if hasattr(c, "settings"):
+                for setting in c.settings.values():
+                    self.mqtt_client.add_topic_callback(
+                        setting.mqtt_topic,
+                        setting.on_message,
+                    )
 
     @property
     def active(self) -> bool:

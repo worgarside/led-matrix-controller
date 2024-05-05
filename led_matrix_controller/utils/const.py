@@ -9,6 +9,7 @@ from socket import gethostname
 from typing import Final
 
 import numpy as np
+from PIL import Image
 
 DEBUG_MODE: Final[bool] = bool(int(getenv("DEBUG_MODE", "0")))
 
@@ -42,3 +43,5 @@ ASSETS_DIRECTORY: Final[Path] = REPO_PATH / "assets"
 
 TICKS_PER_SECOND: Final[int] = 100
 TICK_LENGTH: Final[float] = 1 / TICKS_PER_SECOND
+
+EMPTY_IMAGE: Final[Image.Image] = Image.new("RGB", (64, 64), (0, 0, 0))

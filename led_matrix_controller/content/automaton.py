@@ -209,23 +209,20 @@ class Automaton(DynamicContent, ABC):
         """Return a grid of zeros."""
         return np.zeros((self.height, self.width), dtype=dtype)
 
-    def __iter__(self) -> Generator[None, None, None]:
+    def refresh_content(self) -> Generator[None, None, None]:
         """Generate the frames of the automaton."""
-        self._active = True
+        for ruleset in self.frame_rulesets:
+            masks = tuple(
+                (target_view, mask_gen(), state)
+                for target_view, mask_gen, state in ruleset
+            )
 
-        while self._active:
-            for ruleset in self.frame_rulesets:
-                masks = tuple(
-                    (target_view, mask_gen(), state)
-                    for target_view, mask_gen, state in ruleset
-                )
+            for target_view, mask, state in masks:
+                target_view[mask] = state
 
-                for target_view, mask, state in masks:
-                    target_view[mask] = state
+            self.frame_index += 1
 
-                self.frame_index += 1
-
-                yield
+            yield
 
     @property
     def str_repr(self) -> str:

@@ -2,20 +2,41 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
+from dataclasses import dataclass, field
+from functools import partial
+from io import BytesIO
+from pathlib import Path  # noqa: TCH003
 from re import Pattern
 from re import compile as compile_regex
-from typing import Annotated, ClassVar, Generator
+from time import sleep
+from typing import Annotated, ClassVar, Final, Generator, TypedDict
 
-from httpx import get
-from models.setting import ParameterSetting
+from httpx import URL, get
+from models.setting import ParameterSetting  # noqa: TCH002
+from PIL import Image
 from utils import const
 from wg_utilities.loggers import get_streaming_logger
 
 from .dynamic_content import DynamicContent
 
 LOGGER = get_streaming_logger(__name__)
+
+
+class TrackMeta(TypedDict):
+    """Type definition for the track metadata."""
+
+    title: str
+    album: str
+    artist: str
+    artwork_uri: URL
+
+
+_INITIAL_TRACK_META: Final[TrackMeta] = {
+    "title": "",
+    "album": "",
+    "artist": "",
+    "artwork_uri": URL(""),
+}
 
 
 @dataclass(kw_only=True, slots=True)
@@ -26,93 +47,66 @@ class NowPlaying(DynamicContent):
 
     ALPHANUM_PATTERN: ClassVar[Pattern[str]] = compile_regex(r"[\W_]+")
 
-    title: Annotated[str, ParameterSetting()] = ""
-    album: Annotated[str, ParameterSetting()] = ""
-    artist: Annotated[str, ParameterSetting()] = ""
-    uri: Annotated[str, ParameterSetting()] = ""
+    track_metadata: Annotated[TrackMeta, ParameterSetting()] = field(
+        default_factory=lambda: _INITIAL_TRACK_META,
+    )
 
-    # def _get_artwork_pil_image(
-    #     self,
-    #     size: int | None = None,
-    #     *,
-    #     ignore_cache: bool = False,
-    # ) -> Image:
-    #     """Get the Image of the artwork image from the cache/local file/remote URL.
+    active_track: TrackMeta = field(
+        init=False,
+        default_factory=lambda: _INITIAL_TRACK_META,
+    )
 
-    #     Args:
-    #         size (int): integer value to use as height and width of artwork, in pixels
-    #         ignore_cache (bool): whether to ignore the cache and download/resize the
-    #             image
+    def __post_init__(self) -> None:
+        """Initialize the image getter."""
+        DynamicContent.__post_init__(self)
 
-    #     Returns:
-    #         Image: Image instance of the artwork image
-    #     """
-    #     if from_cache := self._image_cache is not None and ignore_cache is False:
-    #         LOGGER.debug("Using cached image for %s", self.album)
+        self._image_getter = partial(self._get_artwork_pil_image)
 
-    #         pil_image = self._image_cache
-    #     elif self.file_path.is_file():
-    #         LOGGER.debug("Opening image from path %s for %s", self.file_path, self.album)
-    #         with self.file_path.open("rb") as fin:
-    #             pil_image = open_image(BytesIO(fin.read()))
-    #     else:
-    #         pil_image = open_image(BytesIO(self.download()))
+    def _get_artwork_pil_image(self) -> Image.Image:
+        """Get the Image of the artwork image from the local file/remote URL.
 
-    #     # If a size is specified and the image hasn't already been cached (at this size)
-    #     if size and not from_cache:
-    #         LOGGER.debug("Resizing image to %ix%i", size, size)
-    #         pil_image = pil_image.resize((size, size), Resampling.LANCZOS)
+        Returns:
+            Image: Image instance of the artwork image
+        """
+        if self.file_path.is_file():
+            LOGGER.debug("Opening image from path %s for %s", self.file_path, self.album)
+            return Image.open(self.file_path)
 
-    # return pil_image
+        return self.download()
 
-    def download(self) -> bytes:
+    def download(self) -> Image.Image:
         """Download the image from the URL to store it locally for future use."""
+
+        if not str(self.artwork_uri):
+            return const.EMPTY_IMAGE
 
         self.ARTWORK_DIRECTORY.joinpath(self.artist_directory).mkdir(
             parents=True,
             exist_ok=True,
         )
 
-        if Path(self.uri).is_file():
-            # Mainly used for copying the null image out of the repo into the artwork
-            # directory
-            LOGGER.debug("Opening local image: %s", self.uri)
-            artwork_bytes = Path(self.uri).read_bytes()
-        else:
-            LOGGER.debug("Downloading artwork from remote URL: %s", self.uri)
-            artwork_bytes = get(self.uri, timeout=120).content
+        LOGGER.debug("Downloading artwork from remote URL: %s", self.artwork_uri)
+        res = get(self.artwork_uri, timeout=120)
+        res.raise_for_status()
+        artwork_bytes = res.content
 
-        self.file_path.write_bytes(artwork_bytes)
+        image = Image.open(BytesIO(artwork_bytes)).resize(
+            (64, 64),
+            Image.Resampling.LANCZOS,
+        )
+        image.save(
+            self.file_path,
+            "PNG",
+        )
 
         LOGGER.info(
             "New image from %s saved at %s for album %s",
-            self.uri,
+            self.artwork_uri,
             self.file_path,
             self.album,
         )
 
-        return artwork_bytes
-
-    # def get_image(self, size: int | None = None, *, ignore_cache: bool = False) -> Image:
-    #     """Return the image as a PIL Image object, with optional resizing.
-
-    #     Args:
-    #         size (int): integer value to use as height and width of artwork, in pixels
-    #         ignore_cache (bool): whether to ignore the cache and download/resize the
-    #             image again
-
-    #     Returns:
-    #         Image: PIL Image object of artwork
-    #     """
-
-    #     if self.cache_in_progress:
-    #         LOGGER.debug("Waiting for cache to finish")
-    #         while self.cache_in_progress:
-    #             pass
-
-    #     pil_image: Image = self._get_artwork_pil_image(size, ignore_cache=ignore_cache)
-
-    #     return pil_image
+        return image
 
     @property
     def artist_directory(self) -> str:
@@ -143,7 +137,7 @@ class NowPlaying(DynamicContent):
 
     def __hash__(self) -> int:
         """Return the hash of the object."""
-        return hash((self.artist, self.album, self.uri))
+        return hash((self.artist, self.album, self.artwork_uri))
 
     def __str__(self) -> str:
         """Return the string representation of the object."""
@@ -151,20 +145,38 @@ class NowPlaying(DynamicContent):
 
     def __repr__(self) -> str:
         """Return the string representation of the object."""
-        return f"ArtworkImage({self.artist}, {self.album}, {self.uri})"
+        return (
+            f"{self.__class__.__name__}({self.artist}, {self.album}, {self.artwork_uri})"
+        )
 
-    def __iter__(self) -> Generator[None, None, None]:
-        yield
+    def refresh_content(self) -> Generator[None, None, None]:
+        """Refresh the content."""
+        if self.track_metadata != self.active_track:
+            self.active_track = self.track_metadata
+            yield
+        else:
+            sleep(const.TICK_LENGTH)
 
     def teardown(self) -> Generator[None, None, None]:
+        """No teardown needed."""
         yield
 
+    @property
+    def album(self) -> str:
+        """Return the album name."""
+        return self.track_metadata.get("album", "")
 
-# NULL_IMAGE = ArtworkImage(
-#     "null",
-#     "null",
-#     str(Path(__file__).parents[3] / "assets" / "images" / "null.png"),
-# )
+    @property
+    def artist(self) -> str:
+        """Return the artist name."""
+        return self.track_metadata.get("artist", "")
 
+    @property
+    def artwork_uri(self) -> URL:
+        """Return the URL of the artwork."""
+        return self.track_metadata.get("artwork_uri", URL(""))
 
-# LOGGER.debug("Artwork directory: %s", ArtworkImage.ARTWORK_DIR.as_posix())
+    @property
+    def title(self) -> str:
+        """Return the title of the track."""
+        return self.track_metadata.get("title", "")

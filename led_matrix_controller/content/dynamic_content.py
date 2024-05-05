@@ -1,9 +1,11 @@
+"""Module for dynamic content classes."""
+
 from __future__ import annotations
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Any, final, get_type_hints
+from typing import Any, Generator, final, get_type_hints
 
 from models.setting import Setting
 
@@ -43,3 +45,15 @@ class DynamicContent(ContentBase, ABC):
             self._image_getter = partial(_get_image, self.colormap, self.pixels)
 
         return self._image_getter
+
+    @abstractmethod
+    def refresh_content(self) -> Generator[None, None, None]:
+        """Refresh the content."""
+
+    @final
+    def __iter__(self) -> Generator[None, None, None]:
+        """Iterate over the frames."""
+        self._active = True
+
+        while self._active:
+            yield from self.refresh_content()
