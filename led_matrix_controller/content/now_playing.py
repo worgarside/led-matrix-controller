@@ -76,6 +76,8 @@ class NowPlaying(DynamicContent):
             LOGGER.debug("Opening image from path %s for %s", self.file_path, self.album)
             return Image.open(self.file_path)
 
+        LOGGER.debug("Image not found at %s for %s", self.file_path, self.album)
+
         try:
             return self.download()
         except Exception:
