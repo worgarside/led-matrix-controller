@@ -46,7 +46,15 @@ _INITIAL_TRACK_META: Final[TrackMeta] = {
 class NowPlaying(DynamicContent):
     """Class for the creation, caching, and management of artwork images."""
 
-    ARTWORK_DIRECTORY: ClassVar[Path] = Path("/var/lib/led-matrix-controller/artwork/")
+    ARTWORK_DIRECTORY: ClassVar[Path] = (
+        Path.home()
+        .joinpath(
+            ".cache",
+            "led-matrix-controller",
+            "artwork",
+        )
+        .resolve()
+    )
 
     ALPHANUM_PATTERN: ClassVar[Pattern[str]] = compile_regex(r"[\W_]+")
 
