@@ -103,7 +103,11 @@ class ContentEncoder(JSONEncoder):
         if isinstance(obj, re.Pattern):
             return obj.pattern
 
-        return super().default(obj)
+        try:
+            return super().default(obj)
+        except TypeError:
+            LOGGER.error("Could not serialize object: %r", obj)  # noqa: TRY400
+            raise
 
 
 @dataclass(kw_only=True, slots=True)
