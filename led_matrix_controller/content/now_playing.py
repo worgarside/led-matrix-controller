@@ -47,9 +47,11 @@ class NowPlaying(DynamicContent):
     """Class for the creation, caching, and management of artwork images."""
 
     ARTWORK_DIRECTORY: ClassVar[Path] = (
-        Path("/home/pi")  # Script is run as root so this needs to be hardcoded
-        if const.IS_PI
-        else Path.home()
+        (
+            Path("/home/pi")  # Script is run as root so this needs to be hardcoded
+            if const.IS_PI
+            else Path.home()
+        )
         .joinpath(
             ".cache",
             "led-matrix-controller",
