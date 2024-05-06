@@ -6,6 +6,7 @@ import re
 from os import environ, getenv
 from pathlib import Path
 from socket import gethostname
+from sys import platform
 from typing import Final
 
 import numpy as np
@@ -23,6 +24,8 @@ HOSTNAME: Final[str] = getenv(
     "HOSTNAME_OVERRIDE",
     re.sub(r"[^a-z0-9]", "-", gethostname().lower()),
 )
+
+IS_PI = gethostname().lower() == "mtrxpi" and platform != "darwin"
 
 HA_LED_MATRIX_PAYLOAD_TOPIC: Final[str] = "/homeassistant/led_matrix/display"
 HA_LED_MATRIX_BRIGHTNESS_TOPIC: Final[str] = "/homeassistant/led_matrix/brightness"

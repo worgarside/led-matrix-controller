@@ -12,7 +12,6 @@ from functools import partial
 from json import dumps
 from logging import DEBUG, getLogger
 from os import PathLike
-from sys import platform
 from typing import (
     Any,
     Callable,
@@ -25,7 +24,7 @@ import numpy as np
 from httpx import URL
 from numpy.typing import NDArray
 from PIL import Image
-from utils import mtrx
+from utils import const, mtrx
 from utils.helpers import camel_to_kebab_case
 from wg_utilities.loggers import add_stream_handler
 
@@ -179,7 +178,7 @@ class ContentBase(ABC):
         except TypeError:
             if not callable(obj):
                 LOGGER.error("Could not serialize object (%s): %r", obj, obj)  # noqa: TRY400
-                if platform == "darwin":
+                if not const.IS_PI:
                     raise
             return None
 
