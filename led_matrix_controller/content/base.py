@@ -5,12 +5,14 @@ from __future__ import annotations
 import math
 import re
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from contextlib import suppress
+from dataclasses import dataclass, field, is_dataclass
 from enum import Enum, auto
 from functools import partial
-from json import JSONEncoder, dumps
+from json import dumps
 from logging import DEBUG, getLogger
 from os import PathLike
+from sys import platform
 from typing import (
     Any,
     Callable,
@@ -100,24 +102,6 @@ class StopType(Enum):
     """
 
 
-class ContentEncoder(JSONEncoder):
-    def default(self, obj: Any) -> Any:
-        if hasattr(obj, "__json__"):
-            return obj.__json__()
-
-        if isinstance(obj, PathLike | URL):
-            return str(obj)
-
-        if isinstance(obj, re.Pattern):
-            return obj.pattern
-
-        try:
-            return super().default(obj)
-        except TypeError:
-            LOGGER.error("Could not serialize object: %r", obj)  # noqa: TRY400
-            raise
-
-
 @dataclass(kw_only=True, slots=True)
 class ContentBase(ABC):
     """Base class for content models."""
@@ -157,18 +141,47 @@ class ContentBase(ABC):
     def mqtt_attributes(self) -> str:
         """Return extra attributes for the MQTT message."""
 
-        return dumps(
-            {
-                key: getattr(self, key)
-                for key, dc_field in self.__dataclass_fields__.items()
-                if hasattr(self, key) and dc_field.repr
-            },
-            cls=ContentEncoder,
-        )
+        return dumps(self, default=self._json_encode)
 
     @abstractmethod
     def __iter__(self) -> Generator[None, None, None]:
         """Iterate over the frames."""
+
+    @final
+    @staticmethod
+    def _json_encode(obj: Any) -> Any:  # noqa: PLR0911
+        if hasattr(obj, "__json__"):
+            with suppress(TypeError):
+                return obj.__json__()
+
+        if isinstance(obj, PathLike | URL):
+            return str(obj)
+
+        if isinstance(obj, re.Pattern):
+            return obj.pattern
+
+        with suppress(TypeError):
+            if issubclass(obj, Enum):
+                return obj.__qualname__
+
+        if is_dataclass(obj):
+            return {
+                key: getattr(obj, key)
+                for key, dc_field in obj.__dataclass_fields__.items()
+                if hasattr(obj, key) and dc_field.repr
+            }
+
+        if isinstance(obj, slice):
+            return f"[{obj.start or ''}:{obj.stop or ''}:{obj.step or ''}]"
+
+        try:
+            return dumps(obj)
+        except TypeError:
+            if not callable(obj):
+                LOGGER.error("Could not serialize object (%s): %r", obj, obj)  # noqa: TRY400
+                if platform == "darwin":
+                    raise
+            return None
 
     @final
     def stop(self, stop_type: StopType, /) -> None:
