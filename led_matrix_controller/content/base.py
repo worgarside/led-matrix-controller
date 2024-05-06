@@ -67,6 +67,14 @@ class StateBase(Enum):
         """Return the hash of the value of the state."""
         return hash(self.value)
 
+    def __json__(self) -> dict[str, Any]:
+        """Return the JSON representation of the state."""
+        return {
+            "state": self.state,
+            "char": self.char,
+            "color": self.color,
+        }
+
 
 def _get_image(colormap: NDArray[np.uint8], grid: GridView) -> Image.Image:
     return Image.fromarray(colormap[grid], "RGB")
