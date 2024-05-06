@@ -171,7 +171,7 @@ class Setting(Generic[S]):
             LOGGER.debug("Applying payload modifier to %r", payload)
 
             try:
-                payload = self.payload_modifier(payload)
+                payload = self._coerce_and_format(self.payload_modifier(payload))
             except Exception:
                 LOGGER.exception(
                     "An unexpected error occurred while modifying the %s payload: %r",
@@ -185,7 +185,7 @@ class Setting(Generic[S]):
             except InvalidPayloadError:
                 LOGGER.exception(
                     "Invalid %s payload modifier output: %r",
-                    type(payload),
+                    type(payload).__name__,
                     payload,
                 )
                 return
