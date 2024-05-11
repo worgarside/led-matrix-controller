@@ -10,9 +10,8 @@ import pytest
 from content import RainingGrid
 
 if TYPE_CHECKING:
-    from models.automaton import MaskGen
+    from content.automaton import MaskGen
     from pytest_codspeed import BenchmarkFixture  # type: ignore[import-untyped]
-    from utils import MqttClient
 
 
 @pytest.mark.parametrize(
@@ -35,7 +34,6 @@ def test_raining_grid_simulation(
     size: int,
     limit: int,
     test_id: str,
-    mqtt_client: MqttClient,
 ) -> None:
     """Benchmark the CA."""
     grid = RainingGrid(
@@ -45,7 +43,6 @@ def test_raining_grid_simulation(
         rain_speed=1,
         splash_speed=1,
         instance_id=test_id,
-        mqtt_client=mqtt_client,
     )
 
     @benchmark  # type: ignore[misc]
@@ -78,7 +75,6 @@ def test_rules(
     limit: int,
     rule: Callable[..., MaskGen],
     test_id: str,
-    mqtt_client: MqttClient,
 ) -> None:
     """Test/benchmark each individual rule."""
     grid = RainingGrid(
@@ -88,7 +84,6 @@ def test_rules(
         rain_speed=1,
         splash_speed=1,
         instance_id=test_id,
-        mqtt_client=mqtt_client,
     )
 
     # Discard the first `size` frames so all rules are effective (e.g. splashing)

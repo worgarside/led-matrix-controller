@@ -5,7 +5,7 @@ from __future__ import annotations
 from contextlib import suppress
 from pathlib import Path
 
-from content import GifViewer, ImageViewer, RainingGrid
+from content import GifViewer, ImageViewer, NowPlaying, RainingGrid
 from models import Matrix
 from utils import MqttClient
 
@@ -17,9 +17,10 @@ def main() -> None:
     matrix = Matrix(mqtt_client=mqtt_client)
 
     matrix.register_content(
-        RainingGrid(**matrix.dimensions, mqtt_client=mqtt_client, persistent=True),
         ImageViewer(path=Path("door/closed.bmp"), **matrix.dimensions, display_seconds=5),
         GifViewer(path=Path("door/animated.gif"), **matrix.dimensions),
+        RainingGrid(**matrix.dimensions, persistent=True),
+        NowPlaying(**matrix.dimensions, persistent=True),
     )
 
     mqtt_client.loop_forever()

@@ -11,12 +11,11 @@ from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal, TypedDict, cast
 from content.base import (
     CanvasGetter,
     ContentBase,
-    DynamicContent,
     ImageGetter,
     PreDefinedContent,
     StopType,
 )
-from models.setting import ParameterSetting
+from models.setting import Setting, TransitionableParameterSetting
 from utils import const, mtrx
 from utils.helpers import to_kebab_case
 from wg_utilities.decorators import process_exception
@@ -78,7 +77,7 @@ class Matrix:
     ) -> None:
         self.mqtt_client = mqtt_client
 
-        self._brightness_setting = ParameterSetting(
+        self._brightness_setting = TransitionableParameterSetting(
             minimum=0,
             maximum=100,
             transition_rate=1,
@@ -86,9 +85,14 @@ class Matrix:
             requires_rule_regeneration=False,
         ).setup(
             field_name="brightness",
-            automaton=self,
+            instance=self,
             type_=int,
         )
+        self.mqtt_client.add_topic_callback(
+            self._brightness_setting.mqtt_topic,
+            self._brightness_setting.on_message,
+        )
+
         self._brightness_setting.matrix = self
         self._brightness = options["brightness"]
 
@@ -162,7 +166,7 @@ class Matrix:
                 self.current_priority,
             )
 
-            if isinstance(self.current_content, DynamicContent):
+            if self.current_content.canvas_count is None:
                 set_content = partial(
                     self.set_image_swap_canvas,
                     self.current_content.content_getter,
@@ -195,7 +199,8 @@ class Matrix:
 
             if (
                 self.current_content.persistent
-                and self.current_content.stop_reason != StopType.CANCEL
+                and self.current_content.stop_reason
+                not in {StopType.CANCEL, StopType.EXPIRED}
             ):
                 self._content_queue.put(
                     (self.current_priority, self.current_content, parameters),
@@ -308,6 +313,7 @@ class Matrix:
             self._content[c.content_id] = c
             content_ids.append(c.content_id)
 
+            setting: Setting[Any]
             for setting in getattr(c, "settings", {}).values():
                 setting.matrix = self
 
@@ -315,6 +321,13 @@ class Matrix:
 
             if isinstance(c, PreDefinedContent):
                 c.generate_canvases(self.new_canvas)
+
+            if hasattr(c, "settings"):
+                for setting in c.settings.values():
+                    self.mqtt_client.add_topic_callback(
+                        setting.mqtt_topic,
+                        setting.on_message,
+                    )
 
     @property
     def active(self) -> bool:
@@ -372,7 +385,18 @@ class Matrix:
             payload=value.content_id if value is not None else None,
             retain=True,
         )
-        LOGGER.info("Now playing: %s", value.id if value is not None else None)
+        LOGGER.info("Current Content: %s", value.id if value is not None else None)
+
+        self.publish_attributes()
+
+    def publish_attributes(self) -> None:
+        """Publish the attributes of the current content."""
+        self.mqtt_client.publish(
+            topic=f"{self.current_content_topic}/attributes",
+            payload=self.current_content.mqtt_attributes
+            if self.current_content is not None
+            else "{}",
+        )
 
     def __del__(self) -> None:
         """Clear the matrix when the object is deleted."""

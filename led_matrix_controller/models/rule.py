@@ -10,15 +10,14 @@ from typing import TYPE_CHECKING
 from models.setting import FrequencySetting, ParameterSetting
 
 if TYPE_CHECKING:
-    from content.base import GridView, StateBase
-
-    from .automaton import (
+    from content.automaton import (
         Automaton,
         MaskGen,
         RuleFunc,
         RuleTuple,
         TargetSlice,
     )
+    from content.base import GridView, StateBase
 
 
 class AttributeVisitor(ast.NodeVisitor):

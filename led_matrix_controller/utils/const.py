@@ -6,9 +6,11 @@ import re
 from os import environ, getenv
 from pathlib import Path
 from socket import gethostname
+from sys import platform
 from typing import Final
 
 import numpy as np
+from PIL import Image
 
 DEBUG_MODE: Final[bool] = bool(int(getenv("DEBUG_MODE", "0")))
 
@@ -22,6 +24,8 @@ HOSTNAME: Final[str] = getenv(
     "HOSTNAME_OVERRIDE",
     re.sub(r"[^a-z0-9]", "-", gethostname().lower()),
 )
+
+IS_PI = gethostname().lower() == "mtrxpi" and platform != "darwin"
 
 HA_LED_MATRIX_PAYLOAD_TOPIC: Final[str] = "/homeassistant/led_matrix/display"
 HA_LED_MATRIX_BRIGHTNESS_TOPIC: Final[str] = "/homeassistant/led_matrix/brightness"
@@ -42,3 +46,5 @@ ASSETS_DIRECTORY: Final[Path] = REPO_PATH / "assets"
 
 TICKS_PER_SECOND: Final[int] = 100
 TICK_LENGTH: Final[float] = 1 / TICKS_PER_SECOND
+
+EMPTY_IMAGE: Final[Image.Image] = Image.new("RGB", (64, 64), (0, 0, 0))
