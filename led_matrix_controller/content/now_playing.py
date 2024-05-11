@@ -125,7 +125,7 @@ class NowPlaying(DynamicContent):
         artwork_bytes = res.content
 
         image = Image.open(BytesIO(artwork_bytes)).resize((self.width, self.height))
-        force_mkdir(self.file_path, path_is_file=True).touch(exist_ok=True, mode=777)
+        force_mkdir(self.file_path, path_is_file=True)
         image.save(self.file_path, "PNG")
 
         LOGGER.info(
