@@ -19,13 +19,14 @@ from typing import (
 )
 
 import numpy as np
-from content.base import GridView, StateBase
-from content.dynamic_content import DynamicContent
 from models.rule import Rule
 from models.setting import FrequencySetting
 from numpy.typing import DTypeLike, NDArray
 from utils import const
 from wg_utilities.loggers import add_stream_handler
+
+from .base import GridView, StateBase
+from .dynamic_content import DynamicContent
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel(DEBUG)
