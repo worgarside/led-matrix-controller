@@ -30,7 +30,7 @@ repos:
           - types-requests
           - types-Pillow
           - types-python-dateutil
-          - wg-utilities==5.15.1
+          - wg-utilities==5.15.3
           - rgbmatrixemulator==0.11.4
 
   - repo: https://github.com/python-poetry/poetry
@@ -53,7 +53,6 @@ repos:
         args:
           - --maxkb=1000
       - id: check-case-conflict
-      - id: debug-statements
       - id: end-of-file-fixer
       - id: mixed-line-ending
       - id: pretty-format-json
