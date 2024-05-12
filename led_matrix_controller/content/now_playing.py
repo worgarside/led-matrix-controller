@@ -13,11 +13,11 @@ from time import sleep
 from typing import Annotated, ClassVar, Final, Generator, TypedDict
 
 from content.base import StopType
-from httpx import URL, get
+from httpx import URL, HTTPStatusError, get
 from models.setting import ParameterSetting  # noqa: TCH002
 from PIL import Image, UnidentifiedImageError
 from utils import const
-from wg_utilities.functions import force_mkdir
+from wg_utilities.functions import backoff, force_mkdir
 from wg_utilities.loggers import get_streaming_logger
 
 from .dynamic_content import DynamicContent
@@ -95,14 +95,24 @@ class NowPlaying(DynamicContent):
 
         try:
             return self.download()
+        except HTTPStatusError as err:
+            LOGGER.exception(
+                "HTTP error (%s %s) downloading artwork from %s for album %s",
+                err.response.status_code,
+                err.response.reason_phrase,
+                self.artwork_uri,
+                self.album,
+            )
+            LOGGER.error("Response content: %s", err.response.text)  # noqa: TRY400
         except Exception:
             LOGGER.exception(
                 "Failed to download artwork from %s for album %s",
                 self.artwork_uri,
                 self.album,
             )
-            return const.EMPTY_IMAGE
+        return const.EMPTY_IMAGE
 
+    @backoff(HTTPStatusError, logger=LOGGER, timeout=60, max_delay=10)
     def download(self) -> Image.Image:
         """Download the image from the URL to store it locally for future use."""
 
