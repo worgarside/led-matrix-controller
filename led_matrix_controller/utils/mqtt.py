@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from json import JSONDecodeError, loads
 from logging import DEBUG, getLogger
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, TypeVar
@@ -41,6 +42,8 @@ class MqttClient(metaclass=Singleton):
 
     _CLIENT: MqttClient
 
+    CONNECTION_RETRY_LIMIT: ClassVar[int] = 3
+
     def __init__(
         self,
         *,
@@ -75,6 +78,8 @@ class MqttClient(metaclass=Singleton):
 
         self.__class__._CLIENT = self
 
+        self._connection_failures = 0
+
     def _on_connect(
         self,
         client: mqtt.Client,
@@ -85,6 +90,7 @@ class MqttClient(metaclass=Singleton):
     ) -> None:
         _ = client, userdata, flags, properties
         LOGGER.info("Connected with result code: %s", rc)
+        self._connection_failures = 0
 
     def _on_connect_fail(
         self,
@@ -93,6 +99,12 @@ class MqttClient(metaclass=Singleton):
     ) -> None:
         _ = client, userdata
         LOGGER.error("Failed to connect to MQTT broker")
+        self._connection_failures += 1
+
+        if self._connection_failures >= self.CONNECTION_RETRY_LIMIT:
+            sys.exit(
+                f"Failed to connect to MQTT broker after {self.CONNECTION_RETRY_LIMIT} attempts. Exiting.",
+            )
 
     def _on_disconnect(
         self,
