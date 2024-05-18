@@ -134,7 +134,11 @@ class NowPlaying(DynamicContent):
         res.raise_for_status()
         artwork_bytes = res.content
 
-        image = Image.open(BytesIO(artwork_bytes)).resize((self.width, self.height))
+        image = (
+            Image.open(BytesIO(artwork_bytes))
+            .resize((self.width, self.height))
+            .convert("RGB")
+        )
         force_mkdir(self.file_path, path_is_file=True)
         image.save(self.file_path, "PNG")
 
