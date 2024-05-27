@@ -9,7 +9,7 @@ repos:
       - id: sync-additional-dependencies
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.4
+    rev: v0.4.5
     hooks:
       - id: ruff-format
       - id: ruff
@@ -92,7 +92,7 @@ repos:
       - id: python-check-blanket-type-ignore
 
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.2.6
+    rev: v2.3.0
     hooks:
       - id: codespell
         additional_dependencies:
