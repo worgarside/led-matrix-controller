@@ -782,13 +782,13 @@ use-chardet-on-py3 = ["chardet (>=3.0.2,<6)"]
 
 [[package]]
 name = "rgbmatrixemulator"
-version = "0.11.4"
+version = "0.11.5"
 description = "A PC emulator for Raspberry Pi LED matrices driven by rpi-rgb-led-matrix"
 optional = false
 python-versions = "*"
 files = [
-    {file = "rgbmatrixemulator-0.11.4-py2.py3-none-any.whl", hash = "sha256:81fa4f34079cbd552dd604514239f1fecc1a058e50f543628a8b466721241c13"},
-    {file = "rgbmatrixemulator-0.11.4.tar.gz", hash = "sha256:3ad640c38f1c31f1d76c23535790d01aaa004e8a36eab9f8b758f969076a829d"},
+    {file = "rgbmatrixemulator-0.11.5-py2.py3-none-any.whl", hash = "sha256:fe21b3bd451dba61014e3cac09bf6cdd939cee4d15130689bd15b883e73cc5e4"},
+    {file = "rgbmatrixemulator-0.11.5.tar.gz", hash = "sha256:a40b69d12236a8665f3a12a270dd939f38ecda7fdafbdfa31e737d24363dc61b"},
 ]
 
 [package.dependencies]
@@ -892,4 +892,4 @@ testing = ["botocore"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.12"
-content-hash = "1378c8693db74fedbb12cf0f1714d67ab91a04b835f994154d681d9ad58974d0"
+content-hash = "c1bfb018dba232f7c88fb0ae7e577aceeb111ac662207b269164285314b5009f"
