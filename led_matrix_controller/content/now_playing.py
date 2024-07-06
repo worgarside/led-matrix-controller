@@ -214,7 +214,7 @@ class NowPlaying(DynamicContent):
         if None in self.track_metadata.values():
             self.stop(StopType.EXPIRED)
 
-    def teardown(self) -> Generator[None, None, None]:
+    def teardown(self) -> Generator[None, None, None]:  # noqa: PLR6301
         """No teardown needed."""
         yield
 

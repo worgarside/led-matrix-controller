@@ -37,7 +37,7 @@ class Text:
         color: mtrx.Color | None = None,
         *,
         matrix_width: int | None = None,
-    ):
+    ) -> None:
         self.color = color or self.DEFAULT_TEXT_COLOR
         self.y_pos = y_pos
 

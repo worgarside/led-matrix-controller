@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 class AttributeVisitor(ast.NodeVisitor):
     """Visitor to extract attributes from a function."""
 
-    def __init__(self, grid_arg_name: str):
+    def __init__(self, grid_arg_name: str) -> None:
         self.grid_arg_name = grid_arg_name
         self.attributes: set[str] = set()
 

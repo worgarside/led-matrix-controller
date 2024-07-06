@@ -17,6 +17,7 @@ from typing import (
     Callable,
     ClassVar,
     Generator,
+    Iterator,
     final,
 )
 
@@ -143,7 +144,7 @@ class ContentBase(ABC):
         return dumps(self, default=self._json_encode)
 
     @abstractmethod
-    def __iter__(self) -> Generator[None, None, None]:
+    def __iter__(self) -> Iterator[None]:
         """Iterate over the frames."""
 
     @final
@@ -227,4 +228,4 @@ class PreDefinedContent(ContentBase, ABC):
         return partial(next, iter(self.canvases))
 
 
-__all__ = ["StateBase", "ContentBase", "PreDefinedContent", "GridView"]
+__all__ = ["ContentBase", "GridView", "PreDefinedContent", "StateBase"]

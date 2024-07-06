@@ -56,7 +56,7 @@ class GifViewer(PreDefinedContent):
 
         self.canvases = tuple(canvases)
 
-    def teardown(self) -> Generator[None, None, None]:
+    def teardown(self) -> Generator[None, None, None]:  # noqa: PLR6301
         """No teardown needed."""
         yield
 
