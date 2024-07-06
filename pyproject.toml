@@ -94,6 +94,7 @@ skip = '*.json,*.csv,*.xml,*.txt,*.lock'
 
 [tool.ruff]
 fix = true
+preview = true
 line-length = 90
 lint.select = ["ALL"]
 lint.ignore = [
@@ -108,6 +109,7 @@ lint.ignore = [
   "EM",     # https://docs.astral.sh/ruff/rules/#flake8-errmsg-em
   "FIX002", # https://docs.astral.sh/ruff/rules/line-contains-todo/
   "ANN101", # https://docs.astral.sh/ruff/rules/missing-type-self/
+  "CPY",    # https://docs.astral.sh/ruff/rules/#flake8-copyright-cpy
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -138,6 +140,7 @@ convention = "google"
 
 [tool.ruff.lint.pylint]
 max-args = 10
+allow-dunder-method-names = ["__json__"]
 
 [tool.ruff.lint.isort]
 required-imports = ["from __future__ import annotations"]

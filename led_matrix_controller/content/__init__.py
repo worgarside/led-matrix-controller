@@ -5,4 +5,4 @@ from .image import ImageViewer
 from .now_playing import NowPlaying
 from .raining_grid import RainingGrid
 
-__all__ = ["RainingGrid", "GifViewer", "ImageViewer", "NowPlaying"]
+__all__ = ["GifViewer", "ImageViewer", "NowPlaying", "RainingGrid"]

@@ -228,4 +228,4 @@ class PreDefinedContent(ContentBase, ABC):
         return partial(next, iter(self.canvases))
 
 
-__all__ = ["StateBase", "ContentBase", "PreDefinedContent", "GridView"]
+__all__ = ["ContentBase", "GridView", "PreDefinedContent", "StateBase"]
