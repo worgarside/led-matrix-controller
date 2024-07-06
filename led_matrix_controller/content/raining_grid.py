@@ -68,7 +68,6 @@ class RainingGrid(Automaton):
 
     def teardown(self) -> Generator[None, None, None]:
         """Transition the rain chance to 0 then run the simulation until the grid is clear."""
-
         rain_chance_setting = cast(
             TransitionableParameterSetting[float],
             self.settings["rain_chance"],
@@ -112,7 +111,6 @@ def generate_raindrops_mask(shape: tuple[int, int], ca: RainingGrid) -> Mask:
 @RainingGrid.rule(State.RAINDROP, target_slice=0, frequency="rain_speed")
 def generate_raindrops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Generate raindrops at the top of the grid."""
-
     return partial(
         generate_raindrops_mask,
         shape=ca.pixels[target_slice].shape,
@@ -170,7 +168,6 @@ def top_of_rain_down_mask(
 @RainingGrid.rule(State.NULL, frequency="rain_speed")
 def top_of_rain_down(ca: RainingGrid, _: TargetSlice) -> MaskGen:
     """Move the top of a raindrop down."""
-
     return partial(
         top_of_rain_down_mask,
         top_row=ca.pixels[0],

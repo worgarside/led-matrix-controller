@@ -307,7 +307,6 @@ class Matrix:
 
     def register_content(self, *content: ContentBase) -> None:
         """Add content to the matrix."""
-
         content_ids = []
         for c in content:
             self._content[c.content_id] = c
@@ -360,7 +359,6 @@ class Matrix:
     @brightness.setter
     def brightness(self, value: int) -> None:
         """Set the brightness of the matrix."""
-
         self._brightness = value
         self.matrix.brightness = value
 

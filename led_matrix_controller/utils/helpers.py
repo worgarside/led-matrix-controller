@@ -29,7 +29,6 @@ def to_kebab_case(*string: str) -> tuple[str, ...]: ...
 
 def to_kebab_case(*string: str) -> str | tuple[str, ...]:  # type: ignore[misc]
     """Convert string to kebab case."""
-
     if len(string) == 1:
         return _remove_multiple_hyphens(
             Patterns.NOT_LETTERS.sub("-", string[0]).casefold(),
@@ -52,7 +51,6 @@ def camel_to_kebab_case(*string: str) -> tuple[str, ...]: ...
 
 def camel_to_kebab_case(*string: str) -> str | tuple[str, ...]:  # type: ignore[misc]
     """Convert camel case string to kebab case."""
-
     if len(string) == 1:
         return _remove_multiple_hyphens(Patterns.CAMELCASE.sub("-", string[0]).casefold())
 
@@ -73,7 +71,6 @@ def _remove_multiple_hyphens(*string: str) -> tuple[str, ...]: ...
 
 def _remove_multiple_hyphens(*string: str) -> str | tuple[str, ...]:  # type: ignore[misc]
     """Remove multiple hyphens."""
-
     if len(string) == 1:
         return Patterns.MULTIPLE_HYPHENS.sub("-", string[0]).strip("-")
 

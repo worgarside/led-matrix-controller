@@ -140,7 +140,6 @@ class ContentBase(ABC):
     @property
     def mqtt_attributes(self) -> str:
         """Return extra attributes for the MQTT message."""
-
         return dumps(self, default=self._json_encode)
 
     @abstractmethod
@@ -224,7 +223,6 @@ class PreDefinedContent(ContentBase, ABC):
     @property
     def content_getter(self) -> CanvasGetter:
         """Return the image representation of the content."""
-
         return partial(next, iter(self.canvases))
 
 

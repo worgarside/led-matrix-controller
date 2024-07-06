@@ -72,7 +72,6 @@ class Automaton(DynamicContent, ABC):
 
         def __init__(self, current: int | None, delta: int, limit: int) -> None:
             """Initialize the OutOfBoundsError."""
-
             self.current = current
             self.delta = delta
             self.limit = limit
@@ -108,7 +107,6 @@ class Automaton(DynamicContent, ABC):
         The total number of frames (and thus rulesets) is the least common multiple of the frequencies of the
         rules. If the lowest frequency is >1, then some (e.g. every other) frames will have no rules applied.
         """
-
         ruleset_count = math.lcm(
             *(
                 setting.value

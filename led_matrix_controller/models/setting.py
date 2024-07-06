@@ -276,7 +276,6 @@ class Setting(Generic[S]):
 
         e.g. /mtrxpi/raining-grid/frequency/rain-speed
         """
-
         if not hasattr(self, "_mqtt_topic"):
             self._mqtt_topic = "/" + "/".join(
                 to_kebab_case(
@@ -335,7 +334,6 @@ class TransitionableSettingMixin(Setting[T]):
 
     def _set_value_from_payload(self, payload: T) -> None:
         """Set the value of the setting from the payload."""
-
         # Only transition if the automaton is currently displaying and a transition rate is set
         if self.instance.active and (self.transition_rate or 0) > 0:
             LOGGER.debug("Set target value to %r", payload)

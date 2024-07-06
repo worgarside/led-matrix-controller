@@ -100,7 +100,6 @@ lint.select = ["ALL"]
 lint.ignore = [
   "ANN401", # https://docs.astral.sh/ruff/rules/any-type/
   "D107",   # https://docs.astral.sh/ruff/rules/undocumented-public-init/
-  "D202",   # https://docs.astral.sh/ruff/rules/no-blank-line-after-function/
   "S314",   # https://docs.astral.sh/ruff/rules/suspicious-xml-element-tree-usage/
   "TRY003", # https://docs.astral.sh/ruff/rules/raise-vanilla-args/
   "ISC001", # https://docs.astral.sh/ruff/rules/single-line-implicit-string-concatenation/
