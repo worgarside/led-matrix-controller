@@ -44,7 +44,7 @@ RNG = np.random.default_rng(830003040)
 REPO_PATH: Final[Path] = Path(__file__).parents[2]
 ASSETS_DIRECTORY: Final[Path] = REPO_PATH / "assets"
 
-TICKS_PER_SECOND: Final[int] = 100
+TICKS_PER_SECOND: Final[int] = int(getenv("TICKS_PER_SECOND", "100"))
 TICK_LENGTH: Final[float] = 1 / TICKS_PER_SECOND
 
 EMPTY_IMAGE: Final[Image.Image] = Image.new("RGB", (64, 64), (0, 0, 0))
