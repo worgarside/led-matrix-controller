@@ -76,7 +76,7 @@ class MqttClient(metaclass=Singleton):
             )
             self._client.connect(const.MQTT_HOST)
 
-        self.__class__._CLIENT = self
+        self._CLIENT = self
 
         self._connection_failures = 0
 
@@ -106,7 +106,7 @@ class MqttClient(metaclass=Singleton):
                 f"Failed to connect to MQTT broker after {self.CONNECTION_RETRY_LIMIT} attempts. Exiting.",
             )
 
-    def _on_disconnect(
+    def _on_disconnect(  # noqa: PLR6301
         self,
         client: mqtt.Client,
         userdata: Any,
@@ -117,7 +117,7 @@ class MqttClient(metaclass=Singleton):
         _ = client, userdata, flags, properties
         LOGGER.info("Disconnected with reason code: %s", rc)
 
-    def _on_message(
+    def _on_message(  # noqa: PLR6301
         self,
         client: mqtt.Client,
         userdata: Any,
@@ -126,7 +126,7 @@ class MqttClient(metaclass=Singleton):
         _ = client, userdata
         LOGGER.info("Received message: %s", message.payload)
 
-    def _on_subscribe(
+    def _on_subscribe(  # noqa: PLR6301
         self,
         client: mqtt.Client,
         userdata: Any,
@@ -173,6 +173,7 @@ class MqttClient(metaclass=Singleton):
         self,
         topic: str,
         payload: mqtt.PayloadType,
+        *,
         qos: int = 0,
         retain: bool | None = None,
         properties: Properties | None = None,

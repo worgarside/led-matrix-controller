@@ -61,10 +61,10 @@ class Canvas(ABC):
 
 
 __all__ = [
+    "Canvas",
     "Color",
+    "DrawText",
     "Font",
     "RGBMatrix",
     "RGBMatrixOptions",
-    "DrawText",
-    "Canvas",
 ]

@@ -95,7 +95,7 @@ class Automaton(DynamicContent, ABC):
                 freq_setting := self.settings.get(rule.frequency),
                 FrequencySetting,
             ):
-                rule._frequency_setting = freq_setting
+                rule._frequency_setting = freq_setting  # noqa: SLF001
 
             rule.target_view = self.pixels[rule.target_slice]
             rule.refresh_mask_generator(self)
