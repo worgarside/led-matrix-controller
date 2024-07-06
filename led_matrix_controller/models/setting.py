@@ -100,12 +100,12 @@ class Setting(Generic[S]):
 
     matrix: Matrix = field(init=False, repr=False)
 
-    _mqtt_client: ClassVar[MqttClient]
+    _MQTT_CLIENT: ClassVar[MqttClient]
     """The MQTT client to use for this setting."""
 
     def __post_init__(self) -> None:
-        if not hasattr(self.__class__, "_mqtt_client"):
-            self.__class__._mqtt_client = MqttClient()
+        if not hasattr(self.__class__, "_MQTT_CLIENT"):
+            self.__class__._MQTT_CLIENT = MqttClient()  # noqa: SLF001
 
         if (
             self.minimum is not None
@@ -303,7 +303,6 @@ class Setting(Generic[S]):
             self.instance,
             "generate_frame_rulesets",
         ):
-            # TODO could go in a separate thread?
             self.instance.generate_frame_rulesets(update_setting=self.slug)
 
     def __json__(self) -> dict[str, Any]:
@@ -351,7 +350,7 @@ class TransitionableSettingMixin(Setting[T]):
             else:
                 LOGGER.debug("Transition thread already running")
         else:
-            Setting._set_value_from_payload(self, payload)
+            Setting._set_value_from_payload(self, payload)  # noqa: SLF001
 
     def _transition_worker(self) -> None:
         LOGGER.info("Transitioning %s to %s", self.slug, self.target_value)

@@ -76,7 +76,7 @@ class MqttClient(metaclass=Singleton):
             )
             self._client.connect(const.MQTT_HOST)
 
-        self.__class__._CLIENT = self
+        self._CLIENT = self
 
         self._connection_failures = 0
 

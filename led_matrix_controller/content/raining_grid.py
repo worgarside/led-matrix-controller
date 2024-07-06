@@ -202,7 +202,7 @@ def _splash(
     *,
     source_slice_direction: Literal[Direction.LEFT, Direction.RIGHT],
 ) -> MaskGen:
-    # TODO this would be better as "will be NULL", instead of "is NULL"
+    # TODO: this would be better as "will be NULL", instead of "is NULL"
     source_slice = ca.pixels[
         ca.translate_slice(
             target_slice,
