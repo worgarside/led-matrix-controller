@@ -60,7 +60,6 @@ class Text:
         Returns:
             int: the next x position of the text
         """
-
         if not self.scrollable:
             return self.original_x_pos
 
@@ -78,7 +77,6 @@ class Text:
 
     def reset_x_pos(self) -> None:
         """Reset the x position of the text to the original position."""
-
         self._current_x_pos = self.original_x_pos
 
     @property
@@ -100,7 +98,6 @@ class Text:
         Args:
             value (str): the new display_content
         """
-
         self.original_content = value
 
         if self.matrix_width:
@@ -121,7 +118,6 @@ class Text:
         Returns:
             int: length of the text in pixels
         """
-
         return len(self.display_content) * const.FONT_WIDTH
 
     @property
@@ -131,7 +127,6 @@ class Text:
         Returns:
             int: the width of the matrix
         """
-
         return self._matrix_width
 
     @matrix_width.setter
@@ -141,7 +136,6 @@ class Text:
         Args:
             value (int, optional): the width of the matrix
         """
-
         self._matrix_width = value
 
     @property
@@ -151,7 +145,6 @@ class Text:
         Returns:
             int: x position of the text
         """
-
         if self.scrollable:
             # There are 3 spaces before the text, so negate them here to get the string
             # to align with the left side of the screen. The SCROLL_INCREMENT_DISTANCE
@@ -174,5 +167,4 @@ class Text:
         Returns:
             int: the length of the text
         """
-
         return len(self.display_content)

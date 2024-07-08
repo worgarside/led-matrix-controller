@@ -115,7 +115,6 @@ class NowPlaying(DynamicContent):
     @backoff(HTTPStatusError, logger=LOGGER, timeout=60, max_delay=10)
     def download(self) -> Image.Image:
         """Download the image from the URL to store it locally for future use."""
-
         if (
             self.artwork_uri is None
             or not str(self.artwork_uri)
