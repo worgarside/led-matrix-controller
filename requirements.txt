@@ -246,6 +246,6 @@ sniffio==1.3.1 ; python_version >= "3.11" and python_version < "3.12" \
 urllib3==2.2.2 ; python_version >= "3.11" and python_version < "3.12" \
     --hash=sha256:a448b2f64d686155468037e1ace9f2d2199776e17f0a46610480d311f73e3472 \
     --hash=sha256:dd505485549a7a552833da5e6063639d0d177c04f23bc3864e41e5dc5f612168
-wg-utilities[exceptions]==5.15.3 ; python_version >= "3.11" and python_version < "3.12" \
-    --hash=sha256:290c32285a14f0d29e409810a0373ade69f3b1f15b598b5552f86a4e43daa300 \
-    --hash=sha256:f501484ece5e3da6705cb749bbe89c58e7583352c804da7425588c88c267eb82
+wg-utilities[exceptions]==5.15.4 ; python_version >= "3.11" and python_version < "3.12" \
+    --hash=sha256:74a0a3e273fa02696e5ad9984d805d4c16f603d19d592c6e75e93fc55a1a4290 \
+    --hash=sha256:c1d415ef3acc9df94452a10513bdd599d45292b5399b7c9c8b607d86806517d5
