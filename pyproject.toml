@@ -86,7 +86,27 @@ strict_optional = true
 strict_equality = true
 explicit_package_bases = true
 show_error_codes = true
-enable_error_code = ["truthy-bool", "unused-awaitable"]
+enable_error_code = [
+  "arg-type",           # Checks for argument types in function calls.
+  "assignment",         # Validates types of variable assignments.
+  "return-value",       # Ensures that return values match the declared type.
+  "call-overload",      # Validates correct use of method/function overloads.
+  "operator",           # Checks operator usage against expected types.
+  "index",              # Validates types used in indexing operations.
+  "attr-defined",       # Checks if attributes exist in classes/objects.
+  "no-untyped-call",    # Prevents calls to untyped functions in typed contexts.
+  "unreachable",        # Warns about code that can never be executed.
+  "truthy-bool",        # Ensures that boolean expressions are boolean in type.
+  "union-attr",         # Checks for attribute access in unions safely.
+  "dict-item",          # Checks for proper types used in dictionary items.
+  "unused-awaitable",   # Warns if an awaitable is not awaited.
+  "override",           # Ensures overridden methods match the signature in base class.
+  "list-item",          # Checks type consistency of list items.
+  "return",             # Ensures all code paths in a function return a value if needed.
+  "type-var",           # Ensures type variables are used correctly.
+  "valid-type",         # Validates types used in annotations are recognized.
+  "func-returns-value", # Ensures functions declared with a return type actually return a value.
+]
 
 [tool.codespell]
 ignore-words-list = "reenable"

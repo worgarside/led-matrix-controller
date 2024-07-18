@@ -21,5 +21,8 @@
 				"promptCredentials": true
 			}
 		],
+		"cSpell.words": [
+			"userdata"
+		],
 	}
 }

@@ -79,6 +79,7 @@ class StateBase(Enum):
 
 
 def _get_image(colormap: NDArray[np.uint8], grid: GridView) -> Image.Image:
+    """Return the image representation of the content."""
     return Image.fromarray(colormap[grid], "RGB")
 
 

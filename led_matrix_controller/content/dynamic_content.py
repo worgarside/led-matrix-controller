@@ -5,11 +5,18 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Any, Generator, final, get_type_hints
+from typing import TYPE_CHECKING, Any, Generator, final, get_type_hints
 
+import numpy as np
 from models.setting import Setting
+from wg_utilities.loggers import get_streaming_logger
 
 from .base import ContentBase, ImageGetter, _get_image
+
+if TYPE_CHECKING:
+    from numpy.typing import DTypeLike, NDArray
+
+LOGGER = get_streaming_logger(__name__)
 
 
 @dataclass(kw_only=True, slots=True)
@@ -37,12 +44,17 @@ class DynamicContent(ContentBase, ABC):
 
                     self.settings[annotation.slug] = annotation
 
+    def zeros(self, *, dtype: DTypeLike = np.int_) -> NDArray[Any]:
+        """Return a grid of zeros."""
+        return np.zeros((self.height, self.width), dtype=dtype)
+
     @final
     @property
     def content_getter(self) -> ImageGetter:
         """Return the image representation of the content."""
         if not hasattr(self, "_image_getter"):
             self._image_getter = partial(_get_image, self.colormap, self.pixels)
+            LOGGER.debug("Created partial image getter for %s", self.__class__.__name__)
 
         return self._image_getter
 

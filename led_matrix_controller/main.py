@@ -6,6 +6,7 @@ from contextlib import suppress
 from pathlib import Path
 
 from content import GifViewer, ImageViewer, NowPlaying, RainingGrid
+from content.sorting_algorithms import Sorter
 from models import Matrix
 from utils import MqttClient
 
@@ -21,6 +22,7 @@ def main() -> None:
         GifViewer(path=Path("door/animated.gif"), **matrix.dimensions),
         RainingGrid(**matrix.dimensions, persistent=True),
         NowPlaying(**matrix.dimensions, persistent=True),
+        Sorter(**matrix.dimensions),
     )
 
     mqtt_client.loop_forever()
