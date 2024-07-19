@@ -6,7 +6,7 @@ from colorsys import hls_to_rgb
 from dataclasses import dataclass
 from enum import StrEnum, auto
 from random import randint, shuffle, uniform
-from typing import Annotated, Generator, Protocol
+from typing import Annotated, Generator
 
 import numpy as np
 from content.base import StopType
@@ -59,13 +59,6 @@ def _merge(list_: list[int], /, l: int, m: int, r: int) -> Generator[None, None,
         yield
 
 
-class SortingAlgorithmImpl(Protocol):
-    """Typing protocol for the sorting algorithm implementations."""
-
-    def __call__(self, list_: list[int]) -> Generator[None, None, None]:
-        """A sorting algorithm which yields every time the list is updated."""
-
-
 # =============================================================================
 # Algorithm Implementations
 
@@ -75,23 +68,18 @@ class SortingAlgorithm(StrEnum):
 
     BINARY_INSERTION_SORT = auto()
     BUBBLESORT = auto()
+    COCKTAIL_SHAKER_SORT = auto()
+    COMB_SORT = auto()
     GNOME_SORT = auto()
+    ODD_EVEN_SORT = auto()
+    PANCAKE_SORT = auto()
     SLOW_SORT = auto()
     STOOGE_SORT = auto()
     TIMSORT = auto()
 
-    def __call__(self, list_: list[int]) -> Generator[None, None, None]:
+    def __call__(self, list_: list[int], /) -> Generator[None, None, None]:
         """Return the sorting algorithm implementation."""
-        lookup: dict[SortingAlgorithm, SortingAlgorithmImpl] = {
-            SortingAlgorithm.BINARY_INSERTION_SORT: SortingAlgorithm.binary_insertion_sort,
-            SortingAlgorithm.BUBBLESORT: SortingAlgorithm.bubblesort,
-            SortingAlgorithm.GNOME_SORT: SortingAlgorithm.gnome_sort,
-            SortingAlgorithm.SLOW_SORT: SortingAlgorithm.slow_sort,
-            SortingAlgorithm.STOOGE_SORT: SortingAlgorithm.stooge_sort,
-            SortingAlgorithm.TIMSORT: SortingAlgorithm.timsort,
-        }
-
-        return lookup[self](list_)
+        return getattr(self, self)(list_)  # type: ignore[no-any-return]
 
     @staticmethod
     def binary_insertion_sort(list_: list[int]) -> Generator[None, None, None]:
@@ -115,17 +103,70 @@ class SortingAlgorithm(StrEnum):
         """Swap the elements to arrange in order."""
         for iter_num in range(len(list_) - 1, 0, -1):
             for idx in range(iter_num):
-                if list_[idx] < list_[idx + 1]:
+                if list_[idx] < list_[idx + 1]:  # Swap the sign to change sort order
                     list_[idx], list_[idx + 1] = list_[idx + 1], list_[idx]
 
                     yield
+
+    @staticmethod
+    def cocktail_shaker_sort(list_: list[int]) -> Generator[None, None, None]:
+        """Compare and swap adjacent elements in both directions."""
+        n = len(list_)
+        swapped = True
+        start = 0
+        end = n - 1
+
+        while swapped:
+            swapped = False
+            for i in range(start, end):
+                if list_[i] < list_[i + 1]:  # Swap the sign to change sort order
+                    list_[i], list_[i + 1] = list_[i + 1], list_[i]
+                    swapped = True
+                    yield
+
+            if not swapped:
+                break
+
+            swapped = False
+            end -= 1
+            for i in range(end - 1, start - 1, -1):
+                if list_[i] < list_[i + 1]:  # Swap the sign to change sort order
+                    list_[i], list_[i + 1] = list_[i + 1], list_[i]
+                    swapped = True
+                    yield
+
+            start += 1
+
+    @staticmethod
+    def comb_sort(list_: list[int]) -> Generator[None, None, None]:
+        """Compare and swap elements with a gap that decreases over time."""
+        n = len(list_)
+        gap = n
+        shrink = 1.3
+        is_sorted = False
+
+        while not is_sorted:
+            gap = int(gap / shrink)
+            if gap <= 1:
+                gap = 1
+                is_sorted = True
+
+            i = 0
+            while i + gap < n:
+                if list_[i] < list_[i + gap]:  # Swap the sign to change sort order
+                    list_[i], list_[i + gap] = list_[i + gap], list_[i]
+                    is_sorted = False
+                    yield
+                i += 1
 
     @staticmethod
     def gnome_sort(list_: list[int]) -> Generator[None, None, None]:
         """Sorts the array by comparing the current element with the previous one."""
         index = 0
         while index < len(list_):
-            if index == 0 or list_[index] >= list_[index - 1]:
+            if (
+                index == 0 or list_[index] <= list_[index - 1]
+            ):  # Swap the sign to change sort order
                 index += 1
             else:
                 list_[index], list_[index - 1] = list_[index - 1], list_[index]
@@ -134,7 +175,48 @@ class SortingAlgorithm(StrEnum):
             yield
 
     @staticmethod
+    def odd_even_sort(list_: list[int]) -> Generator[None, None, None]:
+        """Perform comparisons and swaps on alternating odd and even indexed elements."""
+        n = len(list_)
+        is_sorted = False
+        while not is_sorted:
+            is_sorted = True
+            for i in range(1, n - 1, 2):
+                if list_[i] < list_[i + 1]:  # Swap the sign to change sort order
+                    list_[i], list_[i + 1] = list_[i + 1], list_[i]
+                    is_sorted = False
+                    yield
+
+            for i in range(0, n - 1, 2):
+                if list_[i] < list_[i + 1]:  # Swap the sign to change sort order
+                    list_[i], list_[i + 1] = list_[i + 1], list_[i]
+                    is_sorted = False
+                    yield
+
+    @staticmethod
+    def _flip(list_: list[int], i: int) -> None:
+        """Reverse the array from start to index i."""
+        start = 0
+        while start < i:
+            list_[start], list_[i] = list_[i], list_[start]
+            start += 1
+            i -= 1
+
+    def pancake_sort(self, list_: list[int]) -> Generator[None, None, None]:
+        """Repeatedly flip subarrays to move the largest unsorted element to its correct position."""
+        n = len(list_)
+        for curr_size in range(n, 1, -1):
+            min_idx = list_.index(min(list_[:curr_size]))
+            if min_idx != curr_size - 1:
+                if min_idx != 0:
+                    self._flip(list_, min_idx)
+                    yield
+
+                self._flip(list_, curr_size - 1)
+                yield
+
     def slow_sort(
+        self,
         list_: list[int],
         i: int = 0,
         j: int | None = None,
@@ -147,17 +229,17 @@ class SortingAlgorithm(StrEnum):
             return
 
         m = (i + j) // 2
-        yield from SortingAlgorithm.slow_sort(list_, i, m)
-        yield from SortingAlgorithm.slow_sort(list_, m + 1, j)
+        yield from self.slow_sort(list_, i, m)
+        yield from self.slow_sort(list_, m + 1, j)
 
-        if list_[m] > list_[j]:
+        if list_[m] < list_[j]:  # Swap the sign to change sort order
             list_[m], list_[j] = list_[j], list_[m]
             yield
 
-        yield from SortingAlgorithm.slow_sort(list_, i, j - 1)
+        yield from self.slow_sort(list_, i, j - 1)
 
-    @staticmethod
     def stooge_sort(
+        self,
         list_: list[int],
         l: int = 0,  # noqa: E741
         h: int | None = None,
@@ -168,15 +250,16 @@ class SortingAlgorithm(StrEnum):
 
         if l >= h:
             return
-        if list_[l] > list_[h]:
+
+        if list_[l] < list_[h]:  # Swap the sign to change sort order
             list_[l], list_[h] = list_[h], list_[l]
             yield
 
         if h - l + 1 > 2:  # noqa: PLR2004
             t = (h - l + 1) // 3
-            yield from SortingAlgorithm.stooge_sort(list_, l, h - t)
-            yield from SortingAlgorithm.stooge_sort(list_, l + t, h)
-            yield from SortingAlgorithm.stooge_sort(list_, l, h - t)
+            yield from self.stooge_sort(list_, l, h - t)
+            yield from self.stooge_sort(list_, l + t, h)
+            yield from self.stooge_sort(list_, l, h - t)
 
     @staticmethod
     def timsort(list_: list[int]) -> Generator[None, None, None]:
