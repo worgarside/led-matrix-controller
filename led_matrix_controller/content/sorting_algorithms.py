@@ -37,7 +37,7 @@ def _merge(list_: list[int], /, l: int, m: int, r: int) -> Generator[None, None,
     i, j, k = 0, 0, l
 
     while i < len1 and j < len2:
-        if left[i] <= right[j]:
+        if left[i] >= right[j]:  # Swap the sign to change timsort order
             list_[k] = left[i]
             i += 1
         else:
@@ -87,6 +87,7 @@ def binary_insertion_sort(list_: list[int]) -> Generator[None, None, None]:
         while j >= left and list_[j] < key_item:
             list_[j + 1] = list_[j]
             j -= 1
+            yield
 
         list_[j + 1] = key_item
         yield
