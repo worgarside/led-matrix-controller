@@ -218,7 +218,9 @@ class Setting(Generic[S]):
                 f"Setting `{self.slug}` already set up for {self.instance}",
             )
 
-        if type_ not in {dict, list, str, int, float, bool}:
+        if not (
+            type_ in {dict, list, str, int, float, bool} or issubclass(type_, StrEnum)
+        ):
             if hasattr(type_, "__total__"):
                 # TypedDict
                 type_ = dict  # type: ignore[assignment]
