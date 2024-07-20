@@ -12,6 +12,7 @@ from typing import Annotated, Generator
 import numpy as np
 from content.base import StopType
 from models.setting import ParameterSetting  # noqa: TCH002
+from PIL import Image
 from wg_utilities.loggers import get_streaming_logger
 
 from .dynamic_content import DynamicContent
@@ -292,15 +293,17 @@ class Sorter(DynamicContent):
         ParameterSetting(
             requires_rule_regeneration=True,
             payload_modifier=lambda x: x.casefold(),
-            strict=False,
         ),
     ] = SortingAlgorithm.BUBBLESORT
 
     completion_display_time: Annotated[
         float,
-        ParameterSetting(minimum=0, maximum=30, fp_precision=3),
+        ParameterSetting(minimum=0, maximum=30, fp_precision=2),
     ] = 5.0
     """Number of seconds to display the sorted array for."""
+
+    iterations: Annotated[int, ParameterSetting(minimum=1, maximum=1000)] = 1
+    """Number of iterations to run the sorting algorithm per."""
 
     def __post_init__(self) -> None:
         """Initialize the image getter."""
@@ -308,6 +311,12 @@ class Sorter(DynamicContent):
 
         self.pixels = self.zeros()
         self.update_colormap()
+
+        self._image_getter = self._get_image
+
+    def _get_image(self) -> Image.Image:
+        """Convert the array to an image."""
+        return Image.fromarray(self.colormap[self.pixels], "RGB")
 
     def _set_pixels(self, values: list[int]) -> None:
         """Fill each column of the array with the corresponding value, to the height of that value."""
@@ -317,16 +326,21 @@ class Sorter(DynamicContent):
 
     def refresh_content(self) -> Generator[None, None, None]:
         """Refresh the content."""
-        values = list(range(1, self.width + 1))
-        shuffle(values)
+        for iter_num in range(self.iterations):
+            values = list(range(1, self.width + 1))
+            shuffle(values)
 
-        # Initial render
-        self._set_pixels(values)
-        yield
-
-        for _ in self.algorithm(values):
+            # Initial render
             self._set_pixels(values)
             yield
+
+            for _ in self.algorithm(values):
+                self._set_pixels(values)
+                yield
+
+            if iter_num < self.iterations - 1:
+                # Don't run teardown for the last iteration, it's run outside this method anyway
+                yield from self.teardown()
 
         self.stop(StopType.EXPIRED)
 
@@ -362,10 +376,14 @@ class Sorter(DynamicContent):
         )
 
     def teardown(self) -> Generator[None, None, None]:
-        """No teardown needed."""
+        """Display the sorted list for N seconds, then reset the image getter/colormap."""
         LOGGER.debug("Sleeping for %f seconds", self.completion_display_time)
         sleep(self.completion_display_time)
 
-        del self._image_getter
+        for i in range(self.height):
+            self.pixels[i, :] = 0
+            yield
+            yield  # Second yield to slow down the wipe
+
         self.update_colormap()
         yield

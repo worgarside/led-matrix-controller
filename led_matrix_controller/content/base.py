@@ -83,7 +83,7 @@ def _get_image(colormap: NDArray[np.uint8], grid: GridView) -> Image.Image:
 
 
 CanvasGetter = partial[mtrx.Canvas]
-ImageGetter = partial[Image.Image]
+ImageGetter = Callable[[], Image.Image]
 
 
 class StopType(Enum):
