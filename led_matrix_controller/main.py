@@ -5,8 +5,7 @@ from __future__ import annotations
 from contextlib import suppress
 from pathlib import Path
 
-from content import GifViewer, ImageViewer, NowPlaying, RainingGrid
-from content.sorting_algorithms import Sorter
+from content import GifViewer, ImageViewer, NowPlaying, RainingGrid, Sorter
 from models import Matrix
 from utils import MqttClient
 
