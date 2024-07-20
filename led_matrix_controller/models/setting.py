@@ -268,6 +268,11 @@ class Setting(Generic[S]):
 
         return coerced_and_formatted
 
+    @property
+    def mqtt_client(self) -> MqttClient:
+        """The MQTT client to use for this setting."""
+        return self.__class__._MQTT_CLIENT  # noqa: SLF001
+
     _mqtt_topic: str = field(init=False, repr=False)
 
     @property

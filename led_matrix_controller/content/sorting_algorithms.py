@@ -5,7 +5,7 @@ from __future__ import annotations
 from colorsys import hls_to_rgb
 from dataclasses import dataclass
 from enum import StrEnum, auto
-from random import randint, shuffle, uniform
+from random import choice, randint, shuffle, uniform
 from time import sleep
 from typing import Annotated, Generator
 
@@ -282,19 +282,13 @@ class SortingAlgorithm(StrEnum):
 
 # =============================================================================
 # Content
-
-
 @dataclass(kw_only=True, slots=True)
 class Sorter(DynamicContent):
     """Display various sorting algorithms."""
 
-    algorithm: Annotated[
-        SortingAlgorithm,
-        ParameterSetting(
-            requires_rule_regeneration=True,
-            payload_modifier=lambda x: x.casefold(),
-        ),
-    ] = SortingAlgorithm.BUBBLESORT
+    algorithm: Annotated[SortingAlgorithm, ParameterSetting()] = (
+        SortingAlgorithm.BUBBLESORT
+    )
 
     completion_display_time: Annotated[
         float,
@@ -304,6 +298,8 @@ class Sorter(DynamicContent):
 
     iterations: Annotated[int, ParameterSetting(minimum=1, maximum=1000)] = 1
     """Number of iterations to run the sorting algorithm per."""
+
+    randomize_algorithm: Annotated[bool, ParameterSetting()] = False
 
     def __post_init__(self) -> None:
         """Initialize the image getter."""
@@ -329,6 +325,9 @@ class Sorter(DynamicContent):
         for iter_num in range(self.iterations):
             values = list(range(1, self.width + 1))
             shuffle(values)
+
+            if self.randomize_algorithm:
+                self.update_setting("algorithm", choice(list(SortingAlgorithm)))  # noqa: S311
 
             # Initial render
             self._set_pixels(values)
