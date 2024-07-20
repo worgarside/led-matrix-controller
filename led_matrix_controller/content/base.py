@@ -15,7 +15,6 @@ from os import PathLike
 from typing import (
     Any,
     Callable,
-    ClassVar,
     Generator,
     Iterator,
     final,
@@ -107,8 +106,6 @@ class StopType(Enum):
 class ContentBase(ABC):
     """Base class for content models."""
 
-    HAS_TEARDOWN_SEQUENCE: ClassVar[bool] = False
-
     height: int
     width: int
 
@@ -125,7 +122,7 @@ class ContentBase(ABC):
     stop_reason: StopType | None = field(init=False, repr=False)
 
     @abstractmethod
-    def teardown(self) -> Generator[None, None, None]:
+    def teardown(self) -> Generator[None, None, None] | None:
         """Perform any necessary cleanup."""
 
     @property

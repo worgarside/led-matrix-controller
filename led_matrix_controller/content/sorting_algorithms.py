@@ -6,6 +6,7 @@ from colorsys import hls_to_rgb
 from dataclasses import dataclass
 from enum import StrEnum, auto
 from random import randint, shuffle, uniform
+from time import sleep
 from typing import Annotated, Generator
 
 import numpy as np
@@ -295,6 +296,12 @@ class Sorter(DynamicContent):
         ),
     ] = SortingAlgorithm.BUBBLESORT
 
+    completion_display_time: Annotated[
+        float,
+        ParameterSetting(minimum=0, maximum=30, fp_precision=3),
+    ] = 5.0
+    """Number of seconds to display the sorted array for."""
+
     def __post_init__(self) -> None:
         """Initialize the image getter."""
         DynamicContent.__post_init__(self)
@@ -322,9 +329,6 @@ class Sorter(DynamicContent):
             yield
 
         self.stop(StopType.EXPIRED)
-
-        del self._image_getter
-        self.update_colormap()
 
     def update_colormap(self) -> None:
         """Randomly generate a new gradient colormap."""
@@ -357,6 +361,11 @@ class Sorter(DynamicContent):
             dtype=np.uint8,
         )
 
-    def teardown(self) -> Generator[None, None, None]:  # noqa: PLR6301
+    def teardown(self) -> Generator[None, None, None]:
         """No teardown needed."""
+        LOGGER.debug("Sleeping for %f seconds", self.completion_display_time)
+        sleep(self.completion_display_time)
+
+        del self._image_getter
+        self.update_colormap()
         yield
