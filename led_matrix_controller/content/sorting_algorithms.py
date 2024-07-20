@@ -142,7 +142,7 @@ class SortingAlgorithm(StrEnum):
         """Compare and swap elements with a gap that decreases over time."""
         n = len(list_)
         gap = n
-        shrink = 1.3
+        shrink = 1.001
         is_sorted = False
 
         while not is_sorted:
