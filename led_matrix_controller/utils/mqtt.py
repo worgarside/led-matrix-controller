@@ -40,8 +40,6 @@ T = TypeVar("T", bound=object)
 class MqttClient(metaclass=Singleton):
     """MQTT Client wrapper class."""
 
-    _CLIENT: MqttClient
-
     CONNECTION_RETRY_LIMIT: ClassVar[int] = 3
 
     def __init__(
@@ -75,8 +73,6 @@ class MqttClient(metaclass=Singleton):
                 const.HOSTNAME,
             )
             self._client.connect(const.MQTT_HOST)
-
-        self._CLIENT = self
 
         self._connection_failures = 0
 

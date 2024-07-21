@@ -218,7 +218,9 @@ class Setting(Generic[S]):
                 f"Setting `{self.slug}` already set up for {self.instance}",
             )
 
-        if type_ not in {dict, list, str, int, float, bool}:
+        if not (
+            type_ in {dict, list, str, int, float, bool} or issubclass(type_, StrEnum)
+        ):
             if hasattr(type_, "__total__"):
                 # TypedDict
                 type_ = dict  # type: ignore[assignment]
@@ -265,6 +267,11 @@ class Setting(Generic[S]):
             )
 
         return coerced_and_formatted
+
+    @property
+    def mqtt_client(self) -> MqttClient:
+        """The MQTT client to use for this setting."""
+        return self.__class__._MQTT_CLIENT  # noqa: SLF001
 
     _mqtt_topic: str = field(init=False, repr=False)
 

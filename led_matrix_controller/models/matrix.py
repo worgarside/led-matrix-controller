@@ -179,18 +179,24 @@ class Matrix:
 
             self.current_content.active = True
 
+            if (setup_gen := self.current_content.setup()) is not None:
+                # Only run setup if it returns a generator
+                LOGGER.info("Running setup sequence for %s", self.current_content.id)
+
+                for _ in setup_gen:
+                    set_content()
+
             # Actual loop through individual content instances:
             for _ in self.current_content:
                 set_content()
 
-            if (
-                self.current_content.HAS_TEARDOWN_SEQUENCE
-                and self.current_content.stop_reason != StopType.PRIORITY
+            if self.current_content.stop_reason != StopType.PRIORITY and (
+                teardown_gen := self.current_content.teardown()
             ):
                 # Only run teardown if the stop isn't due to higher priority content
                 LOGGER.info("Running teardown sequence for %s", self.current_content.id)
 
-                for _ in self.current_content.teardown():
+                for _ in teardown_gen:
                     set_content()
 
             self.current_content.active = False

@@ -50,7 +50,6 @@ class RainingGrid(Automaton):
     """Basic rain simulation."""
 
     STATE = State
-    HAS_TEARDOWN_SEQUENCE = True
 
     rain_chance: Annotated[
         float,

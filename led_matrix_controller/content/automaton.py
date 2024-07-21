@@ -9,7 +9,6 @@ from dataclasses import dataclass, field
 from enum import IntEnum
 from functools import lru_cache, wraps
 from itertools import islice
-from logging import DEBUG, getLogger
 from typing import (
     Any,
     Callable,
@@ -21,16 +20,14 @@ from typing import (
 import numpy as np
 from models.rule import Rule
 from models.setting import FrequencySetting
-from numpy.typing import DTypeLike, NDArray
+from numpy.typing import NDArray
 from utils import const
-from wg_utilities.loggers import add_stream_handler
+from wg_utilities.loggers import get_streaming_logger
 
 from .base import GridView, StateBase
 from .dynamic_content import DynamicContent
 
-LOGGER = getLogger(__name__)
-LOGGER.setLevel(DEBUG)
-add_stream_handler(LOGGER)
+LOGGER = get_streaming_logger(__name__)
 
 
 EVERYWHERE = (slice(None), slice(None))
@@ -203,10 +200,6 @@ class Automaton(DynamicContent, ABC):
     def fresh_mask(self) -> Mask:
         """Return a fresh mask."""
         return self.zeros(dtype=np.bool_)
-
-    def zeros(self, *, dtype: DTypeLike = np.int_) -> NDArray[Any]:
-        """Return a grid of zeros."""
-        return np.zeros((self.height, self.width), dtype=dtype)
 
     def refresh_content(self) -> Generator[None, None, None]:
         """Generate the frames of the automaton."""

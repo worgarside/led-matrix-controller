@@ -62,10 +62,6 @@ class ImageViewer(PreDefinedContent):
             self.path.relative_to(self.IMAGE_DIRECTORY).with_suffix("").as_posix(),
         )
 
-    def teardown(self) -> Generator[None, None, None]:  # noqa: PLR6301
-        """No teardown needed."""
-        yield
-
     def __iter__(self) -> Generator[None, None, None]:
         """Yield nothing; this is a static image."""
         tts = self.ticks_to_sleep

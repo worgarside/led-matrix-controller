@@ -21,5 +21,12 @@
 				"promptCredentials": true
 			}
 		],
+		"cSpell.words": [
+			"bubblesort",
+			"subarray",
+			"subarrays",
+			"timsort",
+			"userdata"
+		],
 	}
 }

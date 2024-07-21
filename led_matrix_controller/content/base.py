@@ -15,7 +15,6 @@ from os import PathLike
 from typing import (
     Any,
     Callable,
-    ClassVar,
     Generator,
     Iterator,
     final,
@@ -79,11 +78,12 @@ class StateBase(Enum):
 
 
 def _get_image(colormap: NDArray[np.uint8], grid: GridView) -> Image.Image:
+    """Return the image representation of the content."""
     return Image.fromarray(colormap[grid], "RGB")
 
 
 CanvasGetter = partial[mtrx.Canvas]
-ImageGetter = partial[Image.Image]
+ImageGetter = Callable[[], Image.Image]
 
 
 class StopType(Enum):
@@ -106,8 +106,6 @@ class StopType(Enum):
 class ContentBase(ABC):
     """Base class for content models."""
 
-    HAS_TEARDOWN_SEQUENCE: ClassVar[bool] = False
-
     height: int
     width: int
 
@@ -123,9 +121,13 @@ class ContentBase(ABC):
 
     stop_reason: StopType | None = field(init=False, repr=False)
 
-    @abstractmethod
-    def teardown(self) -> Generator[None, None, None]:
+    def setup(self) -> Generator[None, None, None] | None:  # noqa: PLR6301
+        """Perform any necessary setup."""
+        return None
+
+    def teardown(self) -> Generator[None, None, None] | None:  # noqa: PLR6301
         """Perform any necessary cleanup."""
+        return None
 
     @property
     def content_id(self) -> str:
