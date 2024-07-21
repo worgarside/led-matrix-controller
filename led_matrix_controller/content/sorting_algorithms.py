@@ -319,7 +319,11 @@ class Sorter(DynamicContent):
         return Image.fromarray(self.colormap[self.pixels], "RGB")
 
     def _set_pixels(self, offset: int = -1) -> None:
-        """Fill each column of the array with the corresponding value, to the height of that value."""
+        """Fill each column of the array with the corresponding value, to the height of that value.
+
+        Args:
+            offset (int, optional): The vertical offset to start the fill from. Defaults to -1.
+        """
         for idx, value in enumerate(self._values):
             self.pixels[value + offset :, idx] = value
             self.pixels[: value + offset, idx] = 0
@@ -357,16 +361,10 @@ class Sorter(DynamicContent):
     def teardown(self) -> Generator[None, None, None]:
         """Display the sorted list for N seconds, then reset the image getter/colormap."""
         LOGGER.debug("Sleeping for %f seconds", self.completion_display_time)
-        sleep(self.completion_display_time / 2)
+        sleep(self.completion_display_time)
 
-        for i in range(self.height - 1, -1, -1):
-            self.pixels[i, :] = np.arange(self.width, 0, -1)
-            yield
-
-        sleep(self.completion_display_time / 2)
-
-        for i in range(self.height):
-            self.pixels[i, :] = 0
+        for i in range(-1, self.height + 1):
+            self._set_pixels(offset=i)
             yield
             yield  # Second yield to slow down the wipe
 
