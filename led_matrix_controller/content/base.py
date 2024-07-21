@@ -121,9 +121,13 @@ class ContentBase(ABC):
 
     stop_reason: StopType | None = field(init=False, repr=False)
 
-    @abstractmethod
-    def teardown(self) -> Generator[None, None, None] | None:
+    def setup(self) -> Generator[None, None, None] | None:  # noqa: PLR6301
+        """Perform any necessary setup."""
+        return None
+
+    def teardown(self) -> Generator[None, None, None] | None:  # noqa: PLR6301
         """Perform any necessary cleanup."""
+        return None
 
     @property
     def content_id(self) -> str:

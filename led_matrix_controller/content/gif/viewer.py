@@ -56,10 +56,6 @@ class GifViewer(PreDefinedContent):
 
         self.canvases = tuple(canvases)
 
-    def teardown(self) -> None:  # noqa: PLR6301
-        """No teardown needed."""
-        return
-
     @property
     def content_id(self) -> str:
         """Return the ID of the content."""

@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from colorsys import hls_to_rgb
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from random import choice, randint, shuffle, uniform
 from time import sleep
-from typing import Annotated, Generator
+from typing import Annotated, ClassVar, Generator
 
 import numpy as np
 from content.base import StopType
@@ -286,6 +286,8 @@ class SortingAlgorithm(StrEnum):
 class Sorter(DynamicContent):
     """Display various sorting algorithms."""
 
+    BG_COLOR: ClassVar[list[tuple[int, int, int]]] = [(0, 0, 0)]
+
     algorithm: Annotated[SortingAlgorithm, ParameterSetting()] = (
         SortingAlgorithm.BUBBLESORT
     )
@@ -301,6 +303,8 @@ class Sorter(DynamicContent):
 
     randomize_algorithm: Annotated[bool, ParameterSetting()] = False
 
+    _values: list[int] = field(init=False)
+
     def __post_init__(self) -> None:
         """Initialize the image getter."""
         DynamicContent.__post_init__(self)
@@ -314,27 +318,20 @@ class Sorter(DynamicContent):
         """Convert the array to an image."""
         return Image.fromarray(self.colormap[self.pixels], "RGB")
 
-    def _set_pixels(self, values: list[int]) -> None:
+    def _set_pixels(self, offset: int = -1) -> None:
         """Fill each column of the array with the corresponding value, to the height of that value."""
-        for idx, value in enumerate(values):
-            self.pixels[value - 1 :, idx] = value
-            self.pixels[: value - 1, idx] = 0
+        for idx, value in enumerate(self._values):
+            self.pixels[value + offset :, idx] = value
+            self.pixels[: value + offset, idx] = 0
 
     def refresh_content(self) -> Generator[None, None, None]:
         """Refresh the content."""
         for iter_num in range(self.iterations):
-            values = list(range(1, self.width + 1))
-            shuffle(values)
+            if iter_num > 0:
+                yield from self.setup()
 
-            if self.randomize_algorithm:
-                self.update_setting("algorithm", choice(list(SortingAlgorithm)))  # noqa: S311
-
-            # Initial render
-            self._set_pixels(values)
-            yield
-
-            for _ in self.algorithm(values):
-                self._set_pixels(values)
+            for _ in self.algorithm(self._values):
+                self._set_pixels()
                 yield
 
             if iter_num < self.iterations - 1:
@@ -342,6 +339,39 @@ class Sorter(DynamicContent):
                 yield from self.teardown()
 
         self.stop(StopType.EXPIRED)
+
+    def setup(self) -> Generator[None, None, None]:
+        """Animate the columns' arrival."""
+        self._values = list(range(1, self.width + 1))
+        shuffle(self._values)
+
+        if self.randomize_algorithm:
+            self.update_setting("algorithm", choice(list(SortingAlgorithm)))  # noqa: S311
+
+        # Initial render
+        for i in range(self.height, -2, -1):
+            self._set_pixels(offset=i)
+            yield
+            yield
+
+    def teardown(self) -> Generator[None, None, None]:
+        """Display the sorted list for N seconds, then reset the image getter/colormap."""
+        LOGGER.debug("Sleeping for %f seconds", self.completion_display_time)
+        sleep(self.completion_display_time / 2)
+
+        for i in range(self.height - 1, -1, -1):
+            self.pixels[i, :] = np.arange(self.width, 0, -1)
+            yield
+
+        sleep(self.completion_display_time / 2)
+
+        for i in range(self.height):
+            self.pixels[i, :] = 0
+            yield
+            yield  # Second yield to slow down the wipe
+
+        self.update_colormap()
+        yield
 
     def update_colormap(self) -> None:
         """Randomly generate a new gradient colormap."""
@@ -370,19 +400,6 @@ class Sorter(DynamicContent):
         ]
 
         self.colormap = np.array(
-            [(0, 0, 0)] + [tuple(int(c * 255) for c in color) for color in colors],
+            self.BG_COLOR + [tuple(int(c * 255) for c in color) for color in colors],
             dtype=np.uint8,
         )
-
-    def teardown(self) -> Generator[None, None, None]:
-        """Display the sorted list for N seconds, then reset the image getter/colormap."""
-        LOGGER.debug("Sleeping for %f seconds", self.completion_display_time)
-        sleep(self.completion_display_time)
-
-        for i in range(self.height):
-            self.pixels[i, :] = 0
-            yield
-            yield  # Second yield to slow down the wipe
-
-        self.update_colormap()
-        yield

@@ -179,6 +179,13 @@ class Matrix:
 
             self.current_content.active = True
 
+            if (setup_gen := self.current_content.setup()) is not None:
+                # Only run setup if it returns a generator
+                LOGGER.info("Running setup sequence for %s", self.current_content.id)
+
+                for _ in setup_gen:
+                    set_content()
+
             # Actual loop through individual content instances:
             for _ in self.current_content:
                 set_content()
