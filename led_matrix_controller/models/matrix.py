@@ -169,12 +169,12 @@ class Matrix:
             if self.current_content.canvas_count is None:
                 set_content = partial(
                     self.set_image_swap_canvas,
-                    self.current_content.content_getter,
+                    cast(ImageGetter, self.current_content.content_getter),
                 )
             else:
                 set_content = partial(
                     self.get_canvas_swap_canvas,
-                    self.current_content.content_getter,
+                    cast(CanvasGetter, self.current_content.content_getter),
                 )
 
             self.current_content.active = True

@@ -112,7 +112,10 @@ def generate_raindrops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Generate raindrops at the top of the grid."""
     return partial(
         generate_raindrops_mask,
-        shape=ca.pixels[target_slice].shape,
+        shape=cast(
+            tuple[int, int],
+            ca.pixels[target_slice].shape,
+        ),  # Unknown tuple length
         ca=ca,
     )
 
@@ -252,7 +255,8 @@ def _splash_high(
 
     state = splash_state.state
 
-    return partial(np.equal, source_slice, state)  # & ca._grid[target_slice] will be NULL
+    return partial(np.equal, source_slice, state)  # type: ignore[misc]
+    # & ca._grid[target_slice] will be NULL
 
 
 @RainingGrid.rule(
@@ -321,7 +325,7 @@ def move_splashdrop_down(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     source_slice = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
     splashdrop = State.SPLASHDROP.state
 
-    return partial(np.equal, source_slice, splashdrop)
+    return partial(np.equal, source_slice, splashdrop)  # type: ignore[misc]
 
 
 __all__ = ["RainingGrid", "State"]

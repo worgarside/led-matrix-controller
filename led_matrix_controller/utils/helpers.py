@@ -20,7 +20,7 @@ class Patterns(Enum):
 
 
 @overload
-def to_kebab_case(string: str) -> str: ...  # type: ignore[overload-overlap]
+def to_kebab_case(string: str) -> str: ...
 
 
 @overload
@@ -42,7 +42,7 @@ def to_kebab_case(*string: str) -> str | tuple[str, ...]:  # type: ignore[misc]
 
 
 @overload
-def camel_to_kebab_case(string: str) -> str: ...  # type: ignore[overload-overlap]
+def camel_to_kebab_case(string: str) -> str: ...
 
 
 @overload
@@ -62,7 +62,7 @@ def camel_to_kebab_case(*string: str) -> str | tuple[str, ...]:  # type: ignore[
 
 
 @overload
-def _remove_multiple_hyphens(string: str) -> str: ...  # type: ignore[overload-overlap]
+def _remove_multiple_hyphens(string: str) -> str: ...
 
 
 @overload
