@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from logging import DEBUG, getLogger
 from typing import TYPE_CHECKING, Callable, ClassVar, Generator
 
-from content.base import PreDefinedContent
+from content.base import PreDefinedContent, StopType
 from PIL import Image
 from utils import const, to_kebab_case
 from wg_utilities.loggers import add_stream_handler
@@ -67,3 +67,5 @@ class GifViewer(PreDefinedContent):
         """Iterate once per each frame of the GIF."""
         for _ in range(self.canvas_count):
             yield
+
+        self.stop(StopType.EXPIRED)

@@ -119,7 +119,7 @@ class ContentBase(ABC):
     colormap: NDArray[np.uint8] = field(init=False, repr=False)
     pixels: GridView = field(init=False, repr=False)
 
-    stop_reason: StopType | None = field(init=False, repr=False)
+    stop_reason: StopType | None = field(default=None, init=False, repr=False)
 
     def setup(self) -> Generator[None, None, None] | None:  # noqa: PLR6301
         """Perform any necessary setup."""
