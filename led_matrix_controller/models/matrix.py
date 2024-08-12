@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from functools import partial
-from logging import DEBUG, getLogger
 from queue import PriorityQueue
 from threading import Condition, Thread
 from typing import TYPE_CHECKING, Any, ClassVar, Final, TypedDict, cast
@@ -19,7 +18,7 @@ from models.setting import Setting, TransitionableParameterSetting
 from utils import const, mtrx
 from utils.helpers import to_kebab_case
 from wg_utilities.decorators import process_exception
-from wg_utilities.loggers import add_stream_handler
+from wg_utilities.loggers import get_streaming_logger
 
 if TYPE_CHECKING:
     from PIL import Image
@@ -27,9 +26,7 @@ if TYPE_CHECKING:
 
     from .led_matrix_options import LedMatrixOptions
 
-LOGGER = getLogger(__name__)
-LOGGER.setLevel(DEBUG)
-add_stream_handler(LOGGER)
+LOGGER = get_streaming_logger(__name__)
 
 
 class ContentPayload(TypedDict):
@@ -82,7 +79,6 @@ class Matrix:
             maximum=100,
             transition_rate=1,
             fp_precision=0,
-            requires_rule_regeneration=False,
         ).setup(
             field_name="brightness",
             instance=self,
@@ -167,11 +163,13 @@ class Matrix:
             )
 
             if self.current_content.canvas_count is None:
+                # DynamicContent
                 set_content = partial(
                     self.set_image_swap_canvas,
                     cast(ImageGetter, self.current_content.content_getter),
                 )
             else:
+                # PreDefinedContent
                 set_content = partial(
                     self.get_canvas_swap_canvas,
                     cast(CanvasGetter, self.current_content.content_getter),
@@ -406,6 +404,6 @@ class Matrix:
         """Clear the matrix when the object is deleted."""
         self.clear_matrix()
 
-    def generate_frame_rulesets(self, *_: Any, **__: Any) -> None:
+    def setting_update_callback(self, *_: Any, **__: Any) -> None:
         """Generate the frame rulesets for the matrix."""
         raise NotImplementedError

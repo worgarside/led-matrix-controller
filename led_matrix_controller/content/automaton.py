@@ -96,9 +96,9 @@ class Automaton(DynamicContent, ABC):
             rule.target_view = self.pixels[rule.target_slice]
             rule.refresh_mask_generator(self)
 
-        self.generate_frame_rulesets()
+        self.setting_update_callback()
 
-    def generate_frame_rulesets(self, update_setting: str | None = None) -> None:
+    def setting_update_callback(self, update_setting: str | None = None) -> None:
         """Pre-calculate the a sequence of mask generators for each frame.
 
         The total number of frames (and thus rulesets) is the least common multiple of the frequencies of the

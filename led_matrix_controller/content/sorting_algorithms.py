@@ -290,20 +290,34 @@ class Sorter(DynamicContent):
 
     BG_COLOR: ClassVar[list[tuple[int, int, int]]] = [(0, 0, 0)]
 
-    algorithm: Annotated[SortingAlgorithm, ParameterSetting()] = (
-        SortingAlgorithm.BUBBLESORT
-    )
+    algorithm: Annotated[
+        SortingAlgorithm,
+        ParameterSetting(),
+    ] = SortingAlgorithm.BUBBLESORT
 
     completion_display_time: Annotated[
         float,
-        ParameterSetting(minimum=0, maximum=30, fp_precision=2),
+        ParameterSetting(
+            minimum=0,
+            maximum=30,
+            fp_precision=2,
+        ),
     ] = 5.0
     """Number of seconds to display the sorted array for."""
 
-    iterations: Annotated[int, ParameterSetting(minimum=1, maximum=1000)] = 1
+    iterations: Annotated[
+        int,
+        ParameterSetting(
+            minimum=1,
+            maximum=1000,
+        ),
+    ] = 1
     """Number of iterations to run the sorting algorithm per."""
 
-    randomize_algorithm: Annotated[bool, ParameterSetting()] = False
+    randomize_algorithm: Annotated[
+        bool,
+        ParameterSetting(),
+    ] = False
 
     _values: list[int] = field(init=False)
 

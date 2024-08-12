@@ -86,8 +86,8 @@ class Setting(Generic[S]):
     maximum: int | float | None = None
     """Inclusive upper bound for this setting."""
 
-    requires_rule_regeneration: bool = True
-    """Whether changing this setting requires the rules to be regenerated."""
+    invoke_settings_callback: bool = False
+    """Whether changing this setting should invoke a callback on the content instance."""
 
     strict: bool = True
     """Apply strict validation to incoming payloads.
@@ -305,11 +305,11 @@ class Setting(Generic[S]):
         """Set the setting's value in the automaton's attribute."""
         setattr(self.instance, self.slug, value)
 
-        if self.requires_rule_regeneration and hasattr(
+        if self.invoke_settings_callback and hasattr(
             self.instance,
-            "generate_frame_rulesets",
+            "setting_update_callback",
         ):
-            self.instance.generate_frame_rulesets(update_setting=self.slug)
+            self.instance.setting_update_callback(update_setting=self.slug)
 
     def __json__(self) -> dict[str, Any]:
         """Return the setting as a JSON-serializable dictionary."""
