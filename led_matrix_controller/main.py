@@ -6,6 +6,7 @@ from contextlib import suppress
 from pathlib import Path
 
 from content import GifViewer, ImageViewer, NowPlaying, RainingGrid, Sorter
+from content.clock import Clock
 from models import Matrix
 from utils import MqttClient
 
@@ -22,6 +23,7 @@ def main() -> None:
         RainingGrid(**matrix.dimensions, persistent=True),
         NowPlaying(**matrix.dimensions, persistent=True),
         Sorter(**matrix.dimensions),
+        Clock(**matrix.dimensions, persistent=True),
     )
 
     mqtt_client.loop_forever()

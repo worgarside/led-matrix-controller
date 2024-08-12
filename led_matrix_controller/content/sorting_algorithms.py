@@ -1,4 +1,4 @@
-"""Class for the creation, caching, and management of artwork images."""
+"""Visualise various sorting algorithms."""
 
 from __future__ import annotations
 
@@ -282,6 +282,8 @@ class SortingAlgorithm(StrEnum):
 
 # =============================================================================
 # Content
+
+
 @dataclass(kw_only=True, slots=True)
 class Sorter(DynamicContent):
     """Display various sorting algorithms."""

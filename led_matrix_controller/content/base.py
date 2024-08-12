@@ -10,7 +10,6 @@ from dataclasses import dataclass, field, is_dataclass
 from enum import Enum, auto
 from functools import partial
 from json import dumps
-from logging import DEBUG, getLogger
 from os import PathLike
 from typing import (
     Any,
@@ -26,16 +25,14 @@ from numpy.typing import NDArray
 from PIL import Image
 from utils import const, mtrx
 from utils.helpers import camel_to_kebab_case
-from wg_utilities.loggers import add_stream_handler
+from wg_utilities.loggers import get_streaming_logger
 
 _BY_VALUE: dict[int, StateBase] = {}
 
 GridView = NDArray[np.int_]
 
 
-LOGGER = getLogger(__name__)
-LOGGER.setLevel(DEBUG)
-add_stream_handler(LOGGER)
+LOGGER = get_streaming_logger(__name__)
 
 
 class StateBase(Enum):
@@ -150,7 +147,7 @@ class ContentBase(ABC):
 
     @final
     @staticmethod
-    def _json_encode(obj: Any) -> Any:  # noqa: PLR0911
+    def _json_encode(obj: Any) -> Any:  # noqa: PLR0911,C901
         if hasattr(obj, "__json__"):
             with suppress(TypeError):
                 return obj.__json__()
@@ -174,6 +171,9 @@ class ContentBase(ABC):
 
         if isinstance(obj, slice):
             return f"[{obj.start or ''}:{obj.stop or ''}:{obj.step or ''}]"
+
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
 
         try:
             return dumps(obj)
