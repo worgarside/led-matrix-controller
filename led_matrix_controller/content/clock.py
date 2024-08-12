@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from time import sleep
+from functools import lru_cache
 from typing import Generator, cast
 
 import numpy as np
@@ -44,17 +44,17 @@ class Symbol:
     PADDING = np.array([[0], [0], [0], [0], [0]])
 
     @staticmethod
-    def get(_v: str) -> NDArray[np.uint8]:
+    @lru_cache(maxsize=12)
+    def get(_v: str, scale: tuple[int, int] = (2, 2)) -> NDArray[np.uint8]:
         """Gt an array representation of the symbol."""
         if _v == ":":
-            return Symbol.COLON
+            symbol = Symbol.COLON
+        elif _v == " ":
+            symbol = Symbol.PADDING
+        else:
+            symbol = cast(NDArray[np.uint8], getattr(Symbol, f"N{_v}"))
 
-        if _v == " ":
-            return Symbol.PADDING
-
-        name = f"N{_v}"
-
-        return cast(NDArray[np.uint8], getattr(Symbol, name))
+        return np.kron(symbol, np.ones(scale))
 
 
 @dataclass(kw_only=True, slots=True)
@@ -75,8 +75,13 @@ class Clock(DynamicContent):
 
     def refresh_content(self) -> Generator[None, None, None]:
         """Refresh the content."""
+        prev_str = ""
         while self.active:
             now_str = datetime.now().strftime("%H:%M:%S")  # noqa: DTZ005
+
+            if now_str == prev_str:
+                yield
+                continue
 
             arrays = []
             for i, c in enumerate(now_str):
@@ -96,14 +101,11 @@ class Clock(DynamicContent):
 
             stacked = np.hstack(arrays)
 
-            scaled = np.kron(stacked, np.ones((2, 2)))
-
             row_idx = 2
             col_idx = 5
-            rows, cols = scaled.shape
+            rows, cols = stacked.shape
 
-            self.pixels[row_idx : row_idx + rows, col_idx : col_idx + cols] = scaled
+            self.pixels[row_idx : row_idx + rows, col_idx : col_idx + cols] = stacked
 
+            prev_str = now_str
             yield
-
-            sleep(0.5)
