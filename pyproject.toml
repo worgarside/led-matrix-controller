@@ -130,6 +130,7 @@ lint.ignore = [
   "ANN101", # https://docs.astral.sh/ruff/rules/missing-type-self/
   "CPY",    # https://docs.astral.sh/ruff/rules/#flake8-copyright-cpy
   "DOC201", # https://docs.astral.sh/ruff/rules/docstring-missing-returns/
+  "DOC402", # https://docs.astral.sh/ruff/rules/docstring-missing-yields/
   "DOC501", # https://docs.astral.sh/ruff/rules/docstring-missing-exception/
 ]
 
