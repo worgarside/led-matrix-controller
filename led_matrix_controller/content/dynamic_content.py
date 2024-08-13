@@ -4,24 +4,23 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from functools import partial
 from json import dumps
 from typing import TYPE_CHECKING, Any, Generator, final, get_type_hints
 
 import numpy as np
 from models.setting import Setting
+from PIL import Image
 from wg_utilities.loggers import get_streaming_logger
 
-from .base import ContentBase, ImageGetter, _get_image
+from .base import ContentBase
 
 if TYPE_CHECKING:
     from numpy.typing import DTypeLike, NDArray
-
 LOGGER = get_streaming_logger(__name__)
 
 
 @dataclass(kw_only=True, slots=True)
-class DynamicContent(ContentBase, ABC):
+class DynamicContent(ContentBase[Image.Image], ABC):
     """Base class for content which is dynamically created."""
 
     canvas_count: None = field(init=False, default=None)
@@ -45,19 +44,13 @@ class DynamicContent(ContentBase, ABC):
 
                     self.settings[annotation.slug] = annotation
 
+    def get_content(self) -> Image.Image:
+        """Convert the pixels to an image."""
+        return Image.fromarray(self.colormap[self.pixels], "RGB")
+
     def zeros(self, *, dtype: DTypeLike = np.int_) -> NDArray[Any]:
         """Return a grid of zeros."""
         return np.zeros((self.height, self.width), dtype=dtype)
-
-    @final
-    @property
-    def content_getter(self) -> ImageGetter:
-        """Return the image representation of the content."""
-        if not hasattr(self, "_image_getter"):
-            self._image_getter = partial(_get_image, self.colormap, self.pixels)
-            LOGGER.debug("Created partial image getter for %s", self.__class__.__name__)
-
-        return self._image_getter
 
     @abstractmethod
     def refresh_content(self) -> Generator[None, None, None]:

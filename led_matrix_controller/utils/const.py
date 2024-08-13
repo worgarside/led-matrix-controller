@@ -19,7 +19,6 @@ MQTT_PASSWORD: Final[str] = environ["MQTT_PASSWORD"]
 
 MQTT_HOST: Final[str] = getenv("MQTT_HOST", "http://homeassistant.local")
 
-
 HOSTNAME: Final[str] = getenv(
     "HOSTNAME_OVERRIDE",
     re.sub(r"[^a-z0-9]", "-", gethostname().lower()),
@@ -37,7 +36,6 @@ FONT_WIDTH: Final[int] = 5
 FONT_HEIGHT: Final[int] = 7
 SCROLL_INCREMENT_DISTANCE: Final[int] = 2 * FONT_WIDTH
 
-
 BOOLEANS: Final[np.typing.NDArray[np.bool_]] = np.array([False, True], dtype=np.bool_)
 RNG = np.random.default_rng(830003040)
 
@@ -47,4 +45,9 @@ ASSETS_DIRECTORY: Final[Path] = REPO_PATH / "assets"
 TICKS_PER_SECOND: Final[int] = int(getenv("TICKS_PER_SECOND", "100"))
 TICK_LENGTH: Final[float] = 1 / TICKS_PER_SECOND
 
-EMPTY_IMAGE: Final[Image.Image] = Image.new("RGB", (64, 64), (0, 0, 0))
+MATRIX_HEIGHT: Final[int] = 64
+MATRIX_WIDTH: Final[int] = 64
+
+MATRIX_SHAPE: Final[tuple[int, int]] = (MATRIX_HEIGHT, MATRIX_WIDTH)
+
+EMPTY_IMAGE: Final[Image.Image] = Image.new("RGB", MATRIX_SHAPE, (0, 0, 0))

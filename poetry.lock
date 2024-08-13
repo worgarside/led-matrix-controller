@@ -869,6 +869,17 @@ files = [
 ]
 
 [[package]]
+name = "typing-extensions"
+version = "4.12.2"
+description = "Backported and Experimental Type Hints for Python 3.8+"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "typing_extensions-4.12.2-py3-none-any.whl", hash = "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d"},
+    {file = "typing_extensions-4.12.2.tar.gz", hash = "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"},
+]
+
+[[package]]
 name = "urllib3"
 version = "2.2.2"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
@@ -914,4 +925,4 @@ testing = ["botocore"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.12"
-content-hash = "752f3847f4da0ac211ec9d50e57b7f7a85ecf5a5a645ba65b5f5d5e99c41fb83"
+content-hash = "3e21fcd8adfc965f1a7f6a82fe47bff5967c574c8e7315ab476e5134e83ba5ce"

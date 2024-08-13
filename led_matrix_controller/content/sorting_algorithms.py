@@ -12,7 +12,6 @@ from typing import Annotated, ClassVar, Generator
 import numpy as np
 from content.base import StopType
 from models.setting import ParameterSetting  # noqa: TCH002
-from PIL import Image
 from wg_utilities.loggers import get_streaming_logger
 
 from .dynamic_content import DynamicContent
@@ -311,12 +310,6 @@ class Sorter(DynamicContent):
 
         self.pixels = self.zeros()
         self.update_colormap()
-
-        self._image_getter = self._get_image
-
-    def _get_image(self) -> Image.Image:
-        """Convert the array to an image."""
-        return Image.fromarray(self.colormap[self.pixels], "RGB")
 
     def _set_pixels(self, offset: int = -1) -> None:
         """Fill each column of the array with the corresponding value, to the height of that value.
