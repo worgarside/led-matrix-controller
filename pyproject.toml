@@ -14,6 +14,7 @@ wg-utilities = { extras = ["exceptions"], version = "^5.16.0" }
 paho-mqtt = "^2.1.0"
 numpy = "^2.0.1"
 httpx = "^0.27.0"
+typing-extensions = "^4.12.2"
 
 [tool.poetry.group.dev.dependencies]
 rgbmatrixemulator = "^0.11.6"
@@ -130,6 +131,7 @@ lint.ignore = [
   "ANN101", # https://docs.astral.sh/ruff/rules/missing-type-self/
   "CPY",    # https://docs.astral.sh/ruff/rules/#flake8-copyright-cpy
   "DOC201", # https://docs.astral.sh/ruff/rules/docstring-missing-returns/
+  "DOC402", # https://docs.astral.sh/ruff/rules/docstring-missing-yields/
   "DOC501", # https://docs.astral.sh/ruff/rules/docstring-missing-exception/
 ]
 
