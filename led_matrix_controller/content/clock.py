@@ -11,7 +11,6 @@ from typing import Annotated, Final, Generator, cast
 import numpy as np
 from models.setting import ParameterSetting  # noqa: TCH002
 from numpy.typing import NDArray
-from PIL import Image
 from wg_utilities.loggers import get_streaming_logger
 
 from .dynamic_content import DynamicContent
@@ -61,7 +60,7 @@ class Symbol:
         else:
             symbol = cast(NDArray[np.uint8], getattr(Symbol, f"N{_v}"))
 
-        return np.kron(symbol, np.ones(scale))
+        return np.kron(symbol, np.ones(scale, dtype=np.uint8))
 
 
 @dataclass(kw_only=True, slots=True)
@@ -83,31 +82,23 @@ class Clock(DynamicContent):
 
         self.setting_update_callback()
 
-        self._image_getter = self._get_image
-
-    def _get_image(self) -> Image.Image:
-        """Convert the array to an image."""
-        return Image.fromarray(self.colormap[self.pixels], "RGB")
-
     def refresh_content(self) -> Generator[None, None, None]:
         """Refresh the content."""
         prev_str = ""
         while self.active:
             now_str = self.now_str()
+            now_str_len = len(now_str)
 
             if now_str == prev_str:
                 yield
                 continue
 
             arrays = []
-            try:
-                for i, c in enumerate(now_str):
-                    arrays.append(Symbol.get(c, (self.scale, self.scale)))
+            for i, c in enumerate(now_str):
+                arrays.append(Symbol.get(c, (self.scale, self.scale)))
 
-                    if c.isnumeric() and now_str[i + 1].isnumeric():
-                        arrays.append(Symbol.get(" ", (self.scale, self.scale)))
-            except IndexError:
-                pass
+                if c.isnumeric() and now_str_len > i + 1 and now_str[i + 1].isnumeric():
+                    arrays.append(Symbol.get(" ", (self.scale, self.scale)))
 
             self.pixels[:, :] = np.hstack(arrays)
 
@@ -124,7 +115,6 @@ class Clock(DynamicContent):
             + len(Symbol.PAD_PATTERN.findall(now_str)) * self.scale
         )
         self.pixels = self.zeros()
-        self.refresh_content()
 
         LOGGER.debug("Updated dimensions to %dx%d", self.width, self.height)
 

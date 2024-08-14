@@ -368,7 +368,7 @@ class Sorter(DynamicContent):
             yield
 
     def teardown(self) -> Generator[None, None, None]:
-        """Display the sorted list for N seconds, then reset the image getter/colormap."""
+        """Display the sorted list for N seconds, then reset the colormap."""
         LOGGER.debug("Sleeping for %f seconds", self.completion_display_time)
         sleep(self.completion_display_time)
 
