@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from contextlib import suppress
 from dataclasses import dataclass, field
-from functools import partial
 from io import BytesIO
 from pathlib import Path
 from re import Pattern
@@ -71,13 +70,7 @@ class NowPlaying(DynamicContent):
         default_factory=lambda: _INITIAL_TRACK_META,
     )
 
-    def __post_init__(self) -> None:
-        """Initialize the image getter."""
-        DynamicContent.__post_init__(self)
-
-        self._image_getter = partial(self._get_artwork_pil_image)
-
-    def _get_artwork_pil_image(self) -> Image.Image:
+    def get_content(self) -> Image.Image:
         """Get the Image of the artwork image from the local file/remote URL.
 
         Returns:
