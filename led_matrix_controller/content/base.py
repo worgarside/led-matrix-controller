@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from contextlib import suppress
 from dataclasses import dataclass, field, is_dataclass
 from enum import Enum, auto
-from functools import partial
+from functools import cached_property
 from json import dumps
 from logging import DEBUG, getLogger
 from os import PathLike
@@ -16,6 +16,7 @@ from typing import (
     Any,
     Callable,
     Generator,
+    Generic,
     Iterator,
     final,
 )
@@ -24,6 +25,7 @@ import numpy as np
 from httpx import URL
 from numpy.typing import NDArray
 from PIL import Image
+from typing_extensions import TypeVar
 from utils import const, mtrx
 from utils.helpers import camel_to_kebab_case
 from wg_utilities.loggers import add_stream_handler
@@ -77,15 +79,6 @@ class StateBase(Enum):
         }
 
 
-def _get_image(colormap: NDArray[np.uint8], grid: GridView) -> Image.Image:
-    """Return the image representation of the content."""
-    return Image.fromarray(colormap[grid], "RGB")
-
-
-CanvasGetter = partial[mtrx.Canvas]
-ImageGetter = Callable[[], Image.Image]
-
-
 class StopType(Enum):
     """Type of stop for content."""
 
@@ -102,8 +95,11 @@ class StopType(Enum):
     """
 
 
+ContentType = TypeVar("ContentType", Image.Image, mtrx.Canvas)
+
+
 @dataclass(kw_only=True, slots=True)
-class ContentBase(ABC):
+class ContentBase(ABC, Generic[ContentType]):
     """Base class for content models."""
 
     height: int
@@ -115,11 +111,14 @@ class ContentBase(ABC):
     canvas_count: int | None = field(init=False)
 
     active: bool = field(init=False, default=False)
-    _image_getter: ImageGetter = field(init=False, repr=False)
     colormap: NDArray[np.uint8] = field(init=False, repr=False)
     pixels: GridView = field(init=False, repr=False)
 
     stop_reason: StopType | None = field(default=None, init=False, repr=False)
+
+    @abstractmethod
+    def get_content(self) -> ContentType:
+        """Convert the array to an image."""
 
     def setup(self) -> Generator[None, None, None] | None:  # noqa: PLR6301
         """Perform any necessary setup."""
@@ -129,20 +128,33 @@ class ContentBase(ABC):
         """Perform any necessary cleanup."""
         return None
 
+    @final
+    def stop(self, stop_type: StopType, /) -> None:
+        """Stop the content immediately."""
+        self.active = False
+        self.stop_reason = stop_type
+
+        LOGGER.info("Stopped content with ID `%s`: %r", self.content_id, stop_type)
+
     @property
     def content_id(self) -> str:
         """Return the ID of the content."""
         return camel_to_kebab_case(self.__class__.__name__)
 
     @property
-    @abstractmethod
-    def content_getter(self) -> CanvasGetter | ImageGetter:
-        """Return the image representation of the content."""
+    def is_small(self) -> bool:
+        """Return whether the content is smaller than the matrix."""
+        return self.shape < const.MATRIX_SHAPE
 
     @property
     def mqtt_attributes(self) -> str:
         """Return extra attributes for the MQTT message."""
         return dumps(self, default=self._json_encode)
+
+    @cached_property
+    def shape(self) -> tuple[int, int]:
+        """Return the shape of the content."""
+        return self.height, self.width
 
     @abstractmethod
     def __iter__(self) -> Iterator[None]:
@@ -185,34 +197,28 @@ class ContentBase(ABC):
             return None
 
     @final
-    def stop(self, stop_type: StopType, /) -> None:
-        """Stop the content immediately."""
-        self.active = False
-        self.stop_reason = stop_type
-
-        LOGGER.info("Stopped content with ID `%s`: %r", self.content_id, stop_type)
-
-    @final
     @property
     def id(self) -> str:
         """Return the ID of the content."""
         return self.instance_id or self.content_id
 
-    def __gt__(self, other: ContentBase) -> bool:
+    def __gt__(self, other: ContentBase[Any]) -> bool:
         """Return whether this content should be de-prioritized over another."""
         return (self.canvas_count or math.inf) > (other.canvas_count or math.inf)
 
-    def __lt__(self, other: ContentBase) -> bool:
+    def __lt__(self, other: ContentBase[Any]) -> bool:
         """Return whether this content should be prioritized over another."""
         return (self.canvas_count or math.inf) < (other.canvas_count or math.inf)
 
 
 @dataclass(kw_only=True, slots=True)
-class PreDefinedContent(ContentBase, ABC):
+class PreDefinedContent(ContentBase[mtrx.Canvas], ABC):
     """Base class for content for which all frames are already known."""
 
     canvas_count: int = field(init=False)
     canvases: tuple[mtrx.Canvas, ...] = field(init=False, repr=False)
+
+    canvas_iter: Iterator[mtrx.Canvas] = field(init=False, repr=False)
 
     @abstractmethod
     def generate_canvases(
@@ -221,11 +227,13 @@ class PreDefinedContent(ContentBase, ABC):
     ) -> None:
         """Generate the canvases for the content."""
 
-    @final
-    @property
-    def content_getter(self) -> CanvasGetter:
+    def get_content(self) -> mtrx.Canvas:
         """Return the image representation of the content."""
-        return partial(next, iter(self.canvases))
+        try:
+            return next(self.canvas_iter)
+        except (AttributeError, StopIteration):
+            self.canvas_iter = iter(self.canvases)
+            return next(self.canvas_iter)
 
 
 __all__ = ["ContentBase", "GridView", "PreDefinedContent", "StateBase"]

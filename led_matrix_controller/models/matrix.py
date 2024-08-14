@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-from functools import partial
 from logging import DEBUG, getLogger
 from queue import PriorityQueue
 from threading import Condition, Thread
 from typing import TYPE_CHECKING, Any, ClassVar, Final, TypedDict, cast
 
 from content.base import (
-    CanvasGetter,
     ContentBase,
-    ImageGetter,
     PreDefinedContent,
     StopType,
 )
@@ -51,8 +48,8 @@ class Matrix:
     """Class for displaying track information on an RGB LED Matrix."""
 
     OPTIONS: ClassVar[LedMatrixOptions] = {
-        "cols": 64,
-        "rows": 64,
+        "cols": const.MATRIX_HEIGHT,
+        "rows": const.MATRIX_WIDTH,
         "brightness": 100,
         "gpio_slowdown": 4,
         "hardware_mapping": "adafruit-hat-pwm",
@@ -103,7 +100,7 @@ class Matrix:
         self.matrix = mtrx.RGBMatrix(options=all_options)
         self.canvas = self.matrix.CreateFrameCanvas()
 
-        self._content: dict[str, ContentBase] = {}
+        self._content: dict[str, ContentBase[Any]] = {}
 
         self.queue_content_topic = self._mqtt_topic("queue-content")
         self.mqtt_client.add_topic_callback(
@@ -116,7 +113,7 @@ class Matrix:
         self._content_queue: PriorityQueue[
             tuple[
                 float,
-                ContentBase,
+                ContentBase[Any],
                 dict[str, Any],
             ]
         ] = PriorityQueue()
@@ -124,20 +121,22 @@ class Matrix:
         self._content_thread = Thread(target=self._content_loop)
 
         # Setting via property to trigger MQTT update
-        self.current_content: ContentBase | None = None
+        self.current_content: (
+            ContentBase[Image.Image] | ContentBase[mtrx.Canvas] | None
+        ) = None
 
         self.current_priority: float = self.MAX_PRIORITY  # Lower value = higher priority
 
         self.tick = 0
         self.tick_condition = Condition()
 
-    def get_canvas_swap_canvas(self, get_canvas: CanvasGetter) -> None:
+    def get_canvas_swap_canvas(self) -> None:
         """Get the canvas and swap it."""
-        self.swap_canvas(get_canvas())
+        self.swap_canvas(self.current_content.get_content())  # type: ignore[union-attr]
 
-    def set_image_swap_canvas(self, get_image: ImageGetter) -> None:
+    def set_image_swap_canvas(self) -> None:
         """Set the image and swap the canvas."""
-        self.canvas.SetImage(get_image())
+        self.canvas.SetImage(self.current_content.get_content())  # type: ignore[union-attr]
 
         self.swap_canvas(self.canvas)
 
@@ -167,15 +166,11 @@ class Matrix:
             )
 
             if self.current_content.canvas_count is None:
-                set_content = partial(
-                    self.set_image_swap_canvas,
-                    cast(ImageGetter, self.current_content.content_getter),
-                )
+                # DynamicContent
+                set_content = self.set_image_swap_canvas
             else:
-                set_content = partial(
-                    self.get_canvas_swap_canvas,
-                    cast(CanvasGetter, self.current_content.content_getter),
-                )
+                # PreDefinedContent
+                set_content = self.get_canvas_swap_canvas
 
             self.current_content.active = True
 
@@ -311,7 +306,7 @@ class Matrix:
 
         return canvas
 
-    def register_content(self, *content: ContentBase) -> None:
+    def register_content(self, *content: ContentBase[Any]) -> None:
         """Add content to the matrix."""
         content_ids = []
         for c in content:
@@ -376,12 +371,12 @@ class Matrix:
             self.swap_canvas()
 
     @property
-    def current_content(self) -> ContentBase | None:
+    def current_content(self) -> ContentBase[Any] | None:
         """Return the currently displaying content."""
         return self._current_content
 
     @current_content.setter
-    def current_content(self, value: ContentBase | None) -> None:
+    def current_content(self, value: ContentBase[Any] | None) -> None:
         self._current_content = value
 
         self.mqtt_client.publish(
