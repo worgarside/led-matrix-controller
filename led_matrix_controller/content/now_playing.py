@@ -9,12 +9,13 @@ from pathlib import Path
 from re import Pattern
 from re import compile as compile_regex
 from time import sleep
-from typing import Annotated, ClassVar, Final, Generator, TypedDict
+from typing import Annotated, ClassVar, Final, Generator, TypedDict, cast
 
-from content.base import StopType
+import numpy as np
+from content.base import GridView, StopType
 from httpx import URL, HTTPStatusError, get
 from models.setting import ParameterSetting  # noqa: TCH002
-from PIL import Image, UnidentifiedImageError
+from PIL import Image
 from utils import const
 from wg_utilities.functions import backoff, force_mkdir
 from wg_utilities.loggers import get_streaming_logger
@@ -70,19 +71,23 @@ class NowPlaying(DynamicContent):
         default_factory=lambda: _INITIAL_TRACK_META,
     )
 
-    def get_content(self) -> Image.Image:
+    def get_content(self) -> GridView:
         """Get the Image of the artwork image from the local file/remote URL.
 
         Returns:
             Image: Image instance of the artwork image
         """
         if not self.file_path:
-            return const.EMPTY_IMAGE
+            return self.zeros()
 
         if self.file_path.is_file():
-            LOGGER.debug("Opening image from path %s for %s", self.file_path, self.album)
-            with suppress(UnidentifiedImageError):
-                return Image.open(self.file_path)
+            LOGGER.debug(
+                "Opening image from path %s for %s",
+                self.file_path,
+                self.album,
+            )
+            with suppress(FileNotFoundError):
+                return cast(GridView, np.load(self.file_path))
 
         LOGGER.debug("Image not found at %s for %s", self.file_path, self.album)
 
@@ -103,18 +108,26 @@ class NowPlaying(DynamicContent):
                 self.artwork_uri,
                 self.album,
             )
-        return const.EMPTY_IMAGE
+        return self.zeros()
 
     @backoff(HTTPStatusError, logger=LOGGER, timeout=60, max_delay=10)
-    def download(self) -> Image.Image:
+    def download(self) -> GridView:
         """Download the image from the URL to store it locally for future use."""
-        if (
-            self.artwork_uri is None
-            or not str(self.artwork_uri)
-            or not self.artist_directory
-            or not self.file_path
+        if not (
+            self.artwork_uri
+            and str(self.artwork_uri)
+            and self.artist_directory
+            and self.file_path
         ):
-            return const.EMPTY_IMAGE
+            LOGGER.error(
+                "Unable to download artwork for %s. "
+                "Missing required data: self.artwork_uri=%s, self.artist_directory=%s, self.file_path=%s",
+                self.album,
+                self.artwork_uri,
+                self.artist_directory,
+                self.file_path,
+            )
+            return self.zeros()
 
         self.ARTWORK_DIRECTORY.joinpath(self.artist_directory).mkdir(
             parents=True,
@@ -126,13 +139,13 @@ class NowPlaying(DynamicContent):
         res.raise_for_status()
         artwork_bytes = res.content
 
-        image = (
+        img_arr = np.array(
             Image.open(BytesIO(artwork_bytes))
             .resize((self.width, self.height))
-            .convert("RGB")
+            .convert("RGB"),
         )
-        force_mkdir(self.file_path, path_is_file=True)
-        image.save(self.file_path, "PNG")
+
+        np.save(force_mkdir(self.file_path, path_is_file=True), img_arr)
 
         LOGGER.info(
             "New image from %s saved at %s for album %s",
@@ -141,7 +154,7 @@ class NowPlaying(DynamicContent):
             self.album,
         )
 
-        return image
+        return img_arr
 
     @property
     def artist_directory(self) -> str | None:
@@ -165,7 +178,7 @@ class NowPlaying(DynamicContent):
         if not self.album:
             return None
 
-        return self.ALPHANUM_PATTERN.sub("", self.album).lower() + ".png"
+        return self.ALPHANUM_PATTERN.sub("", self.album).lower() + ".npy"
 
     @property
     def file_path(self) -> Path | None:
