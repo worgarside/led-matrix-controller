@@ -3,22 +3,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from logging import DEBUG, getLogger
 from typing import TYPE_CHECKING, Callable, ClassVar, Generator
 
 from content.base import PreDefinedContent, StopType
 from PIL import Image
 from utils import const, to_kebab_case
-from wg_utilities.loggers import add_stream_handler
+from wg_utilities.loggers import get_streaming_logger
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from utils import mtrx
 
-LOGGER = getLogger(__name__)
-LOGGER.setLevel(DEBUG)
-add_stream_handler(LOGGER)
+LOGGER = get_streaming_logger(__name__)
 
 
 @dataclass(kw_only=True, slots=True)

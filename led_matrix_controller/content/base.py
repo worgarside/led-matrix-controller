@@ -12,6 +12,7 @@ from functools import cached_property
 from json import dumps
 from os import PathLike
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Generator,
@@ -23,11 +24,13 @@ from typing import (
 import numpy as np
 from httpx import URL
 from numpy.typing import NDArray
-from PIL import Image
 from typing_extensions import TypeVar
 from utils import const, mtrx
 from utils.helpers import camel_to_kebab_case
 from wg_utilities.loggers import get_streaming_logger
+
+if TYPE_CHECKING:
+    from PIL import Image
 
 _BY_VALUE: dict[int, StateBase] = {}
 
@@ -54,7 +57,7 @@ class StateBase(Enum):
         _BY_VALUE[value] = self
 
     @classmethod
-    def colormap(cls) -> NDArray[np.uint8]:
+    def colormap(cls) -> GridView:
         """Return the color map of the states."""
         return np.array([state.color for state in cls], dtype=np.uint8)
 
@@ -92,7 +95,7 @@ class StopType(Enum):
     """
 
 
-ContentType = TypeVar("ContentType", Image.Image, mtrx.Canvas)
+ContentType = TypeVar("ContentType", GridView, mtrx.Canvas)
 
 
 @dataclass(kw_only=True, slots=True)
@@ -108,7 +111,7 @@ class ContentBase(ABC, Generic[ContentType]):
     canvas_count: int | None = field(init=False)
 
     active: bool = field(init=False, default=False)
-    colormap: NDArray[np.uint8] = field(init=False, repr=False)
+    colormap: GridView = field(init=False, repr=False)
     pixels: GridView = field(init=False, repr=False)
 
     stop_reason: StopType | None = field(default=None, init=False, repr=False)
@@ -138,7 +141,7 @@ class ContentBase(ABC, Generic[ContentType]):
         """Return the ID of the content."""
         return camel_to_kebab_case(self.__class__.__name__)
 
-    @property
+    @cached_property
     def is_small(self) -> bool:
         """Return whether the content is smaller than the matrix."""
         return self.shape < const.MATRIX_SHAPE

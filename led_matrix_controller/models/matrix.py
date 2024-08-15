@@ -8,17 +8,18 @@ from typing import TYPE_CHECKING, Any, ClassVar, Final, TypedDict, cast
 
 from content.base import (
     ContentBase,
+    GridView,
     PreDefinedContent,
     StopType,
 )
 from models.setting import Setting, TransitionableParameterSetting
+from PIL import Image
 from utils import const, mtrx
 from utils.helpers import to_kebab_case
 from wg_utilities.decorators import process_exception
 from wg_utilities.loggers import get_streaming_logger
 
 if TYPE_CHECKING:
-    from PIL import Image
     from utils.mqtt import MqttClient
 
     from .led_matrix_options import LedMatrixOptions
@@ -117,9 +118,9 @@ class Matrix:
         self._content_thread = Thread(target=self._content_loop)
 
         # Setting via property to trigger MQTT update
-        self.current_content: (
-            ContentBase[Image.Image] | ContentBase[mtrx.Canvas] | None
-        ) = None
+        self.current_content: ContentBase[GridView] | ContentBase[mtrx.Canvas] | None = (
+            None
+        )
 
         self.current_priority: float = self.MAX_PRIORITY  # Lower value = higher priority
 
@@ -132,7 +133,9 @@ class Matrix:
 
     def set_image_swap_canvas(self) -> None:
         """Set the image and swap the canvas."""
-        self.canvas.SetImage(self.current_content.get_content())  # type: ignore[union-attr]
+        image = Image.fromarray(self.current_content.get_content(), "RGB")  # type: ignore[union-attr]
+
+        self.canvas.SetImage(image)
 
         self.swap_canvas(self.canvas)
 

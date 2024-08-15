@@ -9,18 +9,18 @@ from typing import TYPE_CHECKING, Any, Generator, final, get_type_hints
 
 import numpy as np
 from models.setting import Setting
-from PIL import Image
 from wg_utilities.loggers import get_streaming_logger
 
-from .base import ContentBase
+from .base import ContentBase, GridView
 
 if TYPE_CHECKING:
     from numpy.typing import DTypeLike, NDArray
+
 LOGGER = get_streaming_logger(__name__)
 
 
 @dataclass(kw_only=True, slots=True)
-class DynamicContent(ContentBase[Image.Image], ABC):
+class DynamicContent(ContentBase[GridView], ABC):
     """Base class for content which is dynamically created."""
 
     canvas_count: None = field(init=False, default=None)
@@ -50,9 +50,9 @@ class DynamicContent(ContentBase[Image.Image], ABC):
 
                     self.settings[annotation.slug] = annotation
 
-    def get_content(self) -> Image.Image:
+    def get_content(self) -> GridView:
         """Convert the pixels to an image."""
-        return Image.fromarray(self.colormap[self.pixels], "RGB")
+        return self.colormap[self.pixels]
 
     def zeros(self, *, dtype: DTypeLike = np.int_) -> NDArray[Any]:
         """Return a grid of zeros."""
