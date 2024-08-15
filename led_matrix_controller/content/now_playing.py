@@ -14,13 +14,13 @@ from typing import Annotated, ClassVar, Final, Generator, TypedDict, cast
 import numpy as np
 from content.base import GridView, StopType
 from httpx import URL, HTTPStatusError, get
-from models.setting import ParameterSetting  # noqa: TCH002
 from PIL import Image
 from utils import const
 from wg_utilities.functions import backoff, force_mkdir
 from wg_utilities.loggers import get_streaming_logger
 
 from .dynamic_content import DynamicContent
+from .setting import ParameterSetting  # noqa: TCH001
 
 LOGGER = get_streaming_logger(__name__)
 

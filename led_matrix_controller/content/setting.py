@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
-from logging import DEBUG, getLogger
 from threading import Thread
 from time import sleep
 from typing import (
@@ -22,16 +21,14 @@ from typing import (
 from utils import const
 from utils.helpers import to_kebab_case
 from utils.mqtt import MqttClient
-from wg_utilities.loggers import add_stream_handler
+from wg_utilities.loggers import get_streaming_logger
 
 if TYPE_CHECKING:
-    from content.dynamic_content import DynamicContent
+    from models.matrix import Matrix
 
-    from .matrix import Matrix
+    from .dynamic_content import DynamicContent
 
-LOGGER = getLogger(__name__)
-LOGGER.setLevel(DEBUG)
-add_stream_handler(LOGGER)
+LOGGER = get_streaming_logger(__name__)
 
 
 S = TypeVar("S", dict[str, Any], list[Any], str, int, float, bool)

@@ -17,14 +17,14 @@ from content.automaton import (
     MaskGen,
     TargetSlice,
 )
-from models.setting import (
-    FrequencySetting,
-    TransitionableParameterSetting,
-)
 from utils import const
 from wg_utilities.loggers import add_stream_handler
 
 from .base import StateBase
+from .setting import (
+    FrequencySetting,
+    TransitionableParameterSetting,
+)
 
 if TYPE_CHECKING:
     from content.base import GridView

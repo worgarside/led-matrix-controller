@@ -13,7 +13,7 @@ from content.base import (
     PreDefinedContent,
     StopType,
 )
-from models.setting import Setting, TransitionableParameterSetting
+from content.setting import Setting, TransitionableParameterSetting
 from PIL import Image
 from utils import const, mtrx
 from utils.helpers import to_kebab_case
