@@ -9,8 +9,8 @@ from functools import lru_cache
 from typing import Annotated, Final, Generator, cast
 
 import numpy as np
+from content.base import GridView
 from models.setting import ParameterSetting  # noqa: TCH002
-from numpy.typing import NDArray
 from wg_utilities.loggers import get_streaming_logger
 
 from .dynamic_content import DynamicContent
@@ -51,23 +51,23 @@ class Symbol:
 
     @staticmethod
     @lru_cache(maxsize=12)
-    def get(_v: str, scale: tuple[int, int] = (2, 2)) -> NDArray[np.uint8]:
+    def get(_v: str, scale: tuple[int, int] = (2, 2)) -> GridView:
         """Gt an array representation of the symbol."""
         if _v == ":":
             symbol = Symbol.COLON
         elif _v == " ":
             symbol = Symbol.PADDING
         else:
-            symbol = cast(NDArray[np.uint8], getattr(Symbol, f"N{_v}"))
+            symbol = cast(GridView, getattr(Symbol, f"N{_v}"))
 
-        return np.kron(symbol, np.ones(scale, dtype=np.uint8))
+        return np.kron(symbol, np.ones(scale, dtype=np.int_))
 
 
 @dataclass(kw_only=True, slots=True)
 class Clock(DynamicContent):
     """Display the time."""
 
-    colormap: NDArray[np.uint8] = field(
+    colormap: GridView = field(
         default_factory=lambda: np.array([(0, 0, 0), (255, 255, 255)], dtype=np.uint8),
     )
 
