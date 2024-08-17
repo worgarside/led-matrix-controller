@@ -7,13 +7,14 @@ from queue import PriorityQueue
 from threading import Condition, Thread
 from typing import TYPE_CHECKING, Any, ClassVar, Final, TypedDict, cast
 
+import numpy as np
 from content.base import (
     ContentBase,
     GridView,
     PreDefinedContent,
     StopType,
 )
-from models.setting import Setting, TransitionableParameterSetting
+from content.setting import Setting, TransitionableParameterSetting
 from PIL import Image
 from utils import const, mtrx
 from utils.helpers import to_kebab_case
@@ -21,6 +22,7 @@ from wg_utilities.decorators import process_exception
 from wg_utilities.loggers import add_stream_handler
 
 if TYPE_CHECKING:
+    from numpy.typing import DTypeLike, NDArray
     from utils.mqtt import MqttClient
 
     from .led_matrix_options import LedMatrixOptions
@@ -131,13 +133,26 @@ class Matrix:
         self.tick = 0
         self.tick_condition = Condition()
 
+        self.array = self.zeros(dtype=np.uint8)
+
     def get_canvas_swap_canvas(self) -> None:
         """Get the canvas and swap it."""
         self.swap_canvas(self.current_content.get_content())  # type: ignore[union-attr]
 
     def set_image_swap_canvas(self) -> None:
         """Set the image and swap the canvas."""
-        image = Image.fromarray(self.current_content.get_content(), "RGB")  # type: ignore[union-attr]
+        content_array = self.current_content.get_content()  # type: ignore[union-attr]
+
+        self.array.fill(0)
+
+        x, y = self.current_content.position  # type: ignore[union-attr]
+
+        self.array[
+            y : y + self.current_content.height,  # type: ignore[union-attr]
+            x : x + self.current_content.width,  # type: ignore[union-attr]
+        ] = content_array
+
+        image = Image.fromarray(self.array, "RGB")
 
         self.canvas.SetImage(image)
 
@@ -331,6 +346,10 @@ class Matrix:
                         setting.mqtt_topic,
                         setting.on_message,
                     )
+
+    def zeros(self, *, dtype: DTypeLike = np.int_) -> NDArray[Any]:
+        """Return a grid of zeros."""
+        return np.zeros((self.height, self.width, 3), dtype=dtype)
 
     @property
     def active(self) -> bool:

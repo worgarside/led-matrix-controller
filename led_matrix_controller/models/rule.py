@@ -7,7 +7,7 @@ import inspect
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from models.setting import FrequencySetting, ParameterSetting
+from content.setting import FrequencySetting, ParameterSetting
 
 if TYPE_CHECKING:
     from content.automaton import (

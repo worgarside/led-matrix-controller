@@ -8,17 +8,19 @@ from abc import ABC, abstractmethod
 from contextlib import suppress
 from dataclasses import dataclass, field, is_dataclass
 from enum import Enum, auto
-from functools import cached_property
+from functools import cached_property, partial
 from json import dumps
 from logging import DEBUG, getLogger
 from os import PathLike
 from typing import (
     TYPE_CHECKING,
+    Annotated,
     Any,
     Callable,
     Generator,
     Generic,
     Iterator,
+    Literal,
     final,
 )
 
@@ -29,6 +31,8 @@ from typing_extensions import TypeVar
 from utils import const, mtrx
 from utils.helpers import camel_to_kebab_case
 from wg_utilities.loggers import add_stream_handler
+
+from .setting import TransitionableParameterSetting  # noqa: TCH001
 
 if TYPE_CHECKING:
     from PIL import Image
@@ -101,12 +105,58 @@ class StopType(Enum):
 ContentType = TypeVar("ContentType", GridView, mtrx.Canvas)
 
 
+def _limit_position(
+    payload: int,
+    content: ContentBase[ContentType],
+    *,
+    limit: int,
+    attr: Literal["height", "width"],
+) -> int:
+    """Helper function for limiting the position of content.
+
+    This isn't implemented as a lambda within the `TransitionableParameterSetting` definition
+    to avoid namespace issues.
+    """
+    return min(
+        payload,
+        limit - int(getattr(content, attr)),
+    )
+
+
 @dataclass(kw_only=True, slots=True)
 class ContentBase(ABC, Generic[ContentType]):
     """Base class for content models."""
 
     height: int
     width: int
+
+    x_pos: Annotated[
+        int,
+        TransitionableParameterSetting(
+            minimum=0,
+            maximum=const.MATRIX_WIDTH - 1,
+            transition_rate=1,
+            payload_modifier=partial(
+                _limit_position,
+                limit=const.MATRIX_WIDTH,
+                attr="width",
+            ),
+        ),
+    ] = 0
+
+    y_pos: Annotated[
+        int,
+        TransitionableParameterSetting(
+            minimum=0,
+            maximum=const.MATRIX_HEIGHT - 1,
+            transition_rate=1,
+            payload_modifier=partial(
+                _limit_position,
+                limit=const.MATRIX_HEIGHT,
+                attr="height",
+            ),
+        ),
+    ] = 0
 
     instance_id: str | None = None
     persistent: bool = field(default=False)
@@ -153,6 +203,11 @@ class ContentBase(ABC, Generic[ContentType]):
     def mqtt_attributes(self) -> str:
         """Return extra attributes for the MQTT message."""
         return dumps(self, default=self._json_encode)
+
+    @property
+    def position(self) -> tuple[int, int]:
+        """Return the position of the content."""
+        return self.x_pos, self.y_pos
 
     @cached_property
     def shape(self) -> tuple[int, int]:

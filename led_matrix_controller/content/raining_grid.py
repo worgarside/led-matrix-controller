@@ -17,14 +17,14 @@ from content.automaton import (
     MaskGen,
     TargetSlice,
 )
-from models.setting import (
-    FrequencySetting,
-    TransitionableParameterSetting,
-)
 from utils import const
 from wg_utilities.loggers import add_stream_handler
 
 from .base import StateBase
+from .setting import (
+    FrequencySetting,
+    TransitionableParameterSetting,
+)
 
 if TYPE_CHECKING:
     from content.base import GridView
@@ -59,7 +59,8 @@ class RainingGrid(Automaton):
             transition_rate=0.0001,
             fp_precision=4,
             requires_rule_regeneration=False,
-            payload_modifier=lambda x: x / 1000,  # Anything above 0.1 is too much rain!
+            # Anything above 0.1 is too much rain!
+            payload_modifier=lambda x, _: x / 1000,
         ),
     ] = 0.025
     rain_speed: Annotated[int, FrequencySetting()] = 1
