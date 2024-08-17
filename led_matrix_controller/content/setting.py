@@ -69,7 +69,10 @@ class Setting(Generic[S]):
     slug: str = field(init=False, repr=False)
     """The field name/slug of the setting."""
 
-    payload_modifier: Callable[[S], S] | None = field(repr=False, default=None)
+    payload_modifier: Callable[[S, DynamicContent | Matrix], S] | None = field(
+        repr=False,
+        default=None,
+    )
     """Function to modify the payload before it is validated.
 
     Allows for scaling, conversion, etc. relative to Home Assistant's inputs.
@@ -168,11 +171,13 @@ class Setting(Generic[S]):
             LOGGER.debug("Applying payload modifier to %r", payload)
 
             try:
-                payload = self._coerce_and_format(self.payload_modifier(payload))
+                payload = self._coerce_and_format(
+                    self.payload_modifier(payload, self.instance),
+                )
             except Exception:
                 LOGGER.exception(
-                    "An unexpected error occurred while modifying the %s payload: %r",
-                    type(payload),
+                    "An unexpected error occurred while modifying the %s payload %r",
+                    type(payload).__name__,
                     payload,
                 )
                 return
