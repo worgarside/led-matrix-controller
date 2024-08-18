@@ -130,7 +130,7 @@ class Matrix:
 
         self.current_priority: float = self.MAX_PRIORITY  # Lower value = higher priority
 
-        self.tick = 0
+        self.tick: int = 0
         self.tick_condition = Condition()
 
         self.array = self.zeros(dtype=np.uint8)

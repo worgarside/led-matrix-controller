@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from threading import Thread
@@ -236,9 +237,6 @@ class Setting(Generic[S]):
         self.type_ = type_
 
         if self.type_ in {int, float}:
-            if self.type_ is int:
-                self.fp_precision = 0
-
             if self.maximum:
                 self.maximum = round(self.maximum, self.fp_precision)
             if self.minimum:
@@ -324,15 +322,15 @@ class Setting(Generic[S]):
         }
 
 
-T = TypeVar("T", int, float)
+N = TypeVar("N", int, float)
 
 
 @dataclass
-class TransitionableSettingMixin(Setting[T]):
-    transition_rate: T
-    """The rate at which the setting will be changed per tick/frame."""
+class TransitionableSettingMixin(Setting[N]):
+    transition_rate: N
+    """The amount by which the setting will be changed per tick."""
 
-    target_value: T = field(init=False, repr=False)
+    target_value: N = field(init=False, repr=False)
     """The target value for a setting.
 
     Used to enable transition functionality.
@@ -341,7 +339,12 @@ class TransitionableSettingMixin(Setting[T]):
     transition_thread: Thread = field(init=False, repr=False)
     """Thread for transitioning values over a non-zero period of time."""
 
-    def _set_value_from_payload(self, payload: T) -> None:
+    def __post_init__(self) -> None:
+        self.transition_rate = abs(self.transition_rate)
+
+        return super().__post_init__()
+
+    def _set_value_from_payload(self, payload: N) -> None:
         """Set the value of the setting from the payload."""
         # Only transition if the automaton is currently displaying and a transition rate is set
         if self.instance.active and (self.transition_rate or 0) > 0:
@@ -351,7 +354,10 @@ class TransitionableSettingMixin(Setting[T]):
             if not (
                 hasattr(self, "transition_thread") and self.transition_thread.is_alive()
             ):
-                self.transition_thread = Thread(target=self._transition_worker)
+                self.transition_thread = Thread(
+                    target=self._transition_worker,
+                    name=f"{self.slug}_transition",
+                )
                 self.transition_thread.start()
                 LOGGER.debug("Started transition thread")
             else:
@@ -367,13 +373,27 @@ class TransitionableSettingMixin(Setting[T]):
 
         cc = self.matrix.current_content
 
-        while (current_value := self.type_(self.value)) != self.target_value:
-            transition_amount = round(
-                min(self.transition_rate, abs(current_value - self.target_value)),
-                self.fp_precision,
-            ) * (1 if self.target_value > current_value else -1)
+        if self.type_ is int:
+            # Wait until accumulated change reaches 1
+            ticks_between_transitions = math.ceil(1 / self.transition_rate)
 
-            self.value = round(current_value + transition_amount, self.fp_precision)
+            transition_amount: N = 1
+        else:
+            # Wait until accumulated change reaches the specified precision
+            precision_value = 10**-self.fp_precision
+            ticks_between_transitions = math.ceil(precision_value / self.transition_rate)
+
+            transition_amount = ticks_between_transitions * self.transition_rate
+
+        direction = 1 if self.target_value > self.value else -1
+        while self.value != self.target_value:
+            if self.matrix.tick % ticks_between_transitions == 0:
+                self.value = round(
+                    self.value
+                    + min(transition_amount, abs(self.value - self.target_value))
+                    * direction,
+                    self.fp_precision,
+                )
 
             if not (cc and cc.is_sleeping):
                 # If the content is sleeping, then it isn't yielding, so the canvas isn't being
@@ -425,8 +445,8 @@ class ParameterSetting(Setting[S]):
 
 @dataclass(kw_only=True, slots=True)
 class TransitionableParameterSetting(
-    ParameterSetting[T],
-    TransitionableSettingMixin[T],
+    ParameterSetting[N],
+    TransitionableSettingMixin[N],
 ):
     """Set a parameter for a rule with transition functionality."""
 
