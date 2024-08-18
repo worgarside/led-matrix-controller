@@ -77,7 +77,7 @@ class Matrix:
         self._brightness_setting = TransitionableParameterSetting(
             minimum=0,
             maximum=100,
-            transition_rate=1,
+            transition_rate=0.01,
             fp_precision=0,
         ).setup(
             field_name="brightness",
