@@ -58,13 +58,18 @@ class RainingGrid(Automaton):
             maximum=100,
             transition_rate=0.0001,
             fp_precision=4,
-            requires_rule_regeneration=False,
             # Anything above 0.1 is too much rain!
             payload_modifier=lambda x, _: x / 1000,
         ),
     ] = 0.025
-    rain_speed: Annotated[int, FrequencySetting()] = 1
-    splash_speed: Annotated[int, FrequencySetting()] = 8
+    rain_speed: Annotated[
+        int,
+        FrequencySetting(invoke_settings_callback=True),
+    ] = 1
+    splash_speed: Annotated[
+        int,
+        FrequencySetting(invoke_settings_callback=True),
+    ] = 8
 
     def teardown(self) -> Generator[None, None, None]:
         """Transition the rain chance to 0 then run the simulation until the grid is clear."""

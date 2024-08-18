@@ -30,10 +30,16 @@ class DynamicContent(ContentBase[GridView], ABC):
 
     def __post_init__(self) -> None:
         """Compile settings from type hints."""
-        for field_name, field_type in get_type_hints(
-            self.__class__,
-            include_extras=True,
-        ).items():
+        try:
+            type_hints = get_type_hints(
+                self.__class__,
+                include_extras=True,
+            )
+        except TypeError:
+            LOGGER.error("Failed to get type hints for %s", self.__class__.__name__)  # noqa: TRY400
+            raise
+
+        for field_name, field_type in type_hints.items():
             for annotation in getattr(field_type, "__metadata__", ()):
                 if isinstance(annotation, Setting):
                     annotation.setup(

@@ -150,7 +150,7 @@ class MqttClient(metaclass=Singleton):
             try:
                 payload = loads(msg.payload)
             except JSONDecodeError:
-                if not msg.payload and msg.retain:
+                if not msg.payload:
                     LOGGER.debug("Message received to clear topic %s", msg.topic)
                     return
 

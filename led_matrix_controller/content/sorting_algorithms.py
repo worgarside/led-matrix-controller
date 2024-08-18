@@ -1,4 +1,4 @@
-"""Class for the creation, caching, and management of artwork images."""
+"""Visualise various sorting algorithms."""
 
 from __future__ import annotations
 
@@ -281,26 +281,42 @@ class SortingAlgorithm(StrEnum):
 
 # =============================================================================
 # Content
+
+
 @dataclass(kw_only=True, slots=True)
 class Sorter(DynamicContent):
     """Display various sorting algorithms."""
 
     BG_COLOR: ClassVar[list[tuple[int, int, int]]] = [(0, 0, 0)]
 
-    algorithm: Annotated[SortingAlgorithm, ParameterSetting()] = (
-        SortingAlgorithm.BUBBLESORT
-    )
+    algorithm: Annotated[
+        SortingAlgorithm,
+        ParameterSetting(),
+    ] = SortingAlgorithm.BUBBLESORT
 
     completion_display_time: Annotated[
         float,
-        ParameterSetting(minimum=0, maximum=30, fp_precision=2),
+        ParameterSetting(
+            minimum=0,
+            maximum=30,
+            fp_precision=2,
+        ),
     ] = 5.0
     """Number of seconds to display the sorted array for."""
 
-    iterations: Annotated[int, ParameterSetting(minimum=1, maximum=1000)] = 1
+    iterations: Annotated[
+        int,
+        ParameterSetting(
+            minimum=1,
+            maximum=1000,
+        ),
+    ] = 1
     """Number of iterations to run the sorting algorithm per."""
 
-    randomize_algorithm: Annotated[bool, ParameterSetting()] = False
+    randomize_algorithm: Annotated[
+        bool,
+        ParameterSetting(),
+    ] = False
 
     _values: list[int] = field(init=False)
 
@@ -352,7 +368,7 @@ class Sorter(DynamicContent):
             yield
 
     def teardown(self) -> Generator[None, None, None]:
-        """Display the sorted list for N seconds, then reset the image getter/colormap."""
+        """Display the sorted list for N seconds, then reset the colormap."""
         LOGGER.debug("Sleeping for %f seconds", self.completion_display_time)
         sleep(self.completion_display_time)
 
