@@ -10,6 +10,7 @@ from typing import Annotated, Final, Generator, cast
 
 import numpy as np
 from content.base import GridView
+from utils import const
 from wg_utilities.loggers import get_streaming_logger
 
 from .dynamic_content import DynamicContent
@@ -77,10 +78,13 @@ class Clock(DynamicContent):
     ] = 2
 
     def __post_init__(self) -> None:
-        """Initialize the image getter."""
+        """Initialize the clock."""
         DynamicContent.__post_init__(self)
 
         self.setting_update_callback()
+
+        self.x_pos = int((const.MATRIX_WIDTH - self.width) / 2)
+        self.y_pos = int((const.MATRIX_HEIGHT - self.height) / 2)
 
     def refresh_content(self) -> Generator[None, None, None]:
         """Refresh the content."""
