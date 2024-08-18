@@ -19,13 +19,13 @@ from typing import (
 
 import numpy as np
 from models.rule import Rule
-from models.setting import FrequencySetting
 from numpy.typing import NDArray
 from utils import const
 from wg_utilities.loggers import get_streaming_logger
 
 from .base import GridView, StateBase
 from .dynamic_content import DynamicContent
+from .setting import FrequencySetting
 
 LOGGER = get_streaming_logger(__name__)
 

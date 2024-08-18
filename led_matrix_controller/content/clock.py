@@ -10,10 +10,10 @@ from typing import Annotated, Final, Generator, cast
 
 import numpy as np
 from content.base import GridView
-from models.setting import ParameterSetting  # noqa: TCH002
 from wg_utilities.loggers import get_streaming_logger
 
 from .dynamic_content import DynamicContent
+from .setting import ParameterSetting  # noqa: TCH001
 
 LOGGER = get_streaming_logger(__name__)
 

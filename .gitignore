@@ -347,3 +347,5 @@ resources/gh_cli/
 **/*.png
 **/*.jp(e?)g
 !emulator_config.json
+
+_local_sandbox

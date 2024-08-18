@@ -8,10 +8,10 @@ from json import dumps
 from typing import TYPE_CHECKING, Any, Generator, final, get_type_hints
 
 import numpy as np
-from models.setting import Setting
 from wg_utilities.loggers import get_streaming_logger
 
 from .base import ContentBase, GridView
+from .setting import Setting
 
 if TYPE_CHECKING:
     from numpy.typing import DTypeLike, NDArray
