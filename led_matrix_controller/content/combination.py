@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import itertools
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Generator
 
@@ -39,22 +38,19 @@ class Combination(DynamicContent):
         content_chains = {}
         for content in self.content:
             content.active = True
-
-            chain = []
-
-            if (setup := content.setup()) is not None:
-                chain.append(setup)
-
-            chain.append(iter(content))
-
-            if (teardown := content.teardown()) is not None:
-                chain.append(teardown)
-
-            content_chains[content.id] = itertools.chain(*chain)
+            content_chains[content.id] = content.chain_generators()
 
         while self.active:
             for content in self.content:
-                next(content_chains[content.id])
+                if not content.active:
+                    continue
+
+                try:
+                    next(content_chains[content.id])
+                except StopIteration:
+                    if content.active:
+                        LOGGER.error("Content %s stopped unexpectedly", content.id)  # noqa: TRY400
+                        raise
 
                 new_pixels = content.get_content()
 

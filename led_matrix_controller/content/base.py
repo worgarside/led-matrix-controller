@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import math
 import re
 from abc import ABC, abstractmethod
@@ -169,6 +170,21 @@ class ContentBase(ABC, Generic[ContentType]):
     @abstractmethod
     def get_content(self) -> ContentType:
         """Convert the array to an image."""
+
+    @final
+    def chain_generators(self) -> itertools.chain[None]:
+        """Chain the generators of the content."""
+        chain: list[Iterator[None]] = []
+
+        if (setup := self.setup()) is not None:
+            chain.append(setup)
+
+        chain.append(iter(self))
+
+        if (teardown := self.teardown()) is not None:
+            chain.append(teardown)
+
+        return itertools.chain(*chain)
 
     def setup(self) -> Generator[None, None, None] | None:  # noqa: PLR6301
         """Perform any necessary setup."""
