@@ -51,7 +51,7 @@ class StateBase(Enum):
         self,
         value: int,
         char: str,
-        color: tuple[int, int, int] = (0, 0, 0),
+        color: tuple[int, int, int, int] = (0, 0, 0, 0),
     ) -> None:
         self._value_ = value
         self.state = value  # This is only really for type checkers, _value_ is the same but has a different type

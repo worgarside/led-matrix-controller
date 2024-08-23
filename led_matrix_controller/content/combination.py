@@ -58,7 +58,7 @@ class Combination(DynamicContent):
 
                 new_pixels = content.get_content()
 
-                mask = np.any(new_pixels != (0, 0, 0), axis=-1)
+                mask = np.any(new_pixels != (0, 0, 0, 0), axis=-1)
 
                 self.pixels[
                     content.y_pos : content.y_pos + content.height,
@@ -69,4 +69,9 @@ class Combination(DynamicContent):
 
     def zeros(self, *, dtype: DTypeLike = np.int_) -> NDArray[Any]:
         """Return a grid of zeros."""
-        return np.zeros((self.height, self.width, 3), dtype=dtype)
+        return np.zeros((self.height, self.width, 4), dtype=dtype)
+
+    @property
+    def content_id(self) -> str:
+        """Return the ID of the content."""
+        return "combo-" + "-".join(content.content_id for content in self.content)

@@ -287,7 +287,7 @@ class SortingAlgorithm(StrEnum):
 class Sorter(DynamicContent):
     """Display various sorting algorithms."""
 
-    BG_COLOR: ClassVar[list[tuple[int, int, int]]] = [(0, 0, 0)]
+    BG_COLOR: ClassVar[tuple[int, int, int, int]] = (0, 0, 0, 255)
 
     algorithm: Annotated[
         SortingAlgorithm,
@@ -398,15 +398,18 @@ class Sorter(DynamicContent):
         )
 
         colors = [
-            hls_to_rgb(
-                (((offset + i) * interval) % 360) / 360,
-                lightness,
-                saturation,
+            (
+                *hls_to_rgb(
+                    (((offset + i) * interval) % 360) / 360,
+                    lightness,
+                    saturation,
+                ),
+                1,  # Alpha channel
             )
             for i in range(self.width)
         ]
 
         self.colormap = np.array(
-            self.BG_COLOR + [tuple(int(c * 255) for c in color) for color in colors],
+            [self.BG_COLOR, *(tuple(int(c * 255) for c in color) for color in colors)],
             dtype=np.uint8,
         )

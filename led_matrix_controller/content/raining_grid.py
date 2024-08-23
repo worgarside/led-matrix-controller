@@ -39,10 +39,10 @@ class State(StateBase):
     """Enum representing the state of a cell."""
 
     NULL = 0, " "
-    RAINDROP = 1, "O", (13, 94, 255)
-    SPLASHDROP = 2, "o", (107, 155, 250)
-    SPLASH_LEFT = 3, "*", (170, 197, 250)
-    SPLASH_RIGHT = 4, "*", (170, 197, 250)
+    RAINDROP = 1, "O", (13, 94, 255, 255)
+    SPLASHDROP = 2, "o", (107, 155, 250, 255)
+    SPLASH_LEFT = 3, "*", (170, 197, 250, 255)
+    SPLASH_RIGHT = 4, "*", (170, 197, 250, 255)
 
 
 @dataclass(kw_only=True, slots=True)

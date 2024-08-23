@@ -148,7 +148,7 @@ class Matrix:
             x : x + self.current_content.width,  # type: ignore[union-attr]
         ] = content_array
 
-        image = Image.fromarray(self.array, "RGB")
+        image = Image.fromarray(self.array, "RGBA")
 
         self.canvas.SetImage(image)
 
@@ -345,7 +345,7 @@ class Matrix:
 
     def zeros(self, *, dtype: DTypeLike = np.int_) -> NDArray[Any]:
         """Return a grid of zeros."""
-        return np.zeros((self.height, self.width, 3), dtype=dtype)
+        return np.zeros((self.height, self.width, 4), dtype=dtype)
 
     @property
     def active(self) -> bool:
