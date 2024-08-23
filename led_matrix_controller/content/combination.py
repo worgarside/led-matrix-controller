@@ -51,12 +51,19 @@ class Combination(DynamicContent):
 
                 new_pixels = content.get_content()
 
-                mask = np.any(new_pixels != (0, 0, 0, 0), axis=-1)
+                if content.IS_OPAQUE:
+                    # i.e. don't apply a mask
+                    self.pixels[
+                        content.y_pos : content.y_pos + content.height,
+                        content.x_pos : content.x_pos + content.width,
+                    ] = new_pixels
+                else:
+                    mask = np.any(new_pixels != (0, 0, 0, 0), axis=-1)
 
-                self.pixels[
-                    content.y_pos : content.y_pos + content.height,
-                    content.x_pos : content.x_pos + content.width,
-                ][mask] = new_pixels[mask]
+                    self.pixels[
+                        content.y_pos : content.y_pos + content.height,
+                        content.x_pos : content.x_pos + content.width,
+                    ][mask] = new_pixels[mask]
 
             yield
 

@@ -17,6 +17,7 @@ from typing import (
     Annotated,
     Any,
     Callable,
+    ClassVar,
     Generator,
     Generic,
     Iterator,
@@ -124,6 +125,8 @@ def _limit_position(
 @dataclass(kw_only=True, slots=True)
 class ContentBase(ABC, Generic[ContentType]):
     """Base class for content models."""
+
+    IS_OPAQUE: ClassVar[bool] = False
 
     height: int
     width: int

@@ -287,7 +287,9 @@ class SortingAlgorithm(StrEnum):
 class Sorter(DynamicContent):
     """Display various sorting algorithms."""
 
-    BG_COLOR: ClassVar[tuple[int, int, int, int]] = (0, 0, 0, 255)
+    BG_COLOR: ClassVar[tuple[int, int, int, int]] = (0, 0, 0, 0)
+
+    HAS_TRANSPARENCY = True
 
     algorithm: Annotated[
         SortingAlgorithm,

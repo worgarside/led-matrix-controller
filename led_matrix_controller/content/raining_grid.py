@@ -49,6 +49,8 @@ class State(StateBase):
 class RainingGrid(Automaton):
     """Basic rain simulation."""
 
+    HAS_TRANSPARENCY = True
+
     STATE = State
 
     rain_chance: Annotated[
