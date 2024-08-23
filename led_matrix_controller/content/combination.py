@@ -42,9 +42,6 @@ class Combination(DynamicContent):
 
         while self.active:
             for content in self.content:
-                if not content.active:
-                    continue
-
                 try:
                     next(content_chains[content.id])
                 except StopIteration:
