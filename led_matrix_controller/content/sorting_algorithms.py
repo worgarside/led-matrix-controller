@@ -289,7 +289,7 @@ class Sorter(DynamicContent):
 
     BG_COLOR: ClassVar[tuple[int, int, int, int]] = (0, 0, 0, 0)
 
-    IS_OPAQUE = True
+    IS_OPAQUE: ClassVar[bool] = True
 
     algorithm: Annotated[
         SortingAlgorithm,

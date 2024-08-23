@@ -7,7 +7,7 @@ from enum import unique
 from functools import partial
 from itertools import islice
 from logging import DEBUG, getLogger
-from typing import TYPE_CHECKING, Annotated, Generator, Literal, cast
+from typing import TYPE_CHECKING, Annotated, ClassVar, Generator, Literal, cast
 
 import numpy as np
 from content.automaton import (
@@ -49,7 +49,7 @@ class State(StateBase):
 class RainingGrid(Automaton):
     """Basic rain simulation."""
 
-    IS_OPAQUE = True
+    IS_OPAQUE: ClassVar[bool] = True
 
     STATE = State
 
