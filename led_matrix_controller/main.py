@@ -28,6 +28,7 @@ def main() -> None:
         NowPlaying(**matrix.dimensions, persistent=True),
         sorter,
         clock,
+        Combination(content=(rain, clock), **matrix.dimensions),
         Combination(content=(sorter, clock), **matrix.dimensions),
     )
 
