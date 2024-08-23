@@ -6,10 +6,10 @@ from colorsys import hls_to_rgb
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from random import choice, randint, shuffle, uniform
-from time import sleep
 from typing import Annotated, ClassVar, Generator
 
 import numpy as np
+from utils import const
 from wg_utilities.loggers import get_streaming_logger
 
 from .base import StopType
@@ -370,7 +370,10 @@ class Sorter(DynamicContent):
     def teardown(self) -> Generator[None, None, None]:
         """Display the sorted list for N seconds, then reset the colormap."""
         LOGGER.debug("Sleeping for %f seconds", self.completion_display_time)
-        sleep(self.completion_display_time)
+        completion_ticks = self.completion_display_time * const.TICKS_PER_SECOND
+
+        for _ in range(int(completion_ticks)):
+            yield
 
         for i in range(-1, self.height + 1):
             self._set_pixels(offset=i)
