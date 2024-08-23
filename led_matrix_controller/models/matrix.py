@@ -264,7 +264,11 @@ class Matrix:
         )
 
         if self.current_content is target_content:
-            LOGGER.debug("Updating %s priority to %s", target_content, priority)
+            LOGGER.debug(
+                "Updating %s priority to %s",
+                target_content.content_id,
+                priority,
+            )
             self.current_priority = priority
             return
 
