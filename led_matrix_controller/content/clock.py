@@ -69,7 +69,10 @@ class Clock(DynamicContent):
     """Display the time."""
 
     colormap: GridView = field(
-        default_factory=lambda: np.array([(0, 0, 0), (255, 255, 255)], dtype=np.uint8),
+        default_factory=lambda: np.array(
+            [(0, 0, 0, 0), (255, 255, 255, 255)],
+            dtype=np.uint8,
+        ),
     )
 
     scale: Annotated[
