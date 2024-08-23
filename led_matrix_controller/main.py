@@ -30,6 +30,8 @@ def main() -> None:
         clock,
         Combination(content=(rain, clock), **matrix.dimensions),
         Combination(content=(sorter, clock), **matrix.dimensions),
+        Combination(content=(rain, sorter), **matrix.dimensions),
+        Combination(content=(sorter, rain), **matrix.dimensions),
     )
 
     mqtt_client.loop_forever()

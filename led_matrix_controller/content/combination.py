@@ -23,11 +23,26 @@ class Combination(DynamicContent):
 
     content: tuple[DynamicContent, ...]
 
+    multiple_opaque: bool = False
+    """Whether there are multiple opaque content models.
+
+    If more than 1 content model is opaque, the mask to ignore the BG color can't be applied.
+    Instead, `self.pixels` must be reset to `self.zeros()` before each tick.
+
+    Normally, the single opaque model will be the first in the list and thus its background
+    will overwrite the previous array.
+    """
+
     def __post_init__(self) -> None:
         """Derive the instance id."""
         self.instance_id = "combo-" + "-".join(content.id for content in self.content)
 
         DynamicContent.__post_init__(self)
+
+        opaque = [c for c in self.content if c.IS_OPAQUE]
+
+        if len(opaque) > 1:
+            self.multiple_opaque = True
 
     def get_content(self) -> GridView:
         """Get the content."""
@@ -41,6 +56,9 @@ class Combination(DynamicContent):
             content_chains[content.id] = content.chain_generators()
 
         while self.active:
+            if self.multiple_opaque:
+                self.pixels[:, :] = self.zeros()
+
             for content in self.content:
                 try:
                     next(content_chains[content.id])
@@ -51,7 +69,7 @@ class Combination(DynamicContent):
 
                 new_pixels = content.get_content()
 
-                if content.IS_OPAQUE:
+                if not self.multiple_opaque and content.IS_OPAQUE:
                     # i.e. don't apply a mask
                     self.pixels[
                         content.y_pos : content.y_pos + content.height,

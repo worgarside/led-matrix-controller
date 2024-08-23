@@ -58,7 +58,7 @@ class RainingGrid(Automaton):
         TransitionableParameterSetting(
             minimum=0,
             maximum=100,
-            transition_rate=0.0001,
+            transition_rate=0.000001,
             fp_precision=4,
             # Anything above 0.1 is too much rain!
             payload_modifier=lambda x, _: x / 1000,
