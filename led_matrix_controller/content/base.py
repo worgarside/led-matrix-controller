@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import math
 import re
 from abc import ABC, abstractmethod
@@ -16,6 +17,7 @@ from typing import (
     Annotated,
     Any,
     Callable,
+    ClassVar,
     Generator,
     Generic,
     Iterator,
@@ -51,7 +53,7 @@ class StateBase(Enum):
         self,
         value: int,
         char: str,
-        color: tuple[int, int, int] = (0, 0, 0),
+        color: tuple[int, int, int, int] = (0, 0, 0, 0),
     ) -> None:
         self._value_ = value
         self.state = value  # This is only really for type checkers, _value_ is the same but has a different type
@@ -124,6 +126,8 @@ def _limit_position(
 class ContentBase(ABC, Generic[ContentType]):
     """Base class for content models."""
 
+    IS_OPAQUE: ClassVar[bool] = False
+
     height: int
     width: int
 
@@ -169,6 +173,21 @@ class ContentBase(ABC, Generic[ContentType]):
     @abstractmethod
     def get_content(self) -> ContentType:
         """Convert the array to an image."""
+
+    @final
+    def chain_generators(self) -> itertools.chain[None]:
+        """Chain the generators of the content."""
+        chain: list[Iterator[None]] = []
+
+        if (setup := self.setup()) is not None:
+            chain.append(setup)
+
+        chain.append(iter(self))
+
+        if (teardown := self.teardown()) is not None:
+            chain.append(teardown)
+
+        return itertools.chain(*chain)
 
     def setup(self) -> Generator[None, None, None] | None:  # noqa: PLR6301
         """Perform any necessary setup."""

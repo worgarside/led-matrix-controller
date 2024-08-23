@@ -6,10 +6,10 @@ from colorsys import hls_to_rgb
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from random import choice, randint, shuffle, uniform
-from time import sleep
 from typing import Annotated, ClassVar, Generator
 
 import numpy as np
+from utils import const
 from wg_utilities.loggers import get_streaming_logger
 
 from .base import StopType
@@ -287,7 +287,9 @@ class SortingAlgorithm(StrEnum):
 class Sorter(DynamicContent):
     """Display various sorting algorithms."""
 
-    BG_COLOR: ClassVar[list[tuple[int, int, int]]] = [(0, 0, 0)]
+    BG_COLOR: ClassVar[tuple[int, int, int, int]] = (0, 0, 0, 0)
+
+    IS_OPAQUE: ClassVar[bool] = True
 
     algorithm: Annotated[
         SortingAlgorithm,
@@ -318,7 +320,7 @@ class Sorter(DynamicContent):
         ParameterSetting(),
     ] = False
 
-    _values: list[int] = field(init=False)
+    _values: list[int] = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         """Initialize the image getter."""
@@ -370,7 +372,10 @@ class Sorter(DynamicContent):
     def teardown(self) -> Generator[None, None, None]:
         """Display the sorted list for N seconds, then reset the colormap."""
         LOGGER.debug("Sleeping for %f seconds", self.completion_display_time)
-        sleep(self.completion_display_time)
+        completion_ticks = self.completion_display_time * const.TICKS_PER_SECOND
+
+        for _ in range(int(completion_ticks)):
+            yield
 
         for i in range(-1, self.height + 1):
             self._set_pixels(offset=i)
@@ -398,15 +403,18 @@ class Sorter(DynamicContent):
         )
 
         colors = [
-            hls_to_rgb(
-                (((offset + i) * interval) % 360) / 360,
-                lightness,
-                saturation,
+            (
+                *hls_to_rgb(
+                    (((offset + i) * interval) % 360) / 360,
+                    lightness,
+                    saturation,
+                ),
+                1,  # Alpha channel
             )
             for i in range(self.width)
         ]
 
         self.colormap = np.array(
-            self.BG_COLOR + [tuple(int(c * 255) for c in color) for color in colors],
+            [self.BG_COLOR, *(tuple(int(c * 255) for c in color) for color in colors)],
             dtype=np.uint8,
         )

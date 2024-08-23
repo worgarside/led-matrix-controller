@@ -5,8 +5,8 @@ from __future__ import annotations
 from contextlib import suppress
 from pathlib import Path
 
-from content import GifViewer, ImageViewer, NowPlaying, RainingGrid, Sorter
-from content.clock import Clock
+from content import Clock, GifViewer, ImageViewer, NowPlaying, RainingGrid, Sorter
+from content.combination import Combination
 from models import Matrix
 from utils import MqttClient
 
@@ -17,13 +17,22 @@ def main() -> None:
 
     matrix = Matrix(mqtt_client=mqtt_client)
 
+    clock = Clock(**matrix.dimensions, persistent=True)
+    rain = RainingGrid(**matrix.dimensions, persistent=True)
+    sorter = Sorter(**matrix.dimensions)
+
     matrix.register_content(
         ImageViewer(path=Path("door/closed.bmp"), **matrix.dimensions, display_seconds=5),
         GifViewer(path=Path("door/animated.gif"), **matrix.dimensions),
-        RainingGrid(**matrix.dimensions, persistent=True),
+        rain,
         NowPlaying(**matrix.dimensions, persistent=True),
-        Sorter(**matrix.dimensions),
-        Clock(**matrix.dimensions, persistent=True),
+        sorter,
+        clock,
+        Combination(content=(rain, clock), **matrix.dimensions),
+        Combination(content=(clock, rain), **matrix.dimensions),
+        Combination(content=(sorter, clock), **matrix.dimensions),
+        Combination(content=(rain, sorter), **matrix.dimensions),
+        Combination(content=(sorter, rain), **matrix.dimensions),
     )
 
     mqtt_client.loop_forever()
