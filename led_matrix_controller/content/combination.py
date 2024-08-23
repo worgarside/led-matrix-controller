@@ -41,7 +41,9 @@ class Combination(DynamicContent):
 
         opaque = [c for c in self.content if c.IS_OPAQUE]
 
-        if len(opaque) > 1:
+        # If there is more than one opaque content model or the single opaque model is not
+        # the first one (and would thus overwrite the previous array)
+        if len(opaque) > 1 or (len(opaque) == 1 and opaque[0] != self.content[0]):
             self.multiple_opaque = True
 
     def get_content(self) -> GridView:
