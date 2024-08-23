@@ -29,6 +29,7 @@ def main() -> None:
         sorter,
         clock,
         Combination(content=(rain, clock), **matrix.dimensions),
+        Combination(content=(clock, rain), **matrix.dimensions),
         Combination(content=(sorter, clock), **matrix.dimensions),
         Combination(content=(rain, sorter), **matrix.dimensions),
         Combination(content=(sorter, rain), **matrix.dimensions),
