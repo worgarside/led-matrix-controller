@@ -56,10 +56,14 @@ class Combination(DynamicContent):
             for content in self.content:
                 next(content_chains[content.id])
 
+                new_pixels = content.get_content()
+
+                mask = np.any(new_pixels != (0, 0, 0), axis=-1)
+
                 self.pixels[
                     content.y_pos : content.y_pos + content.height,
                     content.x_pos : content.x_pos + content.width,
-                ] = content.get_content()
+                ][mask] = new_pixels[mask]
 
             yield
 
