@@ -49,7 +49,7 @@ class State(StateBase):
 class RainingGrid(Automaton):
     """Basic rain simulation."""
 
-    HAS_TRANSPARENCY = True
+    IS_OPAQUE = True
 
     STATE = State
 
