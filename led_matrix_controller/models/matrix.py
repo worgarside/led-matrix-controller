@@ -148,7 +148,7 @@ class Matrix:
             x : x + self.current_content.width,  # type: ignore[union-attr]
         ] = content_array
 
-        image = Image.fromarray(self.array, "RGBA")
+        image = Image.fromarray(self.array, "RGBA").convert("RGB")
 
         self.canvas.SetImage(image)
 
