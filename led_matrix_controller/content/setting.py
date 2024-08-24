@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
+from json import dumps
 from threading import Thread
 from time import sleep
 from typing import (
@@ -146,11 +147,8 @@ class Setting(Generic[S]):
 
     def _set_value_from_payload(self, payload: S) -> None:
         """Set the value of the setting from the payload."""
-        if payload != self.value:
-            LOGGER.info("Set `%s` value to %s", self.slug, payload)
-            self.value = payload
-        else:
-            LOGGER.debug("Value unchanged: %r", payload)
+        LOGGER.info("Set `%s` value to %s", self.slug, payload)
+        self.value = payload
 
         self.matrix.publish_attributes()
 
@@ -207,7 +205,15 @@ class Setting(Generic[S]):
 
         if payload != self.value:
             self._set_value_from_payload(payload)
+        elif payload != raw_payload:
+            # e.g. out of bounds value was coerced to min/max
+            self.mqtt_client.publish(
+                self.mqtt_topic,
+                dumps(payload),
+                retain=True,
+            )
         else:
+            # Exact same message retrieved
             LOGGER.debug("Value unchanged: %r", payload)
 
     def setup(
@@ -429,11 +435,13 @@ class TransitionableSettingMixin(Setting[N]):
         )
 
         self.matrix.publish_attributes()
-        self.mqtt_client.publish(
-            self.mqtt_topic,
-            self.value,
-            retain=True,
-        )
+
+        if self.value != self.target_value:
+            self.mqtt_client.publish(
+                self.mqtt_topic,
+                self.value,
+                retain=True,
+            )
 
 
 @dataclass(kw_only=True)
