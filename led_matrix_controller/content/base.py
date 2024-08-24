@@ -147,6 +147,9 @@ class ContentBase(ABC, Generic[ContentType]):
                 limit=const.MATRIX_WIDTH,
                 attr="width",
             ),
+            icon="mdi:arrow-up-down",
+            unit_of_measurement="",
+            display_mode="slider",
         ),
     ] = 0
 
@@ -161,6 +164,9 @@ class ContentBase(ABC, Generic[ContentType]):
                 limit=const.MATRIX_HEIGHT,
                 attr="height",
             ),
+            icon="mdi:arrow-left-right",
+            unit_of_measurement="",
+            display_mode="slider",
         ),
     ] = 0
 

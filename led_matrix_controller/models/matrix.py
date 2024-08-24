@@ -79,6 +79,8 @@ class Matrix:
             maximum=100,
             transition_rate=0.1,
             fp_precision=0,
+            icon="mdi:brightness-percent",
+            unit_of_measurement="%",
         ).setup(
             field_name="brightness",
             instance=self,

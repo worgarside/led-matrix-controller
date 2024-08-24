@@ -154,6 +154,7 @@ lint.ignore = [
   "INP",     # https://docs.astral.sh/ruff/rules/#flake8-no-pep420-inp
   "SLF001",  # https://docs.astral.sh/ruff/rules/private-member-access/
 ]
+"dev_tools/**/*.py"  = ["D", "INP", "T201"]
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 115

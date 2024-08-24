@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from json import JSONDecodeError, loads
 from logging import DEBUG, getLogger
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, TypeVar
@@ -98,7 +97,7 @@ class MqttClient(metaclass=Singleton):
         self._connection_failures += 1
 
         if self._connection_failures >= self.CONNECTION_RETRY_LIMIT:
-            sys.exit(
+            raise SystemExit(
                 f"Failed to connect to MQTT broker after {self.CONNECTION_RETRY_LIMIT} attempts. Exiting.",
             )
 
@@ -166,6 +165,7 @@ class MqttClient(metaclass=Singleton):
 
     def loop_forever(self) -> None:
         """Start the MQTT loop."""
+        self._client.host = const.MQTT_HOST
         LOGGER.info("Starting MQTT loop")
         self._client.loop_forever()
 

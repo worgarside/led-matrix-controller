@@ -78,6 +78,7 @@ class Setting(Generic[S]):
 
     Allows for scaling, conversion, etc. relative to Home Assistant's inputs.
     """
+
     type_: type[S] = field(init=False, repr=False)
     """The type of the setting's value (e.g. int, float, bool)."""
 
@@ -98,6 +99,10 @@ class Setting(Generic[S]):
 
     fp_precision: int = 6
     """The number of decimal places to round floats to during processing."""
+
+    icon: str
+    unit_of_measurement: str | None = None
+    display_mode: Literal["box", "slider"] = "box"
 
     matrix: Matrix = field(init=False, repr=False)
 
@@ -238,8 +243,14 @@ class Setting(Generic[S]):
         self.type_ = type_
 
         if self.type_ in {int, float}:
+            if self.unit_of_measurement is None:
+                raise InvalidSettingError(
+                    f"Setting {self.slug!r} must have a unit of measurement with type {self.type_!r}",
+                )
+
             if self.maximum:
                 self.maximum = round(self.maximum, self.fp_precision)
+
             if self.minimum:
                 self.minimum = round(self.minimum, self.fp_precision)
 

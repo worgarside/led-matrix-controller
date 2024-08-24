@@ -293,7 +293,7 @@ class Sorter(DynamicContent):
 
     algorithm: Annotated[
         SortingAlgorithm,
-        ParameterSetting(),
+        ParameterSetting(icon="mdi:sort"),
     ] = SortingAlgorithm.BUBBLESORT
 
     completion_display_time: Annotated[
@@ -302,6 +302,9 @@ class Sorter(DynamicContent):
             minimum=0,
             maximum=30,
             fp_precision=2,
+            icon="mdi:presentation-play",
+            unit_of_measurement="s",
+            display_mode="slider",
         ),
     ] = 5.0
     """Number of seconds to display the sorted array for."""
@@ -311,13 +314,15 @@ class Sorter(DynamicContent):
         ParameterSetting(
             minimum=1,
             maximum=1000,
+            icon="mdi:counter",
+            unit_of_measurement="iterations",
         ),
     ] = 1
     """Number of iterations to run the sorting algorithm per."""
 
     randomize_algorithm: Annotated[
         bool,
-        ParameterSetting(),
+        ParameterSetting(icon="mdi:shuffle-variant"),
     ] = False
 
     _values: list[int] = field(init=False, repr=False, compare=False)

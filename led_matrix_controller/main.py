@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 from contextlib import suppress
-from pathlib import Path
 
-from content import Clock, GifViewer, ImageViewer, NowPlaying, RainingGrid, Sorter
-from content.combination import Combination
+from content import LIBRARY
 from models import Matrix
 from utils import MqttClient
 
@@ -15,15 +13,7 @@ def main() -> None:
     """Run the rain simulation."""
     mqtt_client = MqttClient(connect=True)
 
-    Matrix(mqtt_client=mqtt_client).register_content(
-        Clock(persistent=True),
-        Combination(),
-        GifViewer(path=Path("door/animated.gif")),
-        ImageViewer(path=Path("door/closed.bmp"), display_seconds=5),
-        NowPlaying(persistent=True),
-        RainingGrid(persistent=True),
-        Sorter(),
-    )
+    Matrix(mqtt_client=mqtt_client).register_content(*LIBRARY)
 
     mqtt_client.loop_forever()
 
