@@ -142,7 +142,7 @@ class Setting(Generic[S]):
     def _set_value_from_payload(self, payload: S) -> None:
         """Set the value of the setting from the payload."""
         if payload != self.value:
-            LOGGER.info("Set `%s` value to %r", self.slug, payload)
+            LOGGER.info("Set `%s` value to %s", self.slug, payload)
             self.value = payload
         else:
             LOGGER.debug("Value unchanged: %r", payload)
@@ -221,16 +221,17 @@ class Setting(Generic[S]):
                 f"Setting `{self.slug}` already set up for {self.instance}",
             )
 
-        if not (
-            type_ in {dict, list, str, int, float, bool} or issubclass(type_, StrEnum)
-        ):
+        acceptable = {dict, list, str, int, float, bool, tuple}
+
+        if not (type_ in acceptable or issubclass(type_, StrEnum)):
             if hasattr(type_, "__total__"):
                 # TypedDict
                 type_ = dict  # type: ignore[assignment]
+            elif hasattr(type_, "__origin__") and type_.__origin__ in acceptable:
+                # Union, List, Tuple, etc.
+                type_ = type_.__origin__
             else:
-                raise InvalidSettingError(
-                    f"Invalid setting type: {type_}",
-                )
+                raise InvalidSettingError(f"Invalid setting type: {type_}")
 
         self.slug = field_name
         self.instance = instance

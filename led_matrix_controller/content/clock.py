@@ -73,6 +73,8 @@ class Clock(DynamicContent):
             [(0, 0, 0, 0), (255, 255, 255, 255)],
             dtype=np.uint8,
         ),
+        init=False,
+        repr=False,
     )
 
     scale: Annotated[

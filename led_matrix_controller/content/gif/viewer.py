@@ -37,6 +37,8 @@ class GifViewer(PreDefinedContent):
 
         self.canvas_count = self.image.n_frames
 
+        super(GifViewer, self).__post_init__()
+
     def generate_canvases(
         self,
         new_canvas: Callable[[Image.Image | None], mtrx.Canvas],
