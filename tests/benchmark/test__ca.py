@@ -42,7 +42,7 @@ def test_raining_grid_simulation(
         rain_chance=0.025,
         rain_speed=1,
         splash_speed=1,
-        instance_id=test_id,
+        id_override=test_id,
     )
 
     @benchmark  # type: ignore[misc]
@@ -83,7 +83,7 @@ def test_rules(
         rain_chance=0.025,
         rain_speed=1,
         splash_speed=1,
-        instance_id=test_id,
+        id_override=test_id,
     )
 
     # Discard the first `size` frames so all rules are effective (e.g. splashing)
