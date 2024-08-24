@@ -66,6 +66,8 @@ def mqtt_number(setting: Setting[int] | Setting[float]) -> None:
     step: {step}
 
     unit_of_measurement: {unit}
+
+    state_topic: {setting.mqtt_topic}
     """,
         ).strip()
         + "\n"
