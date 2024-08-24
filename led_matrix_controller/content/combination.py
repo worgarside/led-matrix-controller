@@ -30,6 +30,7 @@ class Combination(DynamicContent):
             payload_modifier=DynamicContent.get_many,
             strict=False,
             invoke_settings_callback=True,
+            icon="mdi:vector-combine",
         ),
     ] = ()
 

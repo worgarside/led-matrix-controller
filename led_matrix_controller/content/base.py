@@ -141,12 +141,15 @@ class ContentBase(ABC, Generic[ContentType]):
         TransitionableParameterSetting(
             minimum=0,
             maximum=const.MATRIX_WIDTH - 1,
-            transition_rate=0.01,
+            transition_rate=0.05,
             payload_modifier=partial(
                 _limit_position,
                 limit=const.MATRIX_WIDTH,
                 attr="width",
             ),
+            icon="mdi:arrow-left-right",
+            unit_of_measurement="",
+            display_mode="slider",
         ),
     ] = 0
 
@@ -155,12 +158,15 @@ class ContentBase(ABC, Generic[ContentType]):
         TransitionableParameterSetting(
             minimum=0,
             maximum=const.MATRIX_HEIGHT - 1,
-            transition_rate=0.01,
+            transition_rate=0.05,
             payload_modifier=partial(
                 _limit_position,
                 limit=const.MATRIX_HEIGHT,
                 attr="height",
             ),
+            icon="mdi:arrow-up-down",
+            unit_of_measurement="",
+            display_mode="slider",
         ),
     ] = 0
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
+from json import dumps
 from threading import Thread
 from time import sleep
 from typing import (
@@ -78,6 +79,7 @@ class Setting(Generic[S]):
 
     Allows for scaling, conversion, etc. relative to Home Assistant's inputs.
     """
+
     type_: type[S] = field(init=False, repr=False)
     """The type of the setting's value (e.g. int, float, bool)."""
 
@@ -98,6 +100,10 @@ class Setting(Generic[S]):
 
     fp_precision: int = 6
     """The number of decimal places to round floats to during processing."""
+
+    icon: str
+    unit_of_measurement: str | None = None
+    display_mode: Literal["box", "slider"] = "box"
 
     matrix: Matrix = field(init=False, repr=False)
 
@@ -141,11 +147,8 @@ class Setting(Generic[S]):
 
     def _set_value_from_payload(self, payload: S) -> None:
         """Set the value of the setting from the payload."""
-        if payload != self.value:
-            LOGGER.info("Set `%s` value to %s", self.slug, payload)
-            self.value = payload
-        else:
-            LOGGER.debug("Value unchanged: %r", payload)
+        LOGGER.info("Set `%s` value to %s", self.slug, payload)
+        self.value = payload
 
         self.matrix.publish_attributes()
 
@@ -200,7 +203,18 @@ class Setting(Generic[S]):
                 )
                 return
 
-        self._set_value_from_payload(payload)
+        if payload != self.value:
+            self._set_value_from_payload(payload)
+        elif payload != raw_payload:
+            # e.g. out of bounds value was coerced to min/max
+            self.mqtt_client.publish(
+                self.mqtt_topic,
+                dumps(payload),
+                retain=True,
+            )
+        else:
+            # Exact same message retrieved
+            LOGGER.debug("Value unchanged: %r", payload)
 
     def setup(
         self,
@@ -238,8 +252,14 @@ class Setting(Generic[S]):
         self.type_ = type_
 
         if self.type_ in {int, float}:
+            if self.unit_of_measurement is None:
+                raise InvalidSettingError(
+                    f"Setting {self.slug!r} must have a unit of measurement with type {self.type_!r}",
+                )
+
             if self.maximum:
                 self.maximum = round(self.maximum, self.fp_precision)
+
             if self.minimum:
                 self.minimum = round(self.minimum, self.fp_precision)
 
@@ -415,6 +435,13 @@ class TransitionableSettingMixin(Setting[N]):
         )
 
         self.matrix.publish_attributes()
+
+        if self.value != self.target_value:
+            self.mqtt_client.publish(
+                self.mqtt_topic,
+                self.value,
+                retain=True,
+            )
 
 
 @dataclass(kw_only=True)
