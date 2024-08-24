@@ -45,6 +45,8 @@ class ImageViewer(PreDefinedContent):
 
         self.ticks_to_sleep = int(self.display_seconds / const.TICK_LENGTH)
 
+        super(ImageViewer, self).__post_init__()
+
     def generate_canvases(
         self,
         new_canvas: Callable[[Image.Image | None], mtrx.Canvas],

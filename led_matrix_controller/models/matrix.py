@@ -333,6 +333,8 @@ class Matrix:
     def register_content(self, *content: ContentBase[Any]) -> None:
         """Add content to the matrix."""
         for c in content:
+            c.validate_setup()
+
             self._content[c.id] = c
 
             setting: Setting[Any]

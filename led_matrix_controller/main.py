@@ -15,24 +15,14 @@ def main() -> None:
     """Run the rain simulation."""
     mqtt_client = MqttClient(connect=True)
 
-    matrix = Matrix(mqtt_client=mqtt_client)
-
-    clock = Clock(persistent=True)
-    rain = RainingGrid(persistent=True)
-    sorter = Sorter()
-
-    matrix.register_content(
-        ImageViewer(path=Path("door/closed.bmp"), display_seconds=5),
+    Matrix(mqtt_client=mqtt_client).register_content(
+        Clock(persistent=True),
+        Combination(),
         GifViewer(path=Path("door/animated.gif")),
-        rain,
+        ImageViewer(path=Path("door/closed.bmp"), display_seconds=5),
         NowPlaying(persistent=True),
-        sorter,
-        clock,
-        Combination(content=(rain, clock)),
-        Combination(content=(clock, rain)),
-        Combination(content=(sorter, clock)),
-        Combination(content=(rain, sorter)),
-        Combination(content=(sorter, rain)),
+        RainingGrid(persistent=True),
+        Sorter(),
     )
 
     mqtt_client.loop_forever()

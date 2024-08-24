@@ -36,6 +36,8 @@ from wg_utilities.loggers import get_streaming_logger
 from .setting import TransitionableParameterSetting  # noqa: TCH001
 
 if TYPE_CHECKING:
+    from collections.abc import Collection
+
     from PIL import Image
 
 _BY_VALUE: dict[int, StateBase] = {}
@@ -106,8 +108,8 @@ ContentType = TypeVar("ContentType", GridView, mtrx.Canvas)
 
 def _limit_position(
     payload: int,
-    content: ContentBase[ContentType],
     *,
+    instance: ContentBase[ContentType],
     limit: int,
     attr: Literal["height", "width"],
 ) -> int:
@@ -118,8 +120,11 @@ def _limit_position(
     """
     return min(
         payload,
-        limit - int(getattr(content, attr)),
+        limit - int(getattr(instance, attr)),
     )
+
+
+_CONTENT_STORE: dict[str, ContentBase[Any]] = {}
 
 
 @dataclass(kw_only=True, slots=True)
@@ -170,6 +175,26 @@ class ContentBase(ABC, Generic[ContentType]):
 
     stop_reason: StopType | None = field(default=None, init=False, repr=False)
 
+    def __post_init__(self) -> None:
+        """Add the content to the registry."""
+        if self.id in _CONTENT_STORE:
+            raise ValueError(f"Content with ID `{self.id}` already exists")
+
+        _CONTENT_STORE[self.id] = self
+
+    @staticmethod
+    def get(content_id: str) -> ContentBase[ContentType]:
+        """Get a content model by its ID."""
+        return _CONTENT_STORE[content_id]
+
+    @staticmethod
+    def get_many(
+        ids: Collection[str],
+        instance: ContentBase[Any],
+    ) -> tuple[ContentBase[Any], ...]:
+        """Return multiple content models."""
+        return tuple(instance.get(id_) for id_ in ids)
+
     @abstractmethod
     def get_content(self) -> ContentType:
         """Convert the array to an image."""
@@ -189,6 +214,11 @@ class ContentBase(ABC, Generic[ContentType]):
 
         return itertools.chain(*chain)
 
+    def setting_update_callback(self, update_setting: str | None = None) -> None:
+        """Callback for when a setting is updated."""
+        _ = self, update_setting
+        raise NotImplementedError
+
     def setup(self) -> Generator[None, None, None] | None:  # noqa: PLR6301
         """Perform any necessary setup."""
         return None
@@ -204,6 +234,12 @@ class ContentBase(ABC, Generic[ContentType]):
         self.stop_reason = stop_type
 
         LOGGER.info("Stopped content with ID `%s`: %r", self.id, stop_type)
+
+    @final
+    def validate_setup(self) -> None:
+        """Validate that the content has been set up correctly."""
+        if self.id not in _CONTENT_STORE:
+            raise ValueError(f"Content with ID `{self.id}` not found")
 
     @property
     def id(self) -> str:
@@ -255,7 +291,7 @@ class ContentBase(ABC, Generic[ContentType]):
             return {
                 key: getattr(obj, key)
                 for key, dc_field in obj.__dataclass_fields__.items()
-                if hasattr(obj, key) and dc_field.repr
+                if hasattr(obj, key) and dc_field.repr and not key.startswith("_")
             }
 
         if isinstance(obj, slice):
