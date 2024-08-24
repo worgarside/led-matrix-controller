@@ -205,7 +205,10 @@ class Setting(Generic[S]):
                 )
                 return
 
-        self._set_value_from_payload(payload)
+        if payload != self.value:
+            self._set_value_from_payload(payload)
+        else:
+            LOGGER.debug("Value unchanged: %r", payload)
 
     def setup(
         self,
