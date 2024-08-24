@@ -35,8 +35,6 @@ class Combination(DynamicContent):
 
     def __post_init__(self) -> None:
         """Derive the instance id."""
-        self.instance_id = "combo-" + "-".join(content.id for content in self.content)
-
         DynamicContent.__post_init__(self)
 
         opaque = [c for c in self.content if c.IS_OPAQUE]
@@ -66,7 +64,10 @@ class Combination(DynamicContent):
                     next(content_chains[content.id])
                 except StopIteration:
                     if content.active:
-                        LOGGER.error("Content %s stopped unexpectedly", content.id)  # noqa: TRY400
+                        LOGGER.error(  # noqa: TRY400
+                            "Content %s stopped unexpectedly",
+                            content.id,
+                        )
                         raise
 
                 new_pixels = content.get_content()
@@ -92,6 +93,6 @@ class Combination(DynamicContent):
         return np.zeros((self.height, self.width, 4), dtype=dtype)
 
     @property
-    def content_id(self) -> str:
+    def id(self) -> str:
         """Return the ID of the content."""
-        return "combo-" + "-".join(content.content_id for content in self.content)
+        return "combo-" + "-".join(content.id for content in self.content)

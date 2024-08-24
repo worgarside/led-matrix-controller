@@ -190,7 +190,10 @@ class Matrix:
 
             if (setup_gen := self.current_content.setup()) is not None:
                 # Only run setup if it returns a generator
-                LOGGER.info("Running setup sequence for %s", self.current_content.id)
+                LOGGER.info(
+                    "Running setup sequence for %s",
+                    self.current_content.id,
+                )
 
                 for _ in setup_gen:
                     set_content()
@@ -203,7 +206,10 @@ class Matrix:
                 teardown_gen := self.current_content.teardown()
             ):
                 # Only run teardown if the stop isn't due to higher priority content
-                LOGGER.info("Running teardown sequence for %s", self.current_content.id)
+                LOGGER.info(
+                    "Running teardown sequence for %s",
+                    self.current_content.id,
+                )
 
                 for _ in teardown_gen:
                     set_content()
@@ -266,7 +272,7 @@ class Matrix:
         if self.current_content is target_content:
             LOGGER.debug(
                 "Updating %s priority to %s",
-                target_content.content_id,
+                target_content.id,
                 priority,
             )
             self.current_priority = priority
@@ -327,13 +333,13 @@ class Matrix:
     def register_content(self, *content: ContentBase[Any]) -> None:
         """Add content to the matrix."""
         for c in content:
-            self._content[c.content_id] = c
+            self._content[c.id] = c
 
             setting: Setting[Any]
             for setting in getattr(c, "settings", {}).values():
                 setting.matrix = self
 
-            LOGGER.info("Added content with ID `%s`", c.content_id)
+            LOGGER.info("Added content with ID `%s`", c.id)
 
             if isinstance(c, PreDefinedContent):
                 c.generate_canvases(self.new_canvas)
@@ -401,10 +407,13 @@ class Matrix:
 
         self.mqtt_client.publish(
             topic=self.current_content_topic,
-            payload=value.content_id if value is not None else None,
+            payload=value.id if value is not None else None,
             retain=True,
         )
-        LOGGER.info("Current Content: %s", value.id if value is not None else None)
+        LOGGER.info(
+            "Current Content: %s",
+            value.id if value is not None else None,
+        )
 
         self.publish_attributes()
 
