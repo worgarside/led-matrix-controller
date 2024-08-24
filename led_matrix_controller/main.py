@@ -17,22 +17,22 @@ def main() -> None:
 
     matrix = Matrix(mqtt_client=mqtt_client)
 
-    clock = Clock(**matrix.dimensions, persistent=True)
-    rain = RainingGrid(**matrix.dimensions, persistent=True)
-    sorter = Sorter(**matrix.dimensions)
+    clock = Clock(persistent=True)
+    rain = RainingGrid(persistent=True)
+    sorter = Sorter()
 
     matrix.register_content(
-        ImageViewer(path=Path("door/closed.bmp"), **matrix.dimensions, display_seconds=5),
-        GifViewer(path=Path("door/animated.gif"), **matrix.dimensions),
+        ImageViewer(path=Path("door/closed.bmp"), display_seconds=5),
+        GifViewer(path=Path("door/animated.gif")),
         rain,
-        NowPlaying(**matrix.dimensions, persistent=True),
+        NowPlaying(persistent=True),
         sorter,
         clock,
-        Combination(content=(rain, clock), **matrix.dimensions),
-        Combination(content=(clock, rain), **matrix.dimensions),
-        Combination(content=(sorter, clock), **matrix.dimensions),
-        Combination(content=(rain, sorter), **matrix.dimensions),
-        Combination(content=(sorter, rain), **matrix.dimensions),
+        Combination(content=(rain, clock)),
+        Combination(content=(clock, rain)),
+        Combination(content=(sorter, clock)),
+        Combination(content=(rain, sorter)),
+        Combination(content=(sorter, rain)),
     )
 
     mqtt_client.loop_forever()
