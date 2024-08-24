@@ -65,13 +65,24 @@ class DynamicContent(ContentBase[GridView], ABC):
     def refresh_content(self) -> Generator[None, None, None]:
         """Refresh the content."""
 
-    def update_setting(self, slug: str, value: Any) -> None:
+    def update_setting(
+        self,
+        slug: str,
+        value: Any,
+        *,
+        invoke_callback: bool = False,
+    ) -> None:
         """Update a setting."""
         setting = self.settings[slug]
 
         setting.value = value
 
-        payload = dumps(setting.value)
+        payload = dumps(
+            setting.value,
+            default=lambda x: x.id
+            if isinstance(x, ContentBase)
+            else self._json_encode(x),
+        )
 
         LOGGER.debug("Sending payload %r to topic %r", payload, setting.mqtt_topic)
 
@@ -80,6 +91,9 @@ class DynamicContent(ContentBase[GridView], ABC):
             payload,
             retain=True,
         )
+
+        if invoke_callback:
+            self.setting_update_callback(update_setting=slug)
 
     @final
     def __iter__(self) -> Generator[None, None, None]:

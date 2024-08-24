@@ -36,6 +36,8 @@ from wg_utilities.loggers import get_streaming_logger
 from .setting import TransitionableParameterSetting  # noqa: TCH001
 
 if TYPE_CHECKING:
+    from collections.abc import Collection
+
     from PIL import Image
 
 _BY_VALUE: dict[int, StateBase] = {}
@@ -106,8 +108,8 @@ ContentType = TypeVar("ContentType", GridView, mtrx.Canvas)
 
 def _limit_position(
     payload: int,
-    content: ContentBase[ContentType],
     *,
+    instance: ContentBase[ContentType],
     limit: int,
     attr: Literal["height", "width"],
 ) -> int:
@@ -118,7 +120,7 @@ def _limit_position(
     """
     return min(
         payload,
-        limit - int(getattr(content, attr)),
+        limit - int(getattr(instance, attr)),
     )
 
 
@@ -180,10 +182,18 @@ class ContentBase(ABC, Generic[ContentType]):
 
         _CONTENT_STORE[self.id] = self
 
-    @classmethod
-    def get(cls, content_id: str) -> ContentBase[ContentType]:
+    @staticmethod
+    def get(content_id: str) -> ContentBase[ContentType]:
         """Get a content model by its ID."""
         return _CONTENT_STORE[content_id]
+
+    @staticmethod
+    def get_many(
+        ids: Collection[str],
+        instance: ContentBase[Any],
+    ) -> tuple[ContentBase[Any], ...]:
+        """Return multiple content models."""
+        return tuple(instance.get(id_) for id_ in ids)
 
     @abstractmethod
     def get_content(self) -> ContentType:
@@ -203,6 +213,11 @@ class ContentBase(ABC, Generic[ContentType]):
             chain.append(teardown)
 
         return itertools.chain(*chain)
+
+    def setting_update_callback(self, update_setting: str | None = None) -> None:
+        """Callback for when a setting is updated."""
+        _ = self, update_setting
+        raise NotImplementedError
 
     def setup(self) -> Generator[None, None, None] | None:  # noqa: PLR6301
         """Perform any necessary setup."""
@@ -276,7 +291,7 @@ class ContentBase(ABC, Generic[ContentType]):
             return {
                 key: getattr(obj, key)
                 for key, dc_field in obj.__dataclass_fields__.items()
-                if hasattr(obj, key) and dc_field.repr
+                if hasattr(obj, key) and dc_field.repr and not key.startswith("_")
             }
 
         if isinstance(obj, slice):
