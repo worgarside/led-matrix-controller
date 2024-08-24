@@ -122,6 +122,9 @@ def _limit_position(
     )
 
 
+_CONTENT_STORE: dict[str, ContentBase[Any]] = {}
+
+
 @dataclass(kw_only=True, slots=True)
 class ContentBase(ABC, Generic[ContentType]):
     """Base class for content models."""
@@ -170,6 +173,18 @@ class ContentBase(ABC, Generic[ContentType]):
 
     stop_reason: StopType | None = field(default=None, init=False, repr=False)
 
+    def __post_init__(self) -> None:
+        """Add the content to the registry."""
+        if self.id in _CONTENT_STORE:
+            raise ValueError(f"Content with ID `{self.id}` already exists")
+
+        _CONTENT_STORE[self.id] = self
+
+    @classmethod
+    def get(cls, content_id: str) -> ContentBase[ContentType]:
+        """Get a content model by its ID."""
+        return _CONTENT_STORE[content_id]
+
     @abstractmethod
     def get_content(self) -> ContentType:
         """Convert the array to an image."""
@@ -204,6 +219,12 @@ class ContentBase(ABC, Generic[ContentType]):
         self.stop_reason = stop_type
 
         LOGGER.info("Stopped content with ID `%s`: %r", self.id, stop_type)
+
+    @final
+    def validate_setup(self) -> None:
+        """Validate that the content has been set up correctly."""
+        if self.id not in _CONTENT_STORE:
+            raise ValueError(f"Content with ID `{self.id}` not found")
 
     @property
     def id(self) -> str:

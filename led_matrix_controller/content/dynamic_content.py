@@ -30,6 +30,7 @@ class DynamicContent(ContentBase[GridView], ABC):
 
     def __post_init__(self) -> None:
         """Compile settings from type hints."""
+        super(DynamicContent, self).__post_init__()
         self.pixels = self.zeros()
 
         try:
