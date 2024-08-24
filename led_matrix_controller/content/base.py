@@ -141,7 +141,7 @@ class ContentBase(ABC, Generic[ContentType]):
         TransitionableParameterSetting(
             minimum=0,
             maximum=const.MATRIX_WIDTH - 1,
-            transition_rate=0.01,
+            transition_rate=0.05,
             payload_modifier=partial(
                 _limit_position,
                 limit=const.MATRIX_WIDTH,
@@ -158,7 +158,7 @@ class ContentBase(ABC, Generic[ContentType]):
         TransitionableParameterSetting(
             minimum=0,
             maximum=const.MATRIX_HEIGHT - 1,
-            transition_rate=0.01,
+            transition_rate=0.05,
             payload_modifier=partial(
                 _limit_position,
                 limit=const.MATRIX_HEIGHT,
