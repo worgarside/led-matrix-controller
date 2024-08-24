@@ -426,6 +426,11 @@ class TransitionableSettingMixin(Setting[N]):
         )
 
         self.matrix.publish_attributes()
+        self.mqtt_client.publish(
+            self.mqtt_topic,
+            self.value,
+            retain=True,
+        )
 
 
 @dataclass(kw_only=True)
