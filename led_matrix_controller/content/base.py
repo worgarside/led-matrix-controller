@@ -108,8 +108,8 @@ ContentType = TypeVar("ContentType", GridView, mtrx.Canvas)
 
 def _limit_position(
     payload: int,
-    *,
     instance: ContentBase[ContentType],
+    *,
     limit: int,
     attr: Literal["height", "width"],
 ) -> int:
