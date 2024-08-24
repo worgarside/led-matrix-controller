@@ -98,9 +98,9 @@ class MqttClient(metaclass=Singleton):
         self._connection_failures += 1
 
         if self._connection_failures >= self.CONNECTION_RETRY_LIMIT:
-            sys.exit(
-                f"Failed to connect to MQTT broker after {self.CONNECTION_RETRY_LIMIT} attempts. Exiting.",
-            )
+            msg = f"Failed to connect to MQTT broker after {self.CONNECTION_RETRY_LIMIT} attempts. Exiting."
+            LOGGER.error(msg)
+            sys.exit(msg)
 
     def _on_disconnect(  # noqa: PLR6301
         self,
@@ -167,7 +167,16 @@ class MqttClient(metaclass=Singleton):
     def loop_forever(self) -> None:
         """Start the MQTT loop."""
         LOGGER.info("Starting MQTT loop")
-        self._client.loop_forever()
+
+        try:
+            self._client.loop_forever()
+        except ValueError as err:
+            if "Invalid host" in str(err):
+                self._client.disconnect()
+                self._client.host = const.MQTT_HOST
+                self._client.loop_forever()
+            else:
+                raise
 
     def publish(
         self,

@@ -62,15 +62,31 @@ class RainingGrid(Automaton):
             fp_precision=4,
             # Anything above 0.1 is too much rain!
             payload_modifier=lambda x, _: x / 1000,
+            icon="mdi:cloud-percent-outline",
+            unit_of_measurement="%",
         ),
     ] = 0.025
+
     rain_speed: Annotated[
         int,
-        FrequencySetting(invoke_settings_callback=True),
+        FrequencySetting(
+            minimum=1,
+            maximum=1000,
+            invoke_settings_callback=True,
+            icon="mdi:speedometer",
+            unit_of_measurement="ticks",
+        ),
     ] = 1
+
     splash_speed: Annotated[
         int,
-        FrequencySetting(invoke_settings_callback=True),
+        FrequencySetting(
+            minimum=1,
+            maximum=1000,
+            invoke_settings_callback=True,
+            icon="mdi:speedometer",
+            unit_of_measurement="ticks",
+        ),
     ] = 8
 
     def teardown(self) -> Generator[None, None, None]:

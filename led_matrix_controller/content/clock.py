@@ -79,7 +79,13 @@ class Clock(DynamicContent):
 
     scale: Annotated[
         int,
-        ParameterSetting(minimum=1, maximum=2, invoke_settings_callback=True),
+        ParameterSetting(
+            minimum=1,
+            maximum=2,
+            invoke_settings_callback=True,
+            icon="mdi:relative-scale",
+            unit_of_measurement="",
+        ),
     ] = 2
 
     def __post_init__(self) -> None:
