@@ -128,8 +128,8 @@ class ContentBase(ABC, Generic[ContentType]):
 
     IS_OPAQUE: ClassVar[bool] = False
 
-    height: int
-    width: int
+    height: int = const.MATRIX_HEIGHT
+    width: int = const.MATRIX_WIDTH
 
     x_pos: Annotated[
         int,
