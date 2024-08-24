@@ -159,7 +159,7 @@ class ContentBase(ABC, Generic[ContentType]):
         ),
     ] = 0
 
-    instance_id: str | None = None
+    id_override: str | None = None
     persistent: bool = field(default=False)
     is_sleeping: bool = field(default=False, init=False, repr=False)
     canvas_count: int | None = field(init=False)
@@ -203,12 +203,12 @@ class ContentBase(ABC, Generic[ContentType]):
         self.active = False
         self.stop_reason = stop_type
 
-        LOGGER.info("Stopped content with ID `%s`: %r", self.content_id, stop_type)
+        LOGGER.info("Stopped content with ID `%s`: %r", self.id, stop_type)
 
     @property
-    def content_id(self) -> str:
+    def id(self) -> str:
         """Return the ID of the content."""
-        return camel_to_kebab_case(self.__class__.__name__)
+        return self.id_override or camel_to_kebab_case(self.__class__.__name__)
 
     @cached_property
     def is_small(self) -> bool:
@@ -272,12 +272,6 @@ class ContentBase(ABC, Generic[ContentType]):
                 if not const.IS_PI:
                     raise
             return None
-
-    @final
-    @property
-    def id(self) -> str:
-        """Return the ID of the content."""
-        return self.instance_id or self.content_id
 
     def __gt__(self, other: ContentBase[Any]) -> bool:
         """Return whether this content should be de-prioritized over another."""
