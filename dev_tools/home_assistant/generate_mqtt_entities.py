@@ -5,10 +5,8 @@ from pathlib import Path
 from textwrap import dedent
 from typing import TYPE_CHECKING, Any, Generator
 
-from content import (
-    LIBRARY,
-)
 from content.dynamic_content import DynamicContent
+from main import LIBRARY
 
 if TYPE_CHECKING:
     from content.setting import Setting
