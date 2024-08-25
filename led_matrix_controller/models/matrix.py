@@ -109,15 +109,16 @@ class ContentQueue(
 
     def send_mqtt_messages(self) -> None:
         """Send MQTT messages."""
-        self.mqtt_client.publish(
-            topic=self.state_topic,
-            payload=len(self.queue),
-            retain=True,
-        )
+        attrs = self.mqtt_attributes
 
         self.mqtt_client.publish(
             topic=self.attrs_topic,
-            payload=dumps(self.mqtt_attributes),
+            payload=dumps(attrs),
+            retain=True,
+        )
+        self.mqtt_client.publish(
+            topic=self.state_topic,
+            payload=len(attrs),
             retain=True,
         )
 
