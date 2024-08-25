@@ -56,6 +56,12 @@ class ContentQueue(
 ):
     """Priority queue for content to be displayed on the matrix."""
 
+    class MqttMeta(TypedDict):
+        """Metadata for MQTT messages."""
+
+        id: str
+        parameters: dict[str, Any]
+
     def __init__(self, mqtt_client: MqttClient, topic_root: str, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
@@ -63,6 +69,11 @@ class ContentQueue(
 
         self.state_topic = f"/{topic_root.strip('/')}/state"
         self.attrs_topic = f"/{topic_root.strip('/')}/attributes"
+
+        self.mqtt_client.add_topic_callback(
+            self.attrs_topic,
+            self.validate_queue_content,
+        )
 
     def get(
         self,
@@ -106,19 +117,29 @@ class ContentQueue(
 
         self.mqtt_client.publish(
             topic=self.attrs_topic,
-            payload=dumps({
-                item[0]: {
-                    "id": item[1].id,
-                    "parameters": item[2],
-                }
-                for item in self.queue
-            }),
+            payload=dumps(self.mqtt_attributes),
             retain=True,
         )
+
+    def validate_queue_content(self, payload: dict[float, MqttMeta]) -> None:
+        """Ensure the (usually retained) MQTT messages match the queue."""
+        if payload != self.mqtt_attributes:
+            self.send_mqtt_messages()
 
     def __iter__(self) -> Iterator[tuple[float, ContentBase[Any], dict[str, Any]]]:
         """Iterate over the queue."""
         return iter(self.queue)
+
+    @property
+    def mqtt_attributes(self) -> dict[float, MqttMeta]:
+        """Return the MQTT attributes of the queue."""
+        return {
+            round(item[0], 3): {
+                "id": item[1].id,
+                "parameters": item[2],
+            }
+            for item in self.queue
+        }
 
 
 class Matrix:
