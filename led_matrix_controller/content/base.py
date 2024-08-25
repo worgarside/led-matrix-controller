@@ -183,7 +183,7 @@ class ContentBase(ABC, Generic[ContentType]):
 
     def __post_init__(self) -> None:
         """Add the content to the registry."""
-        if self.id in _CONTENT_STORE:
+        if self.id in _CONTENT_STORE and _CONTENT_STORE[self.id] is not self:
             raise ValueError(f"Content with ID `{self.id}` already exists")
 
         _CONTENT_STORE[self.id] = self
