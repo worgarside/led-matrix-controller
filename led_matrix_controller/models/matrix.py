@@ -107,7 +107,7 @@ class ContentQueue(
         self.mqtt_client.publish(
             topic=self.attrs_topic,
             payload=dumps({
-               item[0]: {
+                item[0]: {
                     "id": item[1].id,
                     "parameters": item[2],
                 }
