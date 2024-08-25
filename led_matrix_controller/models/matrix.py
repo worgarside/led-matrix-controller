@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from json import dumps
 from queue import PriorityQueue
 from threading import Condition, Thread
-from typing import TYPE_CHECKING, Any, ClassVar, Final, TypedDict, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Final, Iterator, TypedDict, cast
 
 import numpy as np
 from content.base import (
@@ -42,6 +43,82 @@ class Dimensions(TypedDict):
 
     height: int
     width: int
+
+
+class ContentQueue(
+    PriorityQueue[
+        tuple[
+            float,
+            ContentBase[Any],
+            dict[str, Any],
+        ]
+    ],
+):
+    """Priority queue for content to be displayed on the matrix."""
+
+    def __init__(self, mqtt_client: MqttClient, topic_root: str, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+        self.mqtt_client = mqtt_client
+
+        self.state_topic = f"/{topic_root.strip('/')}/state"
+        self.attrs_topic = f"/{topic_root.strip('/')}/attributes"
+
+    def get(
+        self,
+        block: bool = True,  # noqa: FBT001,FBT002
+        timeout: float | None = None,
+    ) -> tuple[float, ContentBase[Any], dict[str, Any]]:
+        """Get the next item from the queue and send MQTT messages."""
+        next_content = super().get(block, timeout)
+
+        self.send_mqtt_messages()
+
+        return next_content
+
+    def add(
+        self,
+        priority: float,
+        content: ContentBase[Any],
+        parameters: dict[str, Any],
+    ) -> None:
+        """Put an item into the queue and send MQTT messages."""
+        super().put((priority, content, parameters))
+        self.send_mqtt_messages()
+
+    def remove(
+        self,
+        priority: float,
+        content: ContentBase[Any],
+        parameters: dict[str, Any],
+    ) -> None:
+        """Remove an item from the queue and send MQTT messages."""
+        self.queue.remove((priority, content, parameters))
+        self.send_mqtt_messages()
+
+    def send_mqtt_messages(self) -> None:
+        """Send MQTT messages."""
+        self.mqtt_client.publish(
+            topic=self.state_topic,
+            payload=len(self.queue),
+            retain=True,
+        )
+
+        self.mqtt_client.publish(
+            topic=self.attrs_topic,
+            payload=dumps({
+                item[0]: {
+                    "id": item[1].id,
+                    "parameters": item[2],
+                }
+                for item in self.queue
+            }),
+            retain=True,
+        )
+
+    def __iter__(self) -> Iterator[tuple[float, ContentBase[Any], dict[str, Any]]]:
+        """Iterate over the queue."""
+        return iter(self.queue)
 
 
 class Matrix:
@@ -111,13 +188,10 @@ class Matrix:
 
         self.current_content_topic = self._mqtt_topic("current-content")
 
-        self._content_queue: PriorityQueue[
-            tuple[
-                float,
-                ContentBase[Any],
-                dict[str, Any],
-            ]
-        ] = PriorityQueue()
+        self._content_queue = ContentQueue(
+            mqtt_client=self.mqtt_client,
+            topic_root=self._mqtt_topic("content-queue"),
+        )
 
         self._content_thread = Thread(target=self._content_loop)
 
@@ -225,8 +299,10 @@ class Matrix:
                 and self.current_content.stop_reason
                 not in {StopType.CANCEL, StopType.EXPIRED}
             ):
-                self._content_queue.put(
-                    (self.current_priority, self.current_content, parameters),
+                self._content_queue.add(
+                    self.current_priority,
+                    self.current_content,
+                    parameters,
                 )
                 LOGGER.debug(
                     "Content `%s` is persistent with priority %s",
@@ -252,9 +328,9 @@ class Matrix:
         parameters = payload.get("parameters", {})
 
         if (priority := payload["priority"]) is None:
-            for prio, ctnt, prms in self._content_queue.queue:
+            for prio, ctnt, prms in self._content_queue:
                 if ctnt is target_content:
-                    self._content_queue.queue.remove((prio, ctnt, prms))
+                    self._content_queue.remove(prio, ctnt, prms)
                     LOGGER.info(
                         "Removed content with ID `%s` from queue",
                         target_content.id,
@@ -280,7 +356,7 @@ class Matrix:
             self.current_priority = priority
             return
 
-        self._content_queue.put((priority, target_content, parameters))
+        self._content_queue.add(priority, target_content, parameters)
 
         LOGGER.info(
             "Added content with ID `%s` to queue with priority %s",
