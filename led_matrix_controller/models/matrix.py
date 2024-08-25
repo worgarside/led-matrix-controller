@@ -94,7 +94,7 @@ class ContentQueue(
         parameters: dict[str, Any],
     ) -> None:
         """Put an item into the queue and send MQTT messages."""
-        super().put((priority, content, parameters))
+        super().put((round(priority, 3), content, parameters))
         self.send_mqtt_messages()
 
     def remove(
@@ -121,7 +121,7 @@ class ContentQueue(
             retain=True,
         )
 
-    def validate_queue_content(self, payload: dict[float, MqttMeta]) -> None:
+    def validate_queue_content(self, payload: dict[str, MqttMeta]) -> None:
         """Ensure the (usually retained) MQTT messages match the queue."""
         if payload != self.mqtt_attributes:
             self.send_mqtt_messages()
@@ -131,10 +131,10 @@ class ContentQueue(
         return iter(self.queue)
 
     @property
-    def mqtt_attributes(self) -> dict[float, MqttMeta]:
+    def mqtt_attributes(self) -> dict[str, MqttMeta]:
         """Return the MQTT attributes of the queue."""
         return {
-            round(item[0], 3): {
+            f"{item[0]:.3f}": {
                 "id": item[1].id,
                 "parameters": item[2],
             }
@@ -363,9 +363,12 @@ class Matrix:
 
             return
 
-        priority = max(
-            min(float(priority), self.MAX_PRIORITY),
-            -self.MAX_PRIORITY,
+        priority = round(
+            max(
+                min(float(priority), self.MAX_PRIORITY),
+                -self.MAX_PRIORITY,
+            ),
+            3,
         )
 
         if self.current_content is target_content:
