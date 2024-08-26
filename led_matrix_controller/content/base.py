@@ -172,13 +172,15 @@ class ContentBase(ABC, Generic[ContentType]):
 
     id_override: str | None = None
     persistent: bool = field(default=False)
-    is_sleeping: bool = field(default=False, init=False, repr=False)
-    canvas_count: int | None = field(init=False)
+    priority: float = const.MAX_PRIORITY
+
+    # init=False below
 
     active: bool = field(init=False, default=False)
+    is_sleeping: bool = field(default=False, init=False, repr=False)
+    canvas_count: int | None = field(init=False)
     colormap: GridView = field(init=False, repr=False)
     pixels: GridView = field(init=False, repr=False)
-
     stop_reason: StopType | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -196,10 +198,11 @@ class ContentBase(ABC, Generic[ContentType]):
     @staticmethod
     def get_many(
         ids: Collection[str],
-        instance: ContentBase[Any],
+        instance: ContentBase[Any] | None = None,
     ) -> tuple[ContentBase[Any], ...]:
         """Return multiple content models."""
-        return tuple(instance.get(id_) for id_ in ids)
+        _ = instance
+        return tuple(ContentBase.get(id_) for id_ in ids)
 
     @abstractmethod
     def get_content(self) -> ContentType:
@@ -238,6 +241,7 @@ class ContentBase(ABC, Generic[ContentType]):
         """Stop the content immediately."""
         self.active = False
         self.stop_reason = stop_type
+        self.priority = const.MAX_PRIORITY
 
         LOGGER.info("Stopped content with ID `%s`: %r", self.id, stop_type)
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import suppress
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from content import (
     Clock,
@@ -16,6 +17,9 @@ from content import (
 )
 from models import Matrix
 from utils import MqttClient
+
+if TYPE_CHECKING:
+    from content.base import ContentBase
 
 # Needs to be before the content library, idk why :(
 MQTT_CLIENT = MqttClient(connect=True)
@@ -30,10 +34,21 @@ LIBRARY = (
     Sorter(),
 )
 
+WORKS_WITH: dict[type[ContentBase[Any]], set[type[ContentBase[Any]]]] = {
+    Clock: {RainingGrid, Sorter},
+    GifViewer: set(),
+    ImageViewer: set(),
+    NowPlaying: set(),
+    RainingGrid: {Clock},
+    Sorter: {Clock},
+}
+
 
 def main() -> None:
     """Run the rain simulation."""
-    Matrix(mqtt_client=MQTT_CLIENT).register_content(*LIBRARY)
+    Matrix(mqtt_client=MQTT_CLIENT, content_works_with=WORKS_WITH).register_content(
+        *LIBRARY,
+    )
 
     MQTT_CLIENT.loop_forever()
 
@@ -43,5 +58,8 @@ if __name__ == "__main__":
         main()
     except Exception:
         with suppress(Exception):
-            Matrix(mqtt_client=MqttClient(connect=False)).clear_matrix()
+            Matrix(
+                mqtt_client=MqttClient(connect=False),
+                content_works_with={},
+            ).clear_matrix()
         raise

@@ -50,6 +50,7 @@ class RainingGrid(Automaton):
     """Basic rain simulation."""
 
     IS_OPAQUE: ClassVar[bool] = True
+    # i.e. has a full background to overwrite previous content
 
     STATE = State
 

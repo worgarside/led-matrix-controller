@@ -51,3 +51,5 @@ MATRIX_WIDTH: Final[int] = 64
 MATRIX_SHAPE: Final[tuple[int, int]] = (MATRIX_HEIGHT, MATRIX_WIDTH)
 
 EMPTY_IMAGE: Final[Image.Image] = Image.new("RGB", MATRIX_SHAPE, (0, 0, 0))
+
+MAX_PRIORITY: Final[float] = 1e10

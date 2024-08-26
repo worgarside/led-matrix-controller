@@ -5,15 +5,27 @@ from __future__ import annotations
 from json import dumps
 from queue import PriorityQueue
 from threading import Condition, Thread
-from typing import TYPE_CHECKING, Any, ClassVar, Final, Iterator, TypedDict, cast
+from types import MappingProxyType
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Final,
+    Iterator,
+    Sequence,
+    TypedDict,
+    cast,
+)
 
 import numpy as np
+from content import Combination
 from content.base import (
     ContentBase,
     GridView,
     PreDefinedContent,
     StopType,
 )
+from content.dynamic_content import DynamicContent
 from content.setting import Setting, TransitionableParameterSetting
 from PIL import Image
 from utils import const, mtrx
@@ -30,12 +42,15 @@ if TYPE_CHECKING:
 LOGGER = get_streaming_logger(__name__)
 
 
+ContentParameters = MappingProxyType[str, str]
+
+
 class ContentPayload(TypedDict):
     """Object sent via MQTT to display content on the matrix."""
 
     id: str
     priority: float | None
-    parameters: dict[str, Any]
+    parameters: ContentParameters
 
 
 class Dimensions(TypedDict):
@@ -50,17 +65,22 @@ class ContentQueue(
         tuple[
             float,
             ContentBase[Any],
-            dict[str, Any],
+            ContentParameters,
         ]
     ],
 ):
-    """Priority queue for content to be displayed on the matrix."""
+    """Priority queue for content to be displayed on the matrix.
+
+    Each item is a tuple of the content's priority, the content itself, and any parameters.
+    The tuple contains the priority as well as the content to enable simple priority-based
+    sorting.
+    """
 
     class MqttMeta(TypedDict):
         """Metadata for MQTT messages."""
 
         id: str
-        parameters: dict[str, Any]
+        parameters: ContentParameters
 
     def __init__(self, mqtt_client: MqttClient, topic_root: str, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -79,7 +99,7 @@ class ContentQueue(
         self,
         block: bool = True,  # noqa: FBT001,FBT002
         timeout: float | None = None,
-    ) -> tuple[float, ContentBase[Any], dict[str, Any]]:
+    ) -> tuple[float, ContentBase[Any], ContentParameters]:
         """Get the next item from the queue and send MQTT messages."""
         next_content = super().get(block, timeout)
 
@@ -89,22 +109,37 @@ class ContentQueue(
 
     def add(
         self,
-        priority: float,
         content: ContentBase[Any],
-        parameters: dict[str, Any],
+        parameters: ContentParameters,
     ) -> None:
         """Put an item into the queue and send MQTT messages."""
-        super().put((round(priority, 3), content, parameters))
+        super().put((round(content.priority, 3), content, parameters))
+
         self.send_mqtt_messages()
 
     def remove(
         self,
-        priority: float,
         content: ContentBase[Any],
-        parameters: dict[str, Any],
+        parameters: ContentParameters,
     ) -> None:
         """Remove an item from the queue and send MQTT messages."""
-        self.queue.remove((priority, content, parameters))
+        for prio, ctnt, prms in self.queue:
+            if ctnt is content and prms == parameters:
+                queued_priority = prio
+                break
+        else:
+            LOGGER.warning(
+                "Content with ID `%s` not found in queue",
+                content.id,
+            )
+            return
+
+        try:
+            self.queue.remove((queued_priority, content, parameters))
+        except ValueError as err:
+            if str(err) != "list.remove(x): x not in list":
+                raise
+
         self.send_mqtt_messages()
 
     def send_mqtt_messages(self) -> None:
@@ -127,7 +162,14 @@ class ContentQueue(
         if payload != self.mqtt_attributes:
             self.send_mqtt_messages()
 
-    def __iter__(self) -> Iterator[tuple[float, ContentBase[Any], dict[str, Any]]]:
+    def __contains__(
+        self,
+        content_tuple: tuple[ContentBase[Any], ContentParameters],
+    ) -> bool:
+        """Check if the queue contains the content."""
+        return any((c, p) == content_tuple for _, c, p in self)
+
+    def __iter__(self) -> Iterator[tuple[float, ContentBase[Any], ContentParameters]]:
         """Iterate over the queue."""
         return iter(self.queue)
 
@@ -135,7 +177,7 @@ class ContentQueue(
     def mqtt_attributes(self) -> dict[str, MqttMeta]:
         """Return the MQTT attributes of the queue."""
         return {
-            f"{item[0]:.3f}": {
+            f"{item[1].priority:.3f}": {
                 "id": item[1].id,
                 "parameters": item[2],
             }
@@ -145,6 +187,13 @@ class ContentQueue(
 
 class Matrix:
     """Class for displaying track information on an RGB LED Matrix."""
+
+    COMBINATION_OVERRIDES: ClassVar[dict[tuple[str, ...], tuple[str, ...]]] = {
+        ("clock", "raining-grid"): (
+            "clock",
+            "raining-grid",
+        ),  # Rainfall in front of clock
+    }
 
     OPTIONS: ClassVar[LedMatrixOptions] = {
         "cols": const.MATRIX_HEIGHT,
@@ -158,8 +207,6 @@ class Matrix:
         # "pwm_dither_bits": 1,  # noqa: ERA001
     }
 
-    MAX_PRIORITY: ClassVar[float] = 1e10
-
     canvas: mtrx.Canvas
     tick_condition: Condition
 
@@ -169,9 +216,11 @@ class Matrix:
         self,
         *,
         mqtt_client: MqttClient,
+        content_works_with: dict[type[ContentBase[Any]], set[type[ContentBase[Any]]]],
         options: LedMatrixOptions = OPTIONS,
     ) -> None:
         self.mqtt_client = mqtt_client
+        self.content_works_with = content_works_with
 
         self._brightness_setting = TransitionableParameterSetting(
             minimum=0,
@@ -222,12 +271,24 @@ class Matrix:
             None
         )
 
-        self.current_priority: float = self.MAX_PRIORITY  # Lower value = higher priority
-
         self.tick: int = 0
         self.tick_condition = Condition()
 
         self.array = self.zeros(dtype=np.uint8)
+
+    def _content_works_with(
+        self,
+        cls_a: type[ContentBase[Any]] | ContentBase[Any],
+        cls_b: type[ContentBase[Any]] | ContentBase[Any],
+    ) -> bool:
+        """Check if the classes are compatible."""
+        if not isinstance(cls_a, type):
+            cls_a = cls_a.__class__
+
+        if not isinstance(cls_b, type):
+            cls_b = cls_b.__class__
+
+        return cls_b in self.content_works_with.get(cls_a, set())
 
     def get_canvas_swap_canvas(self) -> None:
         """Get the canvas and swap it."""
@@ -262,11 +323,99 @@ class Matrix:
         self.tick_condition.notify_all()
         self.tick_condition.release()
 
+    def _attempt_combination(
+        self,
+        target_content: DynamicContent,
+    ) -> DynamicContent | Combination:
+        """Attempt to combine the current content with the target content.
+
+        If a combination can't be made, the target content is returned as-is.
+        """
+        # Doesn't matter anyway
+        if not isinstance(self.current_content, DynamicContent):
+            LOGGER.debug(
+                "Skipping combination attempt between current %r and target %r",
+                self.current_content.id if self.current_content is not None else None,
+                target_content.id,
+            )
+            return target_content
+
+        if isinstance(self.current_content, Combination):
+            # If it's already a Combination, check if the target content can be added
+            if all(
+                self._content_works_with(target_content, c)
+                for c in self.current_content.content
+            ):
+                LOGGER.debug(
+                    "Added %r to existing Combination(content=(%s))",
+                    target_content.id,
+                    ", ".join(c.id for c in self.current_content.content),
+                )
+                return self.current_content.update_setting(
+                    "content",
+                    value=sorted(
+                        (*self.current_content.content, target_content),
+                        key=lambda c: (not c.IS_OPAQUE, -c.priority),
+                    ),
+                    invoke_callback=True,
+                )
+
+            LOGGER.debug(
+                "Unable to add %r to existing Combination(content=(%s))",
+                target_content.id,
+                ", ".join(c.id for c in self.current_content.content),
+            )
+
+            # Combination can't be made
+            return target_content
+
+        if self._content_works_with(self.current_content, target_content):
+            # Not a combination, but can be combined
+            combo_content = cast(Combination, ContentBase.get("combination"))
+            combo_content.priority = min(
+                self.current_content.priority,
+                target_content.priority,
+            )
+            if override_ids := self.COMBINATION_OVERRIDES.get(
+                tuple(sorted((self.current_content.id, target_content.id))),
+            ):
+                combined_content: Sequence[ContentBase[Any]] = ContentBase.get_many(
+                    override_ids,
+                )
+            else:
+                combined_content = sorted(
+                    (self.current_content, target_content),
+                    key=lambda c: (not c.IS_OPAQUE, -c.priority),
+                )
+
+            LOGGER.debug(
+                "Created new Combination(content=(%s)) with priority %.3f",
+                ", ".join(c.id for c in combined_content),
+                combo_content.priority,
+            )
+
+            # Force-stop the current content, it will be replaced by the combination
+            self.current_content.stop(StopType.CANCEL)
+
+            return combo_content.update_setting(
+                "content",
+                value=combined_content,
+                invoke_callback=True,
+            )
+
+        LOGGER.debug(
+            "Unable to combine %r with %r",
+            self.current_content,
+            target_content.id,
+        )
+
+        return target_content
+
     def _content_loop(self) -> None:
         """Loop through the content queue."""
         while not self._content_queue.empty():
             (
-                self.current_priority,
+                _,
                 self.current_content,
                 parameters,
             ) = self._content_queue.get()
@@ -274,7 +423,7 @@ class Matrix:
             LOGGER.info(
                 "Displaying content with ID `%s` at priority %s",
                 self.current_content.id,
-                self.current_priority,
+                self.current_content.priority,
             )
 
             if self.current_content.canvas_count is None:
@@ -318,18 +467,18 @@ class Matrix:
 
             if (
                 self.current_content.persistent
+                and self.current_content.priority != const.MAX_PRIORITY
                 and self.current_content.stop_reason
                 not in {StopType.CANCEL, StopType.EXPIRED}
             ):
                 self._content_queue.add(
-                    self.current_priority,
                     self.current_content,
                     parameters,
                 )
                 LOGGER.debug(
                     "Content `%s` is persistent with priority %s",
                     self.current_content.id,
-                    self.current_priority,
+                    self.current_content.priority,
                 )
 
         self.clear_matrix()
@@ -347,12 +496,13 @@ class Matrix:
     ) -> None:
         """Add/remove content to/from the queue."""
         target_content = self._content[payload["id"]]
-        parameters = payload.get("parameters", {})
+        target_content.priority = payload["priority"] or const.MAX_PRIORITY
+        parameters = cast(ContentParameters, payload.get("parameters", {}))
 
-        if (priority := payload["priority"]) is None:
-            for prio, ctnt, prms in self._content_queue:
+        if target_content.priority == const.MAX_PRIORITY:
+            for _, ctnt, prms in self._content_queue:
                 if ctnt is target_content:
-                    self._content_queue.remove(prio, ctnt, prms)
+                    self._content_queue.remove(ctnt, prms)
                     LOGGER.info(
                         "Removed content with ID `%s` from queue",
                         target_content.id,
@@ -364,10 +514,10 @@ class Matrix:
 
             return
 
-        priority = round(
+        target_content.priority = round(
             max(
-                min(float(priority), self.MAX_PRIORITY),
-                -self.MAX_PRIORITY,
+                min(float(target_content.priority), const.MAX_PRIORITY),
+                -const.MAX_PRIORITY,
             ),
             3,
         )
@@ -376,21 +526,31 @@ class Matrix:
             LOGGER.debug(
                 "Updating %s priority to %s",
                 target_content.id,
-                priority,
+                target_content.priority,
             )
-            self.current_priority = priority
+            self.current_content.priority = target_content.priority
             return
 
-        self._content_queue.add(priority, target_content, parameters)
+        # If they're both dynamic, they could be combined
+        if isinstance(target_content, DynamicContent):
+            target_content = self._attempt_combination(target_content)
+
+        # Add it to the queue, this will get picked up within the _content_loop
+        self._content_queue.add(target_content, parameters)
 
         LOGGER.info(
             "Added content with ID `%s` to queue with priority %s",
             target_content.id,
-            priority,
+            target_content.priority,
         )
 
         # Lower value = higher priority
-        if self.current_content and priority < self.current_priority:
+        if (
+            self.current_content is not None
+            and self.current_content.priority is not None
+            and target_content.priority is not None
+            and target_content.priority < self.current_content.priority
+        ):
             self.current_content.stop(StopType.PRIORITY)
 
         self._start_content_thread()
@@ -416,8 +576,9 @@ class Matrix:
 
     def clear_matrix(self) -> None:
         """Clear the matrix."""
+        if self.current_content is not None:
+            self.current_content.priority = const.MAX_PRIORITY
         self.current_content = None
-        self.current_priority = self.MAX_PRIORITY
 
         self.canvas.Clear()
         self.swap_canvas()
