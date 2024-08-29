@@ -298,11 +298,16 @@ class ContentBase(ABC, Generic[ContentType]):
                 return obj.__qualname__
 
         if is_dataclass(obj):
-            return {
+            dumped = {
                 key: getattr(obj, key)
                 for key, dc_field in obj.__dataclass_fields__.items()
                 if hasattr(obj, key) and dc_field.repr and not key.startswith("_")
             }
+
+            if hasattr(obj, "id"):
+                dumped.setdefault("id", obj.id)
+
+            return dumped
 
         if isinstance(obj, slice):
             return f"[{obj.start or ''}:{obj.stop or ''}:{obj.step or ''}]"
