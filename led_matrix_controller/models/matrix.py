@@ -339,28 +339,29 @@ class Matrix:
     def _attempt_combination(
         self,
         target_content: DynamicContent,
+        combine_with: ContentBase[Any],
     ) -> DynamicContent | Combination:
         """Attempt to combine the current content with the target content.
 
         If a combination can't be made, the target content is returned as-is.
         """
         # Doesn't matter anyway
-        if not isinstance(self.current_content, DynamicContent):
+        if not isinstance(combine_with, DynamicContent):
             LOGGER.debug(
                 "Skipping combination attempt between current %r and target %r",
-                self.current_content.id if self.current_content is not None else None,
+                combine_with.id,
                 target_content.id,
             )
             return target_content
 
-        if isinstance(self.current_content, Combination):
+        if isinstance(combine_with, Combination):
             # If it's already a Combination, check if the target content can be added
-            for combo_sub_content in self.current_content.content:
+            for combo_sub_content in combine_with.content:
                 if not self._content_works_with(target_content, combo_sub_content):
                     LOGGER.debug(
                         'Unable to add %r to existing Combination(content=("%s")): incompatible with %s',
                         target_content.id,
-                        '", "'.join(self.current_content.content_ids),
+                        '", "'.join(combine_with.content_ids),
                         combo_sub_content.id,
                     )
                     break
@@ -368,13 +369,13 @@ class Matrix:
                 LOGGER.debug(
                     "Added %r to existing Combination(content=(%s))",
                     target_content.id,
-                    ", ".join(self.current_content.content_ids),
+                    ", ".join(combine_with.content_ids),
                 )
 
-                return self.current_content.update_setting(
+                return combine_with.update_setting(
                     "content",
                     value=self._sort_content(
-                        *self.current_content.content,
+                        *combine_with.content,
                         target_content,
                     ),
                     invoke_callback=True,
@@ -383,15 +384,15 @@ class Matrix:
             # Combination can't be made
             return target_content
 
-        if self._content_works_with(self.current_content, target_content):
+        if self._content_works_with(combine_with, target_content):
             # Not a combination, but can be combined
             combo_content = cast(Combination, ContentBase.get("combination"))
             combo_content.priority = min(
-                self.current_content.priority,
+                combine_with.priority,
                 target_content.priority,
             )
 
-            combined_content = self._sort_content(self.current_content, target_content)
+            combined_content = self._sort_content(combine_with, target_content)
 
             LOGGER.debug(
                 "Created new Combination(content=(%s)) with priority %.3f",
@@ -399,8 +400,9 @@ class Matrix:
                 combo_content.priority,
             )
 
-            # Force-stop the current content, it will be replaced by the combination
-            self.current_content.stop(StopType.CANCEL, reset_priority=False)
+            if combine_with.active:
+                # Force-stop the current content, it will be replaced by the combination
+                combine_with.stop(StopType.CANCEL, reset_priority=False)
 
             return combo_content.update_setting(
                 "content",
@@ -410,7 +412,7 @@ class Matrix:
 
         LOGGER.debug(
             "Unable to combine %r with %r",
-            self.current_content,
+            combine_with,
             target_content.id,
         )
 
@@ -419,11 +421,7 @@ class Matrix:
     def _content_loop(self) -> None:  # noqa: C901
         """Loop through the content queue."""
         while not self._content_queue.empty():
-            (
-                _,
-                self.current_content,
-                parameters,
-            ) = self._content_queue.get()
+            self.current_content, parameters = self._get_next_content()
 
             LOGGER.info(
                 "Displaying content with ID `%s` at priority %s",
@@ -496,6 +494,35 @@ class Matrix:
 
         self.clear_matrix()
 
+    def _get_next_content(self) -> tuple[ContentBase[Any], ContentParameters]:
+        """Get the next content from the queue and check for available combinations."""
+        (
+            _,
+            next_content,
+            parameters,
+        ) = self._content_queue.get()
+
+        to_remove = []
+
+        # Check if the new content can be combined with anything else that is queued
+        for _, queued_content, q_prms in self._content_queue:
+            if isinstance(queued_content, DynamicContent) and isinstance(
+                combined := self._attempt_combination(
+                    queued_content,
+                    combine_with=next_content,
+                ),
+                Combination,
+            ):
+                # Combination has been created, so overwrite the current content
+                next_content = combined
+
+                to_remove.append((queued_content, q_prms))
+
+        for queued_content, q_prms in to_remove:
+            self._content_queue.remove(queued_content, q_prms)
+
+        return next_content, parameters
+
     def _mqtt_topic(self, suffix: str) -> str:
         """Create an MQTT topic with the given suffix."""
         return "/" + "/".join(
@@ -537,7 +564,10 @@ class Matrix:
 
         # If they're both dynamic, they could be combined
         if isinstance(target_content, DynamicContent) and self.current_content:
-            target_content = self._attempt_combination(target_content)
+            target_content = self._attempt_combination(
+                target_content,
+                self.current_content,
+            )
 
         if self.current_content is target_content:
             LOGGER.debug(
