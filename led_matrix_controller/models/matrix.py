@@ -12,7 +12,6 @@ from typing import (
     ClassVar,
     Final,
     Iterator,
-    Sequence,
     TypedDict,
     cast,
 )
@@ -290,6 +289,20 @@ class Matrix:
 
         return cls_b in self.content_works_with.get(cls_a, set())
 
+    def _sort_content(self, *content: ContentBase[Any]) -> tuple[ContentBase[Any], ...]:
+        """Sort the content by priority, or override."""
+        if override_ids := self.COMBINATION_OVERRIDES.get(
+            tuple(sorted(c.id for c in content)),
+        ):
+            return ContentBase.get_many(override_ids)
+
+        return tuple(
+            sorted(
+                content,
+                key=lambda c: (not c.IS_OPAQUE, -c.priority),
+            ),
+        )
+
     def get_canvas_swap_canvas(self) -> None:
         """Get the canvas and swap it."""
         self.swap_canvas(self.current_content.get_content())  # type: ignore[union-attr]
@@ -347,7 +360,7 @@ class Matrix:
                     LOGGER.debug(
                         'Unable to add %r to existing Combination(content=("%s")): incompatible with %s',
                         target_content.id,
-                        '", "'.join(c.id for c in self.current_content.content),
+                        '", "'.join(self.current_content.content_ids),
                         combo_sub_content.id,
                     )
                     break
@@ -355,13 +368,14 @@ class Matrix:
                 LOGGER.debug(
                     "Added %r to existing Combination(content=(%s))",
                     target_content.id,
-                    ", ".join(c.id for c in self.current_content.content),
+                    ", ".join(self.current_content.content_ids),
                 )
+
                 return self.current_content.update_setting(
                     "content",
-                    value=sorted(
-                        (*self.current_content.content, target_content),
-                        key=lambda c: (not c.IS_OPAQUE, -c.priority),
+                    value=self._sort_content(
+                        *self.current_content.content,
+                        target_content,
                     ),
                     invoke_callback=True,
                 )
@@ -376,17 +390,8 @@ class Matrix:
                 self.current_content.priority,
                 target_content.priority,
             )
-            if override_ids := self.COMBINATION_OVERRIDES.get(
-                tuple(sorted((self.current_content.id, target_content.id))),
-            ):
-                combined_content: Sequence[ContentBase[Any]] = ContentBase.get_many(
-                    override_ids,
-                )
-            else:
-                combined_content = sorted(
-                    (self.current_content, target_content),
-                    key=lambda c: (not c.IS_OPAQUE, -c.priority),
-                )
+
+            combined_content = self._sort_content(self.current_content, target_content)
 
             LOGGER.debug(
                 "Created new Combination(content=(%s)) with priority %.3f",
@@ -522,6 +527,10 @@ class Matrix:
             3,
         )
 
+        # If they're both dynamic, they could be combined
+        if isinstance(target_content, DynamicContent) and self.current_content:
+            target_content = self._attempt_combination(target_content)
+
         if self.current_content is target_content:
             LOGGER.debug(
                 "Updating %s priority to %s",
@@ -530,10 +539,6 @@ class Matrix:
             )
             self.current_content.priority = target_content.priority
             return
-
-        # If they're both dynamic, they could be combined
-        if isinstance(target_content, DynamicContent):
-            target_content = self._attempt_combination(target_content)
 
         # Add it to the queue, this will get picked up within the _content_loop
         self._content_queue.add(target_content, parameters)
