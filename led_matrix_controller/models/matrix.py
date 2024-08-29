@@ -594,7 +594,7 @@ class Matrix:
             and target_content.priority is not None
             and target_content.priority < self.current_content.priority
         ):
-            self.current_content.stop(StopType.PRIORITY)
+            self.current_content.stop(StopType.PRIORITY, reset_priority=False)
 
         self._start_content_thread()
 
