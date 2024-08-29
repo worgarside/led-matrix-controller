@@ -342,10 +342,16 @@ class Matrix:
 
         if isinstance(self.current_content, Combination):
             # If it's already a Combination, check if the target content can be added
-            if all(
-                self._content_works_with(target_content, c)
-                for c in self.current_content.content
-            ):
+            for combo_sub_content in self.current_content.content:
+                if not self._content_works_with(target_content, combo_sub_content):
+                    LOGGER.debug(
+                        'Unable to add %r to existing Combination(content=("%s")): incompatible with %s',
+                        target_content.id,
+                        '", "'.join(c.id for c in self.current_content.content),
+                        combo_sub_content.id,
+                    )
+                    break
+            else:
                 LOGGER.debug(
                     "Added %r to existing Combination(content=(%s))",
                     target_content.id,
@@ -359,12 +365,6 @@ class Matrix:
                     ),
                     invoke_callback=True,
                 )
-
-            LOGGER.debug(
-                "Unable to add %r to existing Combination(content=(%s))",
-                target_content.id,
-                ", ".join(c.id for c in self.current_content.content),
-            )
 
             # Combination can't be made
             return target_content
