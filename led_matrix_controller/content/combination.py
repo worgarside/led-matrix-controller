@@ -141,8 +141,9 @@ class Combination(DynamicContent):
 
             # If there is more than one opaque content model or the single opaque model is not
             # the first one (and would thus overwrite the previous array)
-            if len(opaque) > 1 or (len(opaque) == 1 and opaque[0] != self.content[0]):
-                self.multiple_opaque = True
+            self.multiple_opaque = len(opaque) > 1 or (
+                len(opaque) == 1 and opaque[0] != self.content[0]
+            )
 
             LOGGER.debug(
                 "Setting %r changed to %r, updated `multiple_opaque` to %s",
