@@ -139,7 +139,8 @@ class MqttClient(metaclass=Singleton):
 
         def _cb(_: mqtt.Client, __: Any, msg: mqtt.MQTTMessage) -> None:
             LOGGER.debug(
-                "Received message on topic %s with payload %r",
+                "Received%s message on topic %s with payload %r",
+                " retained" if msg.retain else "",
                 topic,
                 msg.payload,
             )
