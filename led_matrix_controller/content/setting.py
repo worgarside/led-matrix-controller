@@ -147,12 +147,12 @@ class Setting(Generic[S]):
 
     def _set_value_from_payload(self, payload: S) -> None:
         """Set the value of the setting from the payload."""
-        LOGGER.info("Set `%s` value to %s", self.slug, payload)
+        LOGGER.info("Set `%s` value to %s", self.slug, str(payload)[:100])
         self.value = payload
 
         self.matrix.publish_attributes()
 
-    def on_message(self, raw_payload: S) -> None:
+    def on_message(self, raw_payload: S) -> None:  # noqa: C901
         """Handle an MQTT message.
 
         Args:
@@ -207,9 +207,20 @@ class Setting(Generic[S]):
             self._set_value_from_payload(payload)
         elif payload != raw_payload:
             # e.g. out of bounds value was coerced to min/max
+            try:
+                mqtt_payload = dumps(payload)
+            except TypeError:
+                if not (isinstance(payload, list | tuple) and self.slug == "content"):
+                    raise
+
+                if (payload_ids := [c.id for c in payload]) == raw_payload:
+                    return
+
+                mqtt_payload = dumps(payload_ids)
+
             self.mqtt_client.publish(
                 self.mqtt_topic,
-                dumps(payload),
+                mqtt_payload,
                 retain=True,
             )
         else:

@@ -4,21 +4,18 @@ from __future__ import annotations
 
 import sys
 from json import JSONDecodeError, loads
-from logging import DEBUG, getLogger
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, TypeVar
 
 import paho.mqtt.client as mqtt
 from paho.mqtt.enums import CallbackAPIVersion
 from utils import const
-from wg_utilities.loggers import add_stream_handler
+from wg_utilities.loggers import get_streaming_logger
 
 if TYPE_CHECKING:
     from paho.mqtt.properties import Properties
     from paho.mqtt.reasoncodes import ReasonCode
 
-LOGGER = getLogger(__name__)
-LOGGER.setLevel(DEBUG)
-add_stream_handler(LOGGER)
+LOGGER = get_streaming_logger(__name__)
 
 
 class Singleton(type):
@@ -142,7 +139,8 @@ class MqttClient(metaclass=Singleton):
 
         def _cb(_: mqtt.Client, __: Any, msg: mqtt.MQTTMessage) -> None:
             LOGGER.debug(
-                "Received message on topic %s with payload %r",
+                "Received%s message on topic %s with payload %r",
+                " retained" if msg.retain else "",
                 topic,
                 msg.payload,
             )

@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from json import dumps
-from typing import TYPE_CHECKING, Any, Generator, final, get_type_hints
+from typing import TYPE_CHECKING, Any, Generator, Self, final, get_type_hints
 
 import numpy as np
 from wg_utilities.loggers import get_streaming_logger
@@ -71,7 +71,7 @@ class DynamicContent(ContentBase[GridView], ABC):
         value: Any,
         *,
         invoke_callback: bool = False,
-    ) -> None:
+    ) -> Self:
         """Update a setting."""
         setting = self.settings[slug]
 
@@ -94,6 +94,8 @@ class DynamicContent(ContentBase[GridView], ABC):
 
         if invoke_callback:
             self.setting_update_callback(update_setting=slug)
+
+        return self
 
     @final
     def __iter__(self) -> Generator[None, None, None]:
