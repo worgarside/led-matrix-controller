@@ -6,10 +6,11 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Annotated, Any, Generator
 
 import numpy as np
-from content.setting import ParameterSetting  # noqa: TCH002
 from wg_utilities.loggers import get_streaming_logger
 
+from .base import StopType
 from .dynamic_content import DynamicContent
+from .setting import ParameterSetting  # noqa: TCH001
 
 if TYPE_CHECKING:
     import itertools
@@ -132,6 +133,10 @@ class Combination(DynamicContent):
     def setting_update_callback(self, update_setting: str | None = None) -> None:
         """Change the opaque flag if necessary."""
         if update_setting == "content":
+            if len(self.content) <= 1:
+                self.stop(StopType.TRANSFORM_REQUIRED)
+                return
+
             opaque = [c for c in self.content if c.IS_OPAQUE]
 
             # If there is more than one opaque content model or the single opaque model is not

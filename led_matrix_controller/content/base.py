@@ -102,6 +102,13 @@ class StopType(Enum):
     e.g. rain chance becoming 0 or music stopping
     """
 
+    TRANSFORM_REQUIRED = auto()
+    """Content was stopped because some kind of higher-level transformation is required.
+
+    e.g. Combination only has one content model, "transform" the current content into just that
+    item
+    """
+
 
 ContentType = TypeVar("ContentType", GridView, mtrx.Canvas)
 
@@ -237,11 +244,12 @@ class ContentBase(ABC, Generic[ContentType]):
         return None
 
     @final
-    def stop(self, stop_type: StopType, /) -> None:
+    def stop(self, stop_type: StopType, /, *, reset_priority: bool = True) -> None:
         """Stop the content immediately."""
         self.active = False
         self.stop_reason = stop_type
-        self.priority = const.MAX_PRIORITY
+        if reset_priority:
+            self.priority = const.MAX_PRIORITY
 
         LOGGER.info("Stopped content with ID `%s`: %r", self.id, stop_type)
 

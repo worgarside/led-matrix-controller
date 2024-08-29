@@ -400,7 +400,7 @@ class Matrix:
             )
 
             # Force-stop the current content, it will be replaced by the combination
-            self.current_content.stop(StopType.CANCEL)
+            self.current_content.stop(StopType.CANCEL, reset_priority=False)
 
             return combo_content.update_setting(
                 "content",
@@ -416,7 +416,7 @@ class Matrix:
 
         return target_content
 
-    def _content_loop(self) -> None:
+    def _content_loop(self) -> None:  # noqa: C901
         """Loop through the content queue."""
         while not self._content_queue.empty():
             (
@@ -454,7 +454,15 @@ class Matrix:
             for _ in self.current_content:
                 set_content()
 
-            if self.current_content.stop_reason != StopType.PRIORITY and (
+            if (
+                self.current_content.stop_reason == StopType.TRANSFORM_REQUIRED
+                and isinstance(self.current_content, Combination)
+            ):
+                # Unlikely to ever be more than one iteration, but just in case
+                for c in self.current_content.content:
+                    if c.active:  # Also unlikely, but for safety
+                        self._content_queue.add(c, {})  # type: ignore[arg-type]
+            elif self.current_content.stop_reason != StopType.PRIORITY and (
                 teardown_gen := self.current_content.teardown()
             ):
                 # Only run teardown if the stop isn't due to higher priority content
