@@ -147,6 +147,15 @@ class Combination(DynamicContent):
                 self.multiple_opaque,
             )
 
+            try:
+                # Force an update for the "current content" topics
+                self.settings[update_setting].matrix.publish_attributes()
+            except AttributeError:
+                LOGGER.debug(
+                    "Setting %r does not have a `matrix` attribute",
+                    update_setting,
+                )
+
     def zeros(self, *, dtype: DTypeLike = np.int_) -> NDArray[Any]:
         """Return a grid of zeros."""
         return np.zeros((self.height, self.width, 4), dtype=dtype)
