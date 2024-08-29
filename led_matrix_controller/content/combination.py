@@ -80,9 +80,6 @@ class Combination(DynamicContent):
             if self.multiple_opaque:
                 self.pixels[:, :] = self.zeros()
 
-            if len(content_chains) != len(self.content):
-                content_chains = self.get_content_chains()
-
             for content in self.content:
                 try:
                     # Trigger content refresh
@@ -101,6 +98,8 @@ class Combination(DynamicContent):
                         tuple(c for c in self.content if c.active),
                         invoke_callback=True,
                     )
+
+                    content_chains = self.get_content_chains()
                 except KeyError as err:
                     # Double check that it's not the generator that's thrown the KeyError
                     if (
