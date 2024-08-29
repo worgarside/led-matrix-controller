@@ -68,7 +68,7 @@ class Combination(DynamicContent):
             content.active = force_active or content.active
             content_chains[content.id] = content.chain_generators()
 
-        LOGGER.debug("Content chains: %r", content_chains)
+        LOGGER.debug("Content chains: %s", ", ".join(content_chains.keys()))
 
         return content_chains
 
@@ -79,6 +79,9 @@ class Combination(DynamicContent):
         while self.active:
             if self.multiple_opaque:
                 self.pixels[:, :] = self.zeros()
+
+            if len(content_chains) != len(self.content):
+                content_chains = self.get_content_chains()
 
             for content in self.content:
                 try:
@@ -138,8 +141,9 @@ class Combination(DynamicContent):
                 self.multiple_opaque = True
 
             LOGGER.debug(
-                "Setting %r changed, updated `multiple_opaque` to %s",
+                "Setting %r changed to %r, updated `multiple_opaque` to %s",
                 update_setting,
+                self.content_ids,
                 self.multiple_opaque,
             )
 
@@ -155,3 +159,8 @@ class Combination(DynamicContent):
     def zeros(self, *, dtype: DTypeLike = np.int_) -> NDArray[Any]:
         """Return a grid of zeros."""
         return np.zeros((self.height, self.width, 4), dtype=dtype)
+
+    @property
+    def content_ids(self) -> tuple[str, ...]:
+        """Get the content ids."""
+        return tuple(c.id for c in self.content)
