@@ -271,7 +271,7 @@ class ContentBase(ABC, Generic[ContentType]):
         """Return the position of the content."""
         return self.x_pos, self.y_pos
 
-    @cached_property
+    @property
     def shape(self) -> tuple[int, int]:
         """Return the shape of the content."""
         return self.height, self.width

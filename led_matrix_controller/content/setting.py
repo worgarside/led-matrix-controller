@@ -15,6 +15,7 @@ from typing import (
     ClassVar,
     Generic,
     Literal,
+    Mapping,
     Self,
     TypeVar,
     cast,
@@ -100,6 +101,12 @@ class Setting(Generic[S]):
 
     fp_precision: int = 6
     """The number of decimal places to round floats to during processing."""
+
+    value_callbacks: Mapping[S, Callable[..., Any]] | None = field(
+        default=None,
+        repr=False,
+    )
+    """Mapping of values to callbacks, which are invoked when the setting is set to that value."""
 
     icon: str
     unit_of_measurement: str | None = None
@@ -342,6 +349,9 @@ class Setting(Generic[S]):
             "setting_update_callback",
         ):
             self.instance.setting_update_callback(update_setting=self.slug)
+
+        if self.value_callbacks and (value_cb := self.value_callbacks.get(value)):
+            value_cb(self.instance)
 
     def __json__(self) -> dict[str, Any]:
         """Return the setting as a JSON-serializable dictionary."""
