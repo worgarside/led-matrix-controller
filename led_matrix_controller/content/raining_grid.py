@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from enum import unique
 from functools import partial
 from itertools import islice
-from logging import DEBUG, getLogger
 from typing import TYPE_CHECKING, Annotated, ClassVar, Generator, Literal, cast
 
 import numpy as np
@@ -18,9 +17,9 @@ from content.automaton import (
     TargetSlice,
 )
 from utils import const
-from wg_utilities.loggers import add_stream_handler
+from wg_utilities.loggers import get_streaming_logger
 
-from .base import StateBase
+from .base import StateBase, StopType
 from .setting import (
     FrequencySetting,
     TransitionableParameterSetting,
@@ -29,9 +28,7 @@ from .setting import (
 if TYPE_CHECKING:
     from content.base import GridView
 
-LOGGER = getLogger(__name__)
-LOGGER.setLevel(DEBUG)
-add_stream_handler(LOGGER)
+LOGGER = get_streaming_logger(__name__)
 
 
 @unique
@@ -54,6 +51,11 @@ class RainingGrid(Automaton):
 
     STATE = State
 
+    def stop_when_no_rain(self) -> None:
+        """Stop the simulation when there is no rain."""
+        if self.active:
+            self.stop(StopType.EXPIRED)
+
     rain_chance: Annotated[
         float,
         TransitionableParameterSetting(
@@ -65,6 +67,7 @@ class RainingGrid(Automaton):
             payload_modifier=lambda x, _: x / 1000,
             icon="mdi:cloud-percent-outline",
             unit_of_measurement="%",
+            value_callbacks={0: stop_when_no_rain},
         ),
     ] = 0.025
 
