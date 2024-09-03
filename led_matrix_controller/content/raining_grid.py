@@ -105,7 +105,13 @@ class RainingGrid(Automaton):
 
         ticks = 0.5 * const.TICKS_PER_SECOND
 
-        rain_chance_setting.transition_rate = total_change / ticks
+        rain_chance_setting.transition_rate = max(
+            round(
+                total_change / ticks,
+                rain_chance_setting.fp_precision,
+            ),
+            0,
+        )
 
         LOGGER.debug(
             "Modified `rain_chance` transition rate from %f to %f",

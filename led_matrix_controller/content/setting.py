@@ -342,6 +342,13 @@ class Setting(Generic[S]):
     @value.setter
     def value(self, value: S) -> None:
         """Set the setting's value in the automaton's attribute."""
+        if (
+            self.type_ is float
+            and isinstance(value, float)
+            and not isinstance(value, bool)
+        ):
+            value = round(value, self.fp_precision)
+
         setattr(self.instance, self.slug, value)
 
         if self.invoke_settings_callback and hasattr(
