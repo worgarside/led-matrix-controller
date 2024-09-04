@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import unique
 from functools import partial
 from itertools import islice
-from typing import TYPE_CHECKING, Annotated, ClassVar, Generator, Literal, cast
+from typing import TYPE_CHECKING, Annotated, ClassVar, Final, Generator, Literal, cast
 
 import numpy as np
 from content.automaton import (
@@ -30,6 +30,8 @@ if TYPE_CHECKING:
 
 LOGGER = get_streaming_logger(__name__)
 
+PLANT_LIMIT: Final = const.MATRIX_WIDTH // 20
+
 
 @unique
 class State(StateBase):
@@ -40,6 +42,8 @@ class State(StateBase):
     SPLASHDROP = 2, "o", (107, 155, 250, 255)
     SPLASH_LEFT = 3, "*", (170, 197, 250, 255)
     SPLASH_RIGHT = 4, "*", (170, 197, 250, 255)
+
+    PLANT = 5, "P", (0, 255, 0, 255)
 
 
 @dataclass(kw_only=True, slots=True)
@@ -289,8 +293,10 @@ def _splash_high(
 
     state = splash_state.state
 
-    return partial(np.equal, source_slice, state)  # type: ignore[misc]
-    # & ca._grid[target_slice] will be NULL
+    def mask_gen() -> Mask:
+        return np.equal(source_slice, state) & np.equal(ca.pixels[target_slice], 0)  # type: ignore[no-any-return]
+
+    return mask_gen
 
 
 @RainingGrid.rule(
@@ -329,7 +335,7 @@ def splash_right_high(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     frequency="splash_speed",
 )
 def remove_splashes(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
-    """Remove any splashes - they only last one frame."""
+    """Remove any splashes - they only last one frame (they're moved down)."""
     any_splash = (
         State.SPLASH_LEFT.state,
         State.SPLASH_RIGHT.state,
@@ -357,9 +363,54 @@ def create_splashdrop(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 def move_splashdrop_down(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Move the splashdrop down."""
     source_slice = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
-    splashdrop = State.SPLASHDROP.state
 
-    return partial(np.equal, source_slice, splashdrop)  # type: ignore[misc]
+    def mask_gen() -> Mask:
+        return np.equal(source_slice, State.SPLASHDROP.state) & np.equal(  # type: ignore[no-any-return]
+            ca.pixels[target_slice],
+            State.NULL.state,
+        )
+
+    return mask_gen
+
+
+@RainingGrid.rule(
+    State.PLANT,
+    target_slice=(slice(-1, None), slice(1, -1)),
+    frequency="splash_speed",
+)
+def start_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+    above_pixels = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
+    left_pixels = ca.pixels[ca.translate_slice(target_slice, hrz=Direction.LEFT)]
+    right_pixels = ca.pixels[ca.translate_slice(target_slice, hrz=Direction.RIGHT)]
+    target_pixels = ca.pixels[target_slice]
+
+    def mask_gen() -> Mask:
+        return (  # type: ignore[no-any-return]
+            (above_pixels == State.SPLASHDROP.state)
+            & (target_pixels == State.NULL.state)
+            & (left_pixels == State.NULL.state)
+            & (right_pixels == State.NULL.state)
+        ) & (const.RNG.random(above_pixels.shape) < 0.01)  # noqa: PLR2004
+
+    return mask_gen
+
+
+@RainingGrid.rule(State.PLANT, target_slice=(slice(1, -1)), frequency="rain_speed")
+def plant_growth(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+    below_slice = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.DOWN)]
+    source_slice = ca.pixels[target_slice]
+
+    def mask_gen() -> Mask:
+        return (  # type: ignore[no-any-return]
+            np.equal(below_slice, State.PLANT.state)
+            & np.equal(
+                source_slice,
+                State.RAINDROP.state,
+            )
+            & (const.RNG.random(source_slice.shape) < 0.01)  # noqa: PLR2004
+        )
+
+    return mask_gen
 
 
 __all__ = ["RainingGrid", "State"]
