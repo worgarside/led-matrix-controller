@@ -52,7 +52,7 @@ class Rule:
     frequency: int | str
     """The frequency of the rule in frames. If a string is provided, it references a `FrequencySetting` by name."""
 
-    predicate: Callable[[], bool] = lambda: True
+    predicate: Callable[[Automaton], bool] = lambda _: True
     """Optional predicate to determine if the rule should be applied."""
 
     _frequency_setting: FrequencySetting = field(init=False, repr=False)

@@ -47,7 +47,7 @@ TargetSlice = tuple[slice, slice]
 Mask = NDArray[np.bool_]
 MaskGen = Callable[[], Mask]
 RuleFunc = Callable[["Automaton", TargetSlice], MaskGen]
-RuleTuple = tuple[GridView, MaskGen, int, Callable[[], bool]]
+RuleTuple = tuple[GridView, MaskGen, int, Callable[["Automaton"], bool]]
 FrameRuleSet = tuple[RuleTuple, ...]
 
 
@@ -136,7 +136,7 @@ class Automaton(DynamicContent, ABC):
         *,
         target_slice: TargetSliceDecVal = EVERYWHERE,
         frequency: int | str = 1,
-        predicate: Callable[[], bool] = lambda: True,
+        predicate: Callable[[Automaton], bool] = lambda _: True,
     ) -> Callable[[Callable[[Any, TargetSlice], MaskGen]], Callable[[Self], MaskGen]]:
         """Decorator to add a rule to the automaton.
 
@@ -211,7 +211,7 @@ class Automaton(DynamicContent, ABC):
             masks = tuple(
                 (target_view, mask_gen(), state)
                 for target_view, mask_gen, state, predicate in ruleset
-                if predicate()
+                if predicate(self)
             )
 
             for target_view, mask, state in masks:
