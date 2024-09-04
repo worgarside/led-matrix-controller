@@ -47,7 +47,7 @@ TargetSlice = tuple[slice, slice]
 Mask = NDArray[np.bool_]
 MaskGen = Callable[[], Mask]
 RuleFunc = Callable[["Automaton", TargetSlice], MaskGen]
-RuleTuple = tuple[GridView, MaskGen, int]
+RuleTuple = tuple[GridView, MaskGen, int, Callable[[], bool]]
 FrameRuleSet = tuple[RuleTuple, ...]
 
 
@@ -136,6 +136,7 @@ class Automaton(DynamicContent, ABC):
         *,
         target_slice: TargetSliceDecVal = EVERYWHERE,
         frequency: int | str = 1,
+        predicate: Callable[[], bool] = lambda: True,
     ) -> Callable[[Callable[[Any, TargetSlice], MaskGen]], Callable[[Self], MaskGen]]:
         """Decorator to add a rule to the automaton.
 
@@ -144,6 +145,8 @@ class Automaton(DynamicContent, ABC):
             target_slice (TargetSliceDecVal | None, optional): The slice to target. Defaults to entire automaton.
             frequency (int, optional): The frequency of the rule (in frames). Defaults to 1 (i.e. every frame). If
                 a string is provided, it references the name of a `FrequencySetting`.
+            predicate (Callable[[], bool], optional): Optional predicate to determine if the rule should be
+                applied.
         """
         match target_slice:
             case int(n):
@@ -176,6 +179,7 @@ class Automaton(DynamicContent, ABC):
                     rule_func=rule_func,
                     to_state=to_state,
                     frequency=frequency,
+                    predicate=predicate,
                 ),
             )
 
@@ -206,7 +210,8 @@ class Automaton(DynamicContent, ABC):
         for ruleset in self.frame_rulesets:
             masks = tuple(
                 (target_view, mask_gen(), state)
-                for target_view, mask_gen, state in ruleset
+                for target_view, mask_gen, state, predicate in ruleset
+                if predicate()
             )
 
             for target_view, mask, state in masks:
