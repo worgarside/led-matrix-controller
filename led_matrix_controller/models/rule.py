@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 import inspect
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from content.setting import FrequencySetting, ParameterSetting
 
@@ -52,6 +52,9 @@ class Rule:
     frequency: int | str
     """The frequency of the rule in frames. If a string is provided, it references a `FrequencySetting` by name."""
 
+    predicate: Callable[[Automaton], bool] = lambda _: True
+    """Optional predicate to determine if the rule should be applied."""
+
     _frequency_setting: FrequencySetting = field(init=False, repr=False)
     """Optional frequency setting for the rule. Only set if `frequency` is a string."""
 
@@ -95,4 +98,4 @@ class Rule:
     @property
     def rule_tuple(self) -> RuleTuple:
         """Return the rule as a tuple."""
-        return self.target_view, self.mask_generator, self.to_state.value
+        return self.target_view, self.mask_generator, self.to_state.value, self.predicate
