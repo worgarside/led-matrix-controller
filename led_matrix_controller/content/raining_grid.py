@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import unique
 from functools import partial
 from itertools import islice
-from typing import TYPE_CHECKING, Annotated, ClassVar, Final, Generator, Literal, cast
+from typing import TYPE_CHECKING, Annotated, ClassVar, Generator, Literal, cast
 
 import numpy as np
 from content.automaton import (
@@ -22,6 +22,7 @@ from wg_utilities.loggers import get_streaming_logger
 from .base import StateBase, StopType
 from .setting import (
     FrequencySetting,
+    ParameterSetting,
     TransitionableParameterSetting,
 )
 
@@ -29,8 +30,6 @@ if TYPE_CHECKING:
     from content.base import GridView
 
 LOGGER = get_streaming_logger(__name__)
-
-PLANT_LIMIT: Final = const.MATRIX_WIDTH // 20
 
 
 @unique
@@ -96,6 +95,18 @@ class RainingGrid(Automaton):
             unit_of_measurement="ticks",
         ),
     ] = 8
+
+    plant_count: int = 0
+
+    plant_limit: Annotated[
+        int,
+        ParameterSetting(
+            minimum=0,
+            maximum=const.MATRIX_WIDTH,
+            icon="mdi:flower",
+            unit_of_measurement="plants",
+        ),
+    ] = const.MATRIX_WIDTH // 20
 
     def teardown(self) -> Generator[None, None, None]:
         """Transition the rain chance to 0 then run the simulation until the grid is clear."""
@@ -377,6 +388,7 @@ def move_splashdrop_down(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     State.PLANT,
     target_slice=(slice(-1, None), slice(1, -1)),
     frequency="splash_speed",
+    predicate=lambda ca: ca.plant_count < ca.plant_limit,
 )
 def start_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     above_pixels = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
@@ -385,12 +397,17 @@ def start_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     target_pixels = ca.pixels[target_slice]
 
     def mask_gen() -> Mask:
-        return (  # type: ignore[no-any-return]
+        mask = (
             (above_pixels == State.SPLASHDROP.state)
             & (target_pixels == State.NULL.state)
             & (left_pixels == State.NULL.state)
             & (right_pixels == State.NULL.state)
         ) & (const.RNG.random(above_pixels.shape) < 0.01)  # noqa: PLR2004
+
+        # Get number of True in mask
+        ca.plant_count += int(np.sum(mask))
+
+        return mask  # type: ignore[no-any-return]
 
     return mask_gen
 
