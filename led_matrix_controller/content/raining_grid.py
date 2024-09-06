@@ -452,6 +452,23 @@ def plant_growth(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 
 @RainingGrid.rule(
     State.OLD_PLANT,
+    target_slice=(slice(None, 2)),
+    frequency="rain_speed",
+)
+def halt_plant_growth(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+    source_pixels = ca.pixels[target_slice]
+    below_pixels = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.DOWN)]
+
+    def mask_gen() -> Mask:
+        return (source_pixels == State.OLD_PLANT.state) | (  # type: ignore[no-any-return]
+            below_pixels == State.OLD_PLANT.state
+        )
+
+    return mask_gen
+
+
+@RainingGrid.rule(
+    State.OLD_PLANT,
     target_slice=(slice(1, None), slice(1, -1)),
     frequency="rain_speed",
 )
