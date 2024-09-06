@@ -43,8 +43,8 @@ class State(StateBase):
     SPLASH_RIGHT = 4, "*", (170, 197, 250, 255)
 
     GROWABLE_PLANT = 5, "P", (0, 255, 0, 255)
-    NEW_PLANT = 6, "P", (0, 192, 0, 255)
-    OLD_PLANT = 7, "P", (0, 128, 0, 255)
+    NEW_PLANT = 6, "P", (0, 128, 0, 255)
+    OLD_PLANT = 7, "P", (0, 192, 0, 255)
 
 
 @dataclass(kw_only=True, slots=True)
