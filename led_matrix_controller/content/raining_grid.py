@@ -42,8 +42,8 @@ class State(StateBase):
     SPLASH_LEFT = 3, "*", (170, 197, 250, 255)
     SPLASH_RIGHT = 4, "*", (170, 197, 250, 255)
 
-    NEW_PLANT = 5, "P", (0, 255, 0, 255)
-    GROWING_PLANT = 6, "P", (201, 61, 14, 255)
+    GROWABLE_PLANT = 5, "P", (0, 255, 0, 255)
+    NEW_PLANT = 6, "P", (0, 192, 0, 255)
     OLD_PLANT = 7, "P", (0, 128, 0, 255)
 
 
@@ -398,7 +398,7 @@ def move_splashdrop_down(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 
 
 @RainingGrid.rule(
-    State.NEW_PLANT,
+    State.GROWABLE_PLANT,
     target_slice=(slice(-1, None), slice(1, -1)),
     frequency="splash_speed",
     predicate=lambda ca: ca.plant_count < ca.plant_limit,
@@ -438,14 +438,14 @@ def remove_rain_on_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     def mask_gen() -> Mask:
         return (source_pixels == State.RAINDROP.state) & np.isin(  # type: ignore[no-any-return]
             below_pixels,
-            (State.NEW_PLANT.state, State.GROWING_PLANT.state, State.OLD_PLANT.state),
+            (State.GROWABLE_PLANT.state, State.NEW_PLANT.state, State.OLD_PLANT.state),
         )
 
     return mask_gen
 
 
 @RainingGrid.rule(
-    State.GROWING_PLANT,
+    State.NEW_PLANT,
     target_slice=(slice(1, None)),
     frequency="rain_speed",
 )
@@ -456,7 +456,7 @@ def plant_growth(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     right_pixels = ca.pixels[ca.translate_slice(target_slice, hrz=Direction.RIGHT)]
 
     def mask_gen() -> Mask:
-        plant_mask = source_pixels == State.NEW_PLANT.state
+        plant_mask = source_pixels == State.GROWABLE_PLANT.state
         raindrop_mask = above_pixels == State.RAINDROP.state
 
         eligible_mask = plant_mask & raindrop_mask
@@ -496,26 +496,26 @@ def plant_aging(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     above_slice = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
 
     def mask_gen() -> Mask:
-        return (source_slice == State.NEW_PLANT.state) & (  # type: ignore[no-any-return]
-            (left_slice == State.GROWING_PLANT.state)
-            | (right_slice == State.GROWING_PLANT.state)
-            | (above_slice == State.GROWING_PLANT.state)
+        return (source_slice == State.GROWABLE_PLANT.state) & (  # type: ignore[no-any-return]
+            (left_slice == State.NEW_PLANT.state)
+            | (right_slice == State.NEW_PLANT.state)
+            | (above_slice == State.NEW_PLANT.state)
         )
 
     return mask_gen
 
 
 @RainingGrid.rule(
-    State.NEW_PLANT,
+    State.GROWABLE_PLANT,
     target_slice=(slice(1, None), slice(1, -1)),
     frequency="rain_speed",
 )
-def plant_aging2(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+def plant_aging_2(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     source_slice = ca.pixels[target_slice]
     above_slice = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
 
     def mask_gen() -> Mask:
-        return (source_slice == State.GROWING_PLANT.state) & (  # type: ignore[no-any-return]
+        return (source_slice == State.NEW_PLANT.state) & (  # type: ignore[no-any-return]
             above_slice == State.RAINDROP.state
         )
 
