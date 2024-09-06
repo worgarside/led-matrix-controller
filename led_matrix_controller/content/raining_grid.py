@@ -42,7 +42,8 @@ class State(StateBase):
     SPLASH_LEFT = 3, "*", (170, 197, 250, 255)
     SPLASH_RIGHT = 4, "*", (170, 197, 250, 255)
 
-    PLANT = 5, "P", (0, 255, 0, 255)
+    NEW_PLANT = 5, "P", (0, 255, 0, 255)
+    OLD_PLANT = 6, "p", (0, 128, 0, 255)
 
 
 @dataclass(kw_only=True, slots=True)
@@ -107,6 +108,17 @@ class RainingGrid(Automaton):
             unit_of_measurement="plants",
         ),
     ] = const.MATRIX_WIDTH // 20
+
+    plant_growth_chance: Annotated[
+        float,
+        ParameterSetting(
+            minimum=0,
+            maximum=100,
+            icon="mdi:flower",
+            unit_of_measurement="%",
+            payload_modifier=lambda x, _: x / 100,
+        ),
+    ] = 0.01
 
     def teardown(self) -> Generator[None, None, None]:
         """Transition the rain chance to 0 then run the simulation until the grid is clear."""
@@ -385,7 +397,7 @@ def move_splashdrop_down(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 
 
 @RainingGrid.rule(
-    State.PLANT,
+    State.NEW_PLANT,
     target_slice=(slice(-1, None), slice(1, -1)),
     frequency="splash_speed",
     predicate=lambda ca: ca.plant_count < ca.plant_limit,
@@ -402,7 +414,7 @@ def start_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
             & (target_pixels == State.NULL.state)
             & (left_pixels == State.NULL.state)
             & (right_pixels == State.NULL.state)
-        ) & (const.RNG.random(above_pixels.shape) < 0.01)  # noqa: PLR2004
+        ) & (const.RNG.random(above_pixels.shape) < ca.plant_growth_chance)
 
         # Get number of True in mask
         ca.plant_count += int(np.sum(mask))
@@ -412,19 +424,30 @@ def start_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     return mask_gen
 
 
-@RainingGrid.rule(State.PLANT, target_slice=(slice(1, -1)), frequency="rain_speed")
+@RainingGrid.rule(State.NEW_PLANT, target_slice=(slice(1, -1)), frequency="rain_speed")
 def plant_growth(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     below_slice = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.DOWN)]
     source_slice = ca.pixels[target_slice]
 
     def mask_gen() -> Mask:
         return (  # type: ignore[no-any-return]
-            np.equal(below_slice, State.PLANT.state)
-            & np.equal(
-                source_slice,
-                State.RAINDROP.state,
-            )
-            & (const.RNG.random(source_slice.shape) < 0.01)  # noqa: PLR2004
+            (below_slice == State.NEW_PLANT.state)
+            & (source_slice == State.RAINDROP.state)
+            & (const.RNG.random(source_slice.shape) < ca.plant_growth_chance)
+        )
+
+    return mask_gen
+
+
+@RainingGrid.rule(State.OLD_PLANT, target_slice=(slice(1, None)), frequency="rain_speed")
+def plant_death(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+    """Kill plants."""
+    source_slice = ca.pixels[target_slice]
+    above_slice = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
+
+    def mask_gen() -> Mask:
+        return (source_slice == State.NEW_PLANT.state) & (  # type: ignore[no-any-return]
+            above_slice == State.NEW_PLANT.state
         )
 
     return mask_gen
