@@ -66,7 +66,7 @@ class Automaton(DynamicContent, ABC):
     frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False, repr=False)
     rules: list[Rule] = field(init=False, repr=False)
 
-    rules_thread: Thread = field(init=False, repr=False)
+    _rules_thread: Thread = field(init=False, repr=False)
     mask_queue: Queue[GridView] = field(init=False, repr=False)
 
     class OutOfBoundsError(ValueError):
@@ -286,17 +286,38 @@ class Automaton(DynamicContent, ABC):
         """Get an item from the grid."""
         return self.pixels[key]
 
+    def _start_rules_thread(self) -> None:
+        """Start the rules thread. If it has already been started, do nothing."""
+        start_new = False
+
+        if not hasattr(self, "_rules_thread"):
+            start_new = True
+        elif self._rules_thread.is_alive():
+            LOGGER.debug("Rules thread already running")
+        else:
+            try:
+                self._rules_thread.start()
+                LOGGER.info("Started existing rules thread")
+            except RuntimeError as err:
+                if str(err) != "threads can only be started once":
+                    raise
+
+                start_new = True
+
+        if start_new:
+            self._rules_thread = Thread(target=self._rules_worker)
+            self._rules_thread.start()
+
+            LOGGER.info("Started new rules thread")
+
     def __iter__(self) -> Generator[None, None, None]:
         """Iterate over the frames."""
         self.active = True
 
-        self.rules_thread = Thread(target=self._rules_worker)
-        self.rules_thread.start()
+        self._start_rules_thread()
 
         while self.active:
             yield from self.refresh_content()
-
-        self.rules_thread.join()
 
 
 @lru_cache
