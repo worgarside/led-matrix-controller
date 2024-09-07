@@ -194,12 +194,12 @@ def generate_raindrops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 )
 def move_rain_down(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Move raindrops down one cell."""
+    above_slice = ca.translate_slice(target_slice, vrt=Direction.UP)
 
     def mask_gen(pixels: GridView) -> Mask:
-        below_pixels = pixels[target_slice]
-        above_pixels = pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
-
-        return (above_pixels == State.RAINDROP.state) & (below_pixels == State.NULL.state)  # type: ignore[no-any-return]
+        return (pixels[above_slice] == State.RAINDROP.state) & (  # type: ignore[no-any-return]
+            pixels[target_slice] == State.NULL.state
+        )
 
     return mask_gen
 
@@ -208,13 +208,16 @@ def move_rain_down(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 def top_of_rain_down(_: RainingGrid, __: TargetSlice) -> MaskGen:
     """Move the top of a raindrop down."""
     raindrop = State.RAINDROP.state
+    above_slice = slice(None, -2), slice(None)
+    middle_slice = slice(1, -1), slice(None)
+    below_slice = slice(2, None), slice(None)
 
     def mask_gen(pixels: GridView) -> Mask:
         top_row = pixels[0]
         second_row = pixels[1]
-        above_pixels = pixels[slice(None, -2), slice(None)]
-        middle_pixels = pixels[slice(1, -1), slice(None)]
-        below_pixels = pixels[slice(2, None), slice(None)]
+        above_pixels = pixels[above_slice]
+        middle_pixels = pixels[middle_slice]
+        below_pixels = pixels[below_slice]
         last_row = pixels[-1]
         penultimate_row = pixels[-2]
 
@@ -233,38 +236,24 @@ def top_of_rain_down(_: RainingGrid, __: TargetSlice) -> MaskGen:
     return mask_gen
 
 
-def _splash_mask(
-    source_slice: GridView,
-    raindrop: int,
-    splash_spots: GridView,
-    null: int,
-    below_slice: GridView,
-) -> Mask:
-    return (  # type: ignore[no-any-return]
-        (source_slice == raindrop) & (splash_spots == null) & (below_slice == null)
-    )
-
-
 def _splash(
     ca: RainingGrid,
     target_slice: TargetSlice,
     *,
     source_slice_direction: Literal[Direction.LEFT, Direction.RIGHT],
 ) -> MaskGen:
+    source_slice = ca.translate_slice(
+        target_slice,
+        vrt=Direction.DOWN,
+        hrz=source_slice_direction,
+    )
+    below_slice = ca.translate_slice(target_slice, vrt=Direction.DOWN)
+
     def mask_gen(pixels: GridView) -> Mask:
-        source_pixels = pixels[
-            ca.translate_slice(
-                target_slice,
-                vrt=Direction.DOWN,
-                hrz=source_slice_direction,
-            )
-        ]
-        splash_spots = pixels[target_slice]
-        below_pixels = pixels[ca.translate_slice(target_slice, vrt=Direction.DOWN)]
         return (  # type: ignore[no-any-return]
-            (source_pixels == State.RAINDROP.state)
-            & (splash_spots == State.NULL.state)
-            & (below_pixels == State.NULL.state)
+            (pixels[source_slice] == State.RAINDROP.state)
+            & (pixels[target_slice] == State.NULL.state)
+            & (pixels[below_slice] == State.NULL.state)
         )
 
     return mask_gen
@@ -298,18 +287,14 @@ def _splash_high(
     source_slice_direction: Literal[Direction.LEFT, Direction.RIGHT],
 ) -> MaskGen:
     state = splash_state.state
+    below_slice = ca.translate_slice(
+        target_slice,
+        vrt=Direction.DOWN,
+        hrz=source_slice_direction,
+    )
 
     def mask_gen(pixels: GridView) -> Mask:
-        return (  # type: ignore[no-any-return]
-            pixels[
-                ca.translate_slice(
-                    target_slice,
-                    vrt=Direction.DOWN,
-                    hrz=source_slice_direction,
-                )
-            ]
-            == state
-        ) & (pixels[target_slice] == 0)
+        return (pixels[below_slice] == state) & (pixels[target_slice] == 0)  # type: ignore[no-any-return]
 
     return mask_gen
 
@@ -387,9 +372,8 @@ def move_splashdrop_down(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 
     def mask_gen(pixels: GridView) -> Mask:
         source_pixels = pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
-        return np.equal(source_pixels, State.SPLASHDROP.state) & np.equal(  # type: ignore[no-any-return]
-            pixels[target_slice],
-            State.NULL.state,
+        return (source_pixels == State.SPLASHDROP.state) & (  # type: ignore[no-any-return]
+            pixels[target_slice] == State.NULL.state
         )
 
     return mask_gen

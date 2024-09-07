@@ -9,12 +9,14 @@ from dataclasses import dataclass, field
 from enum import IntEnum
 from functools import lru_cache, wraps
 from itertools import islice
+from os import getenv
 from queue import Queue
 from threading import Thread
 from typing import (
     Any,
     Callable,
     ClassVar,
+    Final,
     Generator,
     Self,
 )
@@ -52,7 +54,7 @@ RuleFunc = Callable[["Automaton", TargetSlice], MaskGen]
 RuleTuple = tuple[TargetSlice, MaskGen, int, Callable[["Automaton"], bool]]
 FrameRuleSet = tuple[RuleTuple, ...]
 
-QUEUE_SIZE = 10
+QUEUE_SIZE: Final[int] = int(getenv("AUTOMATON_QUEUE_SIZE", "100"))
 
 
 @dataclass(kw_only=True, slots=True)
