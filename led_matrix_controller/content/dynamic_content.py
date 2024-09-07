@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from json import dumps
-from typing import TYPE_CHECKING, Any, Generator, Self, final, get_type_hints
+from typing import TYPE_CHECKING, Any, Generator, Self, get_type_hints
 
 import numpy as np
 from wg_utilities.loggers import get_streaming_logger
@@ -97,7 +97,6 @@ class DynamicContent(ContentBase[GridView], ABC):
 
         return self
 
-    @final
     def __iter__(self) -> Generator[None, None, None]:
         """Iterate over the frames."""
         self.active = True
