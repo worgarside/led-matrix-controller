@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from datetime import UTC, datetime
 from os import environ, getenv
 from pathlib import Path
 from socket import gethostname
@@ -31,7 +32,7 @@ FONT_HEIGHT: Final[int] = 7
 SCROLL_INCREMENT_DISTANCE: Final[int] = 2 * FONT_WIDTH
 
 BOOLEANS: Final[np.typing.NDArray[np.bool_]] = np.array([False, True], dtype=np.bool_)
-RNG = np.random.default_rng(830003040)
+RNG = np.random.default_rng(int(getenv("RNG_SEED", datetime.now(UTC).timestamp())))
 
 REPO_PATH: Final[Path] = Path(__file__).parents[2]
 ASSETS_DIRECTORY: Final[Path] = REPO_PATH / "assets"
