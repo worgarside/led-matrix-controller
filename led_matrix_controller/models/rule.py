@@ -98,4 +98,4 @@ class Rule:
     @property
     def rule_tuple(self) -> RuleTuple:
         """Return the rule as a tuple."""
-        return self.target_view, self.mask_generator, self.to_state.value, self.predicate
+        return self.target_slice, self.mask_generator, self.to_state.value, self.predicate

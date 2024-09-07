@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import unique
-from functools import partial
 from itertools import islice
 from typing import Annotated, ClassVar, Generator, Literal, cast
 
@@ -19,7 +18,7 @@ from content.automaton import (
 from utils import const
 from wg_utilities.loggers import get_streaming_logger
 
-from .base import StateBase, StopType
+from .base import GridView, StateBase, StopType
 from .setting import (
     FrequencySetting,
     ParameterSetting,
@@ -182,7 +181,7 @@ def generate_raindrops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Generate raindrops at the top of the grid."""
     shape = ca.pixels[target_slice].shape
 
-    def mask_gen() -> Mask:
+    def mask_gen(_: GridView) -> Mask:
         return const.RNG.random(shape) < ca.rain_chance
 
     return mask_gen
@@ -195,28 +194,30 @@ def generate_raindrops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 )
 def move_rain_down(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Move raindrops down one cell."""
-    below_pixels = ca.pixels[target_slice]
-    above_pixels = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
 
-    def mask_gen() -> Mask:
+    def mask_gen(pixels: GridView) -> Mask:
+        below_pixels = pixels[target_slice]
+        above_pixels = pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
+
         return (above_pixels == State.RAINDROP.state) & (below_pixels == State.NULL.state)  # type: ignore[no-any-return]
 
     return mask_gen
 
 
 @RainingGrid.rule(State.NULL, frequency="rain_speed")
-def top_of_rain_down(ca: RainingGrid, _: TargetSlice) -> MaskGen:
+def top_of_rain_down(_: RainingGrid, __: TargetSlice) -> MaskGen:
     """Move the top of a raindrop down."""
-    top_row = ca.pixels[0]
     raindrop = State.RAINDROP.state
-    second_row = ca.pixels[1]
-    above_pixels = ca.pixels[slice(None, -2), slice(None)]
-    middle_pixels = ca.pixels[slice(1, -1), slice(None)]
-    below_pixels = ca.pixels[slice(2, None), slice(None)]
-    last_row = ca.pixels[-1]
-    penultimate_row = ca.pixels[-2]
 
-    def mask_gen() -> Mask:
+    def mask_gen(pixels: GridView) -> Mask:
+        top_row = pixels[0]
+        second_row = pixels[1]
+        above_pixels = pixels[slice(None, -2), slice(None)]
+        middle_pixels = pixels[slice(1, -1), slice(None)]
+        below_pixels = pixels[slice(2, None), slice(None)]
+        last_row = pixels[-1]
+        penultimate_row = pixels[-2]
+
         return np.vstack(
             (
                 (top_row == raindrop) & (second_row == raindrop),
@@ -232,23 +233,34 @@ def top_of_rain_down(ca: RainingGrid, _: TargetSlice) -> MaskGen:
     return mask_gen
 
 
+def _splash_mask(
+    source_slice: GridView,
+    raindrop: int,
+    splash_spots: GridView,
+    null: int,
+    below_slice: GridView,
+) -> Mask:
+    return (  # type: ignore[no-any-return]
+        (source_slice == raindrop) & (splash_spots == null) & (below_slice == null)
+    )
+
+
 def _splash(
     ca: RainingGrid,
     target_slice: TargetSlice,
     *,
     source_slice_direction: Literal[Direction.LEFT, Direction.RIGHT],
 ) -> MaskGen:
-    source_pixels = ca.pixels[
-        ca.translate_slice(
-            target_slice,
-            vrt=Direction.DOWN,
-            hrz=source_slice_direction,
-        )
-    ]
-    splash_spots = ca.pixels[target_slice]
-    below_pixels = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.DOWN)]
-
-    def mask_gen() -> Mask:
+    def mask_gen(pixels: GridView) -> Mask:
+        source_pixels = pixels[
+            ca.translate_slice(
+                target_slice,
+                vrt=Direction.DOWN,
+                hrz=source_slice_direction,
+            )
+        ]
+        splash_spots = pixels[target_slice]
+        below_pixels = pixels[ca.translate_slice(target_slice, vrt=Direction.DOWN)]
         return (  # type: ignore[no-any-return]
             (source_pixels == State.RAINDROP.state)
             & (splash_spots == State.NULL.state)
@@ -285,18 +297,19 @@ def _splash_high(
     splash_state: State,
     source_slice_direction: Literal[Direction.LEFT, Direction.RIGHT],
 ) -> MaskGen:
-    source_pixels = ca.pixels[
-        ca.translate_slice(
-            target_slice,
-            vrt=Direction.DOWN,
-            hrz=source_slice_direction,
-        )
-    ]
-
     state = splash_state.state
 
-    def mask_gen() -> Mask:
-        return np.equal(source_pixels, state) & np.equal(ca.pixels[target_slice], 0)  # type: ignore[no-any-return]
+    def mask_gen(pixels: GridView) -> Mask:
+        return (  # type: ignore[no-any-return]
+            pixels[
+                ca.translate_slice(
+                    target_slice,
+                    vrt=Direction.DOWN,
+                    hrz=source_slice_direction,
+                )
+            ]
+            == state
+        ) & (pixels[target_slice] == 0)
 
     return mask_gen
 
@@ -336,25 +349,32 @@ def splash_right_high(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     target_slice=(slice(-3, None)),
     frequency="splash_speed",
 )
-def remove_splashes(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
-    """Remove any splashes - they only last one frame (they're moved down)."""
+def remove_splashes(_: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+    """Remove any splashes - they only last one frame."""
     any_splash = (
         State.SPLASH_LEFT.state,
         State.SPLASH_RIGHT.state,
         State.SPLASHDROP.state,
     )
-    view = ca.pixels[target_slice]
 
-    return partial(np.isin, view, any_splash)
+    def mask_gen(pixels: GridView) -> Mask:
+        return np.isin(pixels[target_slice], any_splash)
+
+    return mask_gen
 
 
 @RainingGrid.rule(State.SPLASHDROP, target_slice=-3, frequency="splash_speed")
-def create_splashdrop(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+def create_splashdrop(_: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Convert a splash to a splashdrop."""
     active_splashes = State.SPLASH_LEFT.state, State.SPLASH_RIGHT.state
-    view = ca.pixels[target_slice]
 
-    return partial(np.isin, view, active_splashes)
+    def mask_gen(pixels: GridView) -> Mask:
+        return np.isin(
+            pixels[target_slice],
+            active_splashes,
+        )  # & np.equal(pixels[target_slice], State.NULL.state)
+
+    return mask_gen
 
 
 @RainingGrid.rule(
@@ -364,11 +384,11 @@ def create_splashdrop(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 )
 def move_splashdrop_down(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Move the splashdrop down."""
-    source_pixels = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
 
-    def mask_gen() -> Mask:
+    def mask_gen(pixels: GridView) -> Mask:
+        source_pixels = pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
         return np.equal(source_pixels, State.SPLASHDROP.state) & np.equal(  # type: ignore[no-any-return]
-            ca.pixels[target_slice],
+            pixels[target_slice],
             State.NULL.state,
         )
 
@@ -382,12 +402,12 @@ def move_splashdrop_down(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     predicate=lambda ca: ca.plant_count < ca.plant_limit,
 )
 def start_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
-    above_pixels = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
-    left_pixels = ca.pixels[ca.translate_slice(target_slice, hrz=Direction.LEFT)]
-    right_pixels = ca.pixels[ca.translate_slice(target_slice, hrz=Direction.RIGHT)]
-    target_pixels = ca.pixels[target_slice]
+    def mask_gen(pixels: GridView) -> Mask:
+        above_pixels = pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
+        left_pixels = pixels[ca.translate_slice(target_slice, hrz=Direction.LEFT)]
+        right_pixels = pixels[ca.translate_slice(target_slice, hrz=Direction.RIGHT)]
+        target_pixels = pixels[target_slice]
 
-    def mask_gen() -> Mask:
         mask = (
             (above_pixels == State.SPLASHDROP.state)
             & (target_pixels == State.NULL.state)
@@ -437,9 +457,6 @@ def start_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 )
 def remove_rain_on_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Remove raindrops that are sitting on top of a plant."""
-    source_pixels = ca.pixels[target_slice]
-    below_pixels = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.DOWN)]
-
     plant_states = (
         State.GROWABLE_PLANT.state,
         State.NEW_PLANT.state,
@@ -449,7 +466,10 @@ def remove_rain_on_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
         State.LEAF_STEM_3A.state,
     )
 
-    def mask_gen() -> Mask:
+    def mask_gen(pixels: GridView) -> Mask:
+        source_pixels = pixels[target_slice]
+        below_pixels = pixels[ca.translate_slice(target_slice, vrt=Direction.DOWN)]
+
         return (source_pixels == State.RAINDROP.state) & np.isin(  # type: ignore[no-any-return]
             below_pixels,
             plant_states,
@@ -464,12 +484,12 @@ def remove_rain_on_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     frequency="rain_speed",
 )
 def plant_growth(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
-    source_pixels = ca.pixels[target_slice]
-    above_pixels = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
-    left_pixels = ca.pixels[ca.translate_slice(target_slice, hrz=Direction.LEFT)]
-    right_pixels = ca.pixels[ca.translate_slice(target_slice, hrz=Direction.RIGHT)]
+    def mask_gen(pixels: GridView) -> Mask:
+        source_pixels = pixels[target_slice]
+        above_pixels = pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
+        left_pixels = pixels[ca.translate_slice(target_slice, hrz=Direction.LEFT)]
+        right_pixels = pixels[ca.translate_slice(target_slice, hrz=Direction.RIGHT)]
 
-    def mask_gen() -> Mask:
         plant_mask = source_pixels == State.GROWABLE_PLANT.state
         raindrop_mask = above_pixels == State.RAINDROP.state
 
@@ -503,10 +523,10 @@ def plant_growth(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     frequency="rain_speed",
 )
 def halt_plant_growth(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
-    source_pixels = ca.pixels[target_slice]
-    below_pixels = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.DOWN)]
+    def mask_gen(pixels: GridView) -> Mask:
+        source_pixels = pixels[target_slice]
+        below_pixels = pixels[ca.translate_slice(target_slice, vrt=Direction.DOWN)]
 
-    def mask_gen() -> Mask:
         return (source_pixels == State.OLD_PLANT.state) | (  # type: ignore[no-any-return]
             below_pixels == State.OLD_PLANT.state
         )
@@ -520,13 +540,13 @@ def halt_plant_growth(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     frequency="rain_speed",
 )
 def plant_aging(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
-    source_pixels = ca.pixels[target_slice]
+    def mask_gen(pixels: GridView) -> Mask:
+        source_pixels = pixels[target_slice]
 
-    left_pixels = ca.pixels[ca.translate_slice(target_slice, hrz=Direction.LEFT)]
-    right_pixels = ca.pixels[ca.translate_slice(target_slice, hrz=Direction.RIGHT)]
-    above_pixels = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
+        left_pixels = pixels[ca.translate_slice(target_slice, hrz=Direction.LEFT)]
+        right_pixels = pixels[ca.translate_slice(target_slice, hrz=Direction.RIGHT)]
+        above_pixels = pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
 
-    def mask_gen() -> Mask:
         return (source_pixels == State.GROWABLE_PLANT.state) & (  # type: ignore[no-any-return]
             (left_pixels == State.NEW_PLANT.state)
             | (right_pixels == State.NEW_PLANT.state)
@@ -542,10 +562,9 @@ def plant_aging(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     frequency="rain_speed",
 )
 def plant_aging_2(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
-    source_pixels = ca.pixels[target_slice]
-    above_pixels = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
-
-    def mask_gen() -> Mask:
+    def mask_gen(pixels: GridView) -> Mask:
+        source_pixels = pixels[target_slice]
+        above_pixels = pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
         return (source_pixels == State.NEW_PLANT.state) & (  # type: ignore[no-any-return]
             above_pixels == State.RAINDROP.state
         )
@@ -559,21 +578,21 @@ def plant_aging_2(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     frequency="rain_speed",
 )
 def leaf_growth_1(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
-    source_pixels = ca.pixels[target_slice]
-    above_pixels = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
-    above2_pixels = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.UP * 2)]
-    below_pixels = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.DOWN)]
-    below2_pixels = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.DOWN * 2)]
-    left_pixels = ca.pixels[ca.translate_slice(target_slice, hrz=Direction.LEFT)]
-    left_above_pixels = ca.pixels[
-        ca.translate_slice(target_slice, hrz=Direction.LEFT, vrt=Direction.UP)
-    ]
-    right_pixels = ca.pixels[ca.translate_slice(target_slice, hrz=Direction.RIGHT)]
-    right_above_pixels = ca.pixels[
-        ca.translate_slice(target_slice, hrz=Direction.RIGHT, vrt=Direction.UP)
-    ]
+    def mask_gen(pixels: GridView) -> Mask:
+        source_pixels = pixels[target_slice]
+        above_pixels = pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
+        above2_pixels = pixels[ca.translate_slice(target_slice, vrt=Direction.UP * 2)]
+        below_pixels = pixels[ca.translate_slice(target_slice, vrt=Direction.DOWN)]
+        below2_pixels = pixels[ca.translate_slice(target_slice, vrt=Direction.DOWN * 2)]
+        left_pixels = pixels[ca.translate_slice(target_slice, hrz=Direction.LEFT)]
+        left_above_pixels = pixels[
+            ca.translate_slice(target_slice, hrz=Direction.LEFT, vrt=Direction.UP)
+        ]
+        right_pixels = pixels[ca.translate_slice(target_slice, hrz=Direction.RIGHT)]
+        right_above_pixels = pixels[
+            ca.translate_slice(target_slice, hrz=Direction.RIGHT, vrt=Direction.UP)
+        ]
 
-    def mask_gen() -> Mask:
         return (  # type: ignore[no-any-return]
             (source_pixels == State.NULL.state)
             & (above_pixels == State.NULL.state)
@@ -601,13 +620,12 @@ def leaf_growth_1(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     frequency="rain_speed",
 )
 def leaf_growth_2(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
-    source_pixels = ca.pixels[target_slice]
-    left_pixels = ca.pixels[ca.translate_slice(target_slice, hrz=Direction.LEFT)]
-    left_2_pixels = ca.pixels[ca.translate_slice(target_slice, hrz=Direction.LEFT * 2)]
-    right_pixels = ca.pixels[ca.translate_slice(target_slice, hrz=Direction.RIGHT)]
-    right_2_pixels = ca.pixels[ca.translate_slice(target_slice, hrz=Direction.RIGHT * 2)]
-
-    def mask_gen() -> Mask:
+    def mask_gen(pixels: GridView) -> Mask:
+        source_pixels = pixels[target_slice]
+        left_pixels = pixels[ca.translate_slice(target_slice, hrz=Direction.LEFT)]
+        left_2_pixels = pixels[ca.translate_slice(target_slice, hrz=Direction.LEFT * 2)]
+        right_pixels = pixels[ca.translate_slice(target_slice, hrz=Direction.RIGHT)]
+        right_2_pixels = pixels[ca.translate_slice(target_slice, hrz=Direction.RIGHT * 2)]
         return (source_pixels == State.NULL.state) & (  # type: ignore[no-any-return]
             (left_pixels == State.LEAF_STEM_1.state)
             & (left_2_pixels == State.OLD_PLANT.state)
