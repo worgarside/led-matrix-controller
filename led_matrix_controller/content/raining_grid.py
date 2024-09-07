@@ -427,7 +427,12 @@ def remove_rain_on_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     def mask_gen() -> Mask:
         return (source_pixels == State.RAINDROP.state) & np.isin(  # type: ignore[no-any-return]
             below_pixels,
-            (State.GROWABLE_PLANT.state, State.NEW_PLANT.state, State.OLD_PLANT.state),
+            (
+                State.GROWABLE_PLANT.state,
+                State.NEW_PLANT.state,
+                State.OLD_PLANT.state,
+                State.LEAF_STEM_1.state,
+            ),
         )
 
     return mask_gen
@@ -523,6 +528,48 @@ def plant_aging_2(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     def mask_gen() -> Mask:
         return (source_pixels == State.NEW_PLANT.state) & (  # type: ignore[no-any-return]
             above_pixels == State.RAINDROP.state
+        )
+
+    return mask_gen
+
+
+@RainingGrid.rule(
+    State.LEAF_STEM_1,
+    target_slice=(slice(5, -2), slice(5, -5)),
+    frequency="rain_speed",
+)
+def leaf_growth_1(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+    source_pixels = ca.pixels[target_slice]
+    above_pixels = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.UP)]
+    above2_pixels = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.UP * 2)]
+    below_pixels = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.DOWN)]
+    below2_pixels = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.DOWN * 2)]
+    left_pixels = ca.pixels[ca.translate_slice(target_slice, hrz=Direction.LEFT)]
+    left_above_pixels = ca.pixels[
+        ca.translate_slice(target_slice, hrz=Direction.LEFT, vrt=Direction.UP)
+    ]
+    right_pixels = ca.pixels[ca.translate_slice(target_slice, hrz=Direction.RIGHT)]
+    right_above_pixels = ca.pixels[
+        ca.translate_slice(target_slice, hrz=Direction.RIGHT, vrt=Direction.UP)
+    ]
+
+    def mask_gen() -> Mask:
+        return (  # type: ignore[no-any-return]
+            (source_pixels == State.NULL.state)
+            & (above_pixels == State.NULL.state)
+            & (above2_pixels == State.NULL.state)
+            & (below_pixels == State.NULL.state)
+            & (below2_pixels == State.NULL.state)
+            & (
+                (
+                    (left_pixels == State.OLD_PLANT.state)
+                    & (left_above_pixels == State.OLD_PLANT.state)
+                )
+                | (
+                    (right_pixels == State.OLD_PLANT.state)
+                    & (right_above_pixels == State.OLD_PLANT.state)
+                )
+            )
         )
 
     return mask_gen
