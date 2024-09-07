@@ -52,6 +52,8 @@ RuleFunc = Callable[["Automaton", TargetSlice], MaskGen]
 RuleTuple = tuple[TargetSlice, MaskGen, int, Callable[["Automaton"], bool]]
 FrameRuleSet = tuple[RuleTuple, ...]
 
+QUEUE_SIZE = 10
+
 
 @dataclass(kw_only=True, slots=True)
 class Automaton(DynamicContent, ABC):
@@ -103,7 +105,7 @@ class Automaton(DynamicContent, ABC):
 
         self.setting_update_callback()
 
-        self.mask_queue = Queue(maxsize=100)
+        self.mask_queue = Queue(maxsize=QUEUE_SIZE)
 
     def setting_update_callback(self, update_setting: str | None = None) -> None:
         """Pre-calculate the a sequence of mask generators for each frame.
