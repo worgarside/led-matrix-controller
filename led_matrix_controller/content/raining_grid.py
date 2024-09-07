@@ -46,7 +46,7 @@ class State(StateBase):
     LEAF_STEM_1 = 8, "-", (53, 143, 57, 255)
     LEAF_STEM_2 = 9, "-", (106, 143, 57, 255)
     LEAF_STEM_3A = 10, "-", (106, 143, 57, 255)
-    LEAF_STEM_3B = 10, "-", (106, 143, 57, 255)
+    LEAF_STEM_3B = 11, "-", (106, 143, 57, 255)
 
 
 @dataclass(kw_only=True, slots=True)
