@@ -122,6 +122,16 @@ class RainingGrid(Automaton):
         ),
     ] = 0.01
 
+    distance_between_plants: Annotated[
+        int,
+        ParameterSetting(
+            minimum=0,
+            maximum=const.MATRIX_WIDTH - 3,  # -1 for each side, -1 for the plant itself
+            icon="mdi:flower",
+            unit_of_measurement="pixels",
+        ),
+    ] = 4
+
     def teardown(self) -> Generator[None, None, None]:
         """Transition the rain chance to 0 then run the simulation until the grid is clear."""
         rain_chance_setting = cast(
@@ -383,6 +393,18 @@ def start_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
             & (left_pixels == State.NULL.state)
             & (right_pixels == State.NULL.state)
         ) & (const.RNG.random(above_pixels.shape) < ca.plant_growth_chance)
+        true_indices = np.where(mask[0])[0]
+
+        if len(true_indices) > 1:
+            # Keep only True values that are at least N columns apart
+            valid_indices = [true_indices[0]]  # Always keep the first True
+            for i in range(1, len(true_indices)):
+                if true_indices[i] - valid_indices[-1] > ca.distance_between_plants:
+                    valid_indices.append(true_indices[i])
+
+            # Clear the row and set only the valid indices to True
+            mask[0, :] = False
+            mask[0, valid_indices] = True
 
         # Get number of True in mask
         ca.plant_count += int(np.sum(mask))
