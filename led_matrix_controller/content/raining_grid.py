@@ -43,9 +43,10 @@ class State(StateBase):
     NEW_PLANT = 6, "P", (0, 255, 0, 255)
     OLD_PLANT = 7, "P", (0, 128, 0, 255)
 
-    LEAF_STEM_1 = 8, "-", (106, 143, 57, 255)
+    LEAF_STEM_1 = 8, "-", (53, 143, 57, 255)
     LEAF_STEM_2 = 9, "-", (106, 143, 57, 255)
-    LEAF_STEM_3 = 10, "-", (106, 143, 57, 255)
+    LEAF_STEM_3A = 10, "-", (106, 143, 57, 255)
+    LEAF_STEM_3B = 10, "-", (106, 143, 57, 255)
 
 
 @dataclass(kw_only=True, slots=True)
@@ -439,15 +440,19 @@ def remove_rain_on_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     source_pixels = ca.pixels[target_slice]
     below_pixels = ca.pixels[ca.translate_slice(target_slice, vrt=Direction.DOWN)]
 
+    plant_states = (
+        State.GROWABLE_PLANT.state,
+        State.NEW_PLANT.state,
+        State.OLD_PLANT.state,
+        State.LEAF_STEM_1.state,
+        State.LEAF_STEM_2.state,
+        State.LEAF_STEM_3A.state,
+    )
+
     def mask_gen() -> Mask:
         return (source_pixels == State.RAINDROP.state) & np.isin(  # type: ignore[no-any-return]
             below_pixels,
-            (
-                State.GROWABLE_PLANT.state,
-                State.NEW_PLANT.state,
-                State.OLD_PLANT.state,
-                State.LEAF_STEM_1.state,
-            ),
+            plant_states,
         )
 
     return mask_gen
@@ -585,6 +590,29 @@ def leaf_growth_1(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
                     & (right_above_pixels == State.OLD_PLANT.state)
                 )
             )
+        )
+
+    return mask_gen
+
+
+@RainingGrid.rule(
+    State.LEAF_STEM_2,
+    target_slice=(slice(4, -2), slice(4, -4)),
+    frequency="rain_speed",
+)
+def leaf_growth_2(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+    source_pixels = ca.pixels[target_slice]
+    left_pixels = ca.pixels[ca.translate_slice(target_slice, hrz=Direction.LEFT)]
+    left_2_pixels = ca.pixels[ca.translate_slice(target_slice, hrz=Direction.LEFT * 2)]
+    right_pixels = ca.pixels[ca.translate_slice(target_slice, hrz=Direction.RIGHT)]
+    right_2_pixels = ca.pixels[ca.translate_slice(target_slice, hrz=Direction.RIGHT * 2)]
+
+    def mask_gen() -> Mask:
+        return (source_pixels == State.NULL.state) & (  # type: ignore[no-any-return]
+            (left_pixels == State.LEAF_STEM_1.state)
+            & (left_2_pixels == State.OLD_PLANT.state)
+            | (right_pixels == State.LEAF_STEM_1.state)
+            & (right_2_pixels == State.OLD_PLANT.state)
         )
 
     return mask_gen
