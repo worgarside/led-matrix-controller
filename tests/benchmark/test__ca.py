@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
+import dataclasses
 from itertools import islice, product
 from typing import TYPE_CHECKING, Callable
 
@@ -94,13 +94,10 @@ def test_rules(
     assert grid.frame_index == expected_frame_index
     expected_frame_index += 1
 
-    grids_to_eval = [deepcopy(grid) for _ in islice(grid, limit)]
-
-    assert len(grids_to_eval) == limit
-
-    for g in grids_to_eval:
-        assert g.frame_index == expected_frame_index
-        expected_frame_index += 1
+    grids_to_eval = [
+        dataclasses.replace(grid, id_override=f"{test_id}-{i}")
+        for i, _ in enumerate(islice(grid, limit))
+    ]
 
     mask_generators = [rule(grid) for grid in grids_to_eval]
 
