@@ -393,21 +393,36 @@ def start_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
             & (left_pixels == State.NULL.state)
             & (right_pixels == State.NULL.state)
         ) & (const.RNG.random(above_pixels.shape) < ca.plant_growth_chance)
-        true_indices = np.where(mask[0])[0]
 
-        if len(true_indices) > 1:
-            # Keep only True values that are at least N columns apart
-            valid_indices = [true_indices[0]]  # Always keep the first True
-            for i in range(1, len(true_indices)):
-                if true_indices[i] - valid_indices[-1] > ca.distance_between_plants:
-                    valid_indices.append(true_indices[i])
+        if len(valid_indices := np.where(mask[0])[0]) == 0:
+            return np.zeros_like(mask)
 
-            # Clear the row and set only the valid indices to True
-            mask[0, :] = False
-            mask[0, valid_indices] = True
+        plant_related_mask = (
+            (target_pixels == State.OLD_PLANT.state)
+            | (target_pixels == State.NEW_PLANT.state)
+            | (target_pixels == State.GROWABLE_PLANT.state)
+        )
 
-        # Get number of True in mask
-        ca.plant_count += int(np.sum(mask))
+        plant_indices = np.where(plant_related_mask[0])[0]
+
+        if len(plant_indices) > 0:
+            # Filter out valid indices that are within N cells of an existing plant
+            for plant_idx in plant_indices:
+                valid_indices = valid_indices[
+                    (valid_indices < plant_idx - ca.distance_between_plants)
+                    | (valid_indices > plant_idx + ca.distance_between_plants)
+                ]
+
+            if len(valid_indices) == 0:
+                LOGGER.debug("No valid locations for plant growth")
+                return np.zeros_like(mask)
+
+        mask[0, :] = False
+        mask[0, const.RNG.choice(valid_indices, size=1)] = True
+
+        ca.plant_count += 1
+
+        LOGGER.debug("Plant count: %d", ca.plant_count)
 
         return mask  # type: ignore[no-any-return]
 
