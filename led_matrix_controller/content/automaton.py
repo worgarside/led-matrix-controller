@@ -241,6 +241,47 @@ class Automaton(DynamicContent, ABC):
 
         LOGGER.debug("Rules worker stopped")
 
+    def _start_rules_thread(self) -> None:
+        """Start the rules thread. If it has already been started, do nothing."""
+        start_new = False
+
+        if not hasattr(self, "_rules_thread"):
+            start_new = True
+        elif self._rules_thread.is_alive():
+            LOGGER.debug("Rules thread already running")
+        else:
+            try:
+                self._rules_thread.start()
+                LOGGER.info("Started existing rules thread")
+            except RuntimeError as err:
+                if str(err) != "threads can only be started once":
+                    raise
+
+                start_new = True
+
+        if start_new:
+            self._rules_thread = Thread(target=self._rules_worker)
+            self._rules_thread.start()
+
+            LOGGER.info("Started new rules thread")
+
+    def _stop_rules_thread(self) -> None:
+        self.active = False
+
+        # Clear the backlog of pending `put` calls - clearing the queue is not sufficient
+        while self._rules_thread.is_alive() and not self.mask_queue.empty():
+            self.mask_queue.get()
+
+        if not self.mask_queue.empty():
+            self.mask_queue.queue.clear()
+
+        self._rules_thread.join(timeout=1)
+
+        if self._rules_thread.is_alive():
+            LOGGER.warning("Rules thread did not stop in time")
+        else:
+            LOGGER.debug("Rules thread stopped")
+
     @property
     def str_repr(self) -> str:
         """Return a string representation of the automaton."""
@@ -288,34 +329,6 @@ class Automaton(DynamicContent, ABC):
         """
         return self
 
-    def __getitem__(self, key: TargetSliceDecVal) -> NDArray[np.int_]:
-        """Get an item from the grid."""
-        return self.pixels[key]
-
-    def _start_rules_thread(self) -> None:
-        """Start the rules thread. If it has already been started, do nothing."""
-        start_new = False
-
-        if not hasattr(self, "_rules_thread"):
-            start_new = True
-        elif self._rules_thread.is_alive():
-            LOGGER.debug("Rules thread already running")
-        else:
-            try:
-                self._rules_thread.start()
-                LOGGER.info("Started existing rules thread")
-            except RuntimeError as err:
-                if str(err) != "threads can only be started once":
-                    raise
-
-                start_new = True
-
-        if start_new:
-            self._rules_thread = Thread(target=self._rules_worker)
-            self._rules_thread.start()
-
-            LOGGER.info("Started new rules thread")
-
     def __iter__(self) -> Generator[None, None, None]:
         """Iterate over the frames."""
         self.active = True
@@ -324,6 +337,10 @@ class Automaton(DynamicContent, ABC):
 
         while self.active:
             yield from self.refresh_content()
+
+        LOGGER.debug(
+            "DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE",
+        )
 
 
 @lru_cache

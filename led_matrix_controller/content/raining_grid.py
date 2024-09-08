@@ -135,6 +135,8 @@ class RainingGrid(Automaton):
             original_transition_rate,
         )
 
+        self._stop_rules_thread()
+
 
 @RainingGrid.rule(State.RAINDROP, target_slice=0, frequency="rain_speed")
 def generate_raindrops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
