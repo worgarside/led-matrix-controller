@@ -568,20 +568,25 @@ def plant_aging_2(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 
 @RainingGrid.rule(
     State.LEAF_STEM_1,
-    target_slice=(slice(5, -2), slice(5, -5)),
+    target_slice=(slice(5, -3), slice(5, -5)),
     frequency="rain_speed",
 )
 def leaf_growth_1(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     above_slice = ca.translate_slice(target_slice, vrt=Direction.UP)
     above2_slice = ca.translate_slice(target_slice, vrt=Direction.UP * 2)
+    above3_slice = ca.translate_slice(target_slice, vrt=Direction.UP * 3)
+
     below_slice = ca.translate_slice(target_slice, vrt=Direction.DOWN)
     below2_slice = ca.translate_slice(target_slice, vrt=Direction.DOWN * 2)
+    below3_slice = ca.translate_slice(target_slice, vrt=Direction.DOWN * 3)
+
     left_slice = ca.translate_slice(target_slice, hrz=Direction.LEFT)
     left_above_slice = ca.translate_slice(
         target_slice,
         hrz=Direction.LEFT,
         vrt=Direction.UP,
     )
+
     right_slice = ca.translate_slice(target_slice, hrz=Direction.RIGHT)
     right_above_slice = ca.translate_slice(
         target_slice,
@@ -597,8 +602,10 @@ def leaf_growth_1(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
                 pixels[target_slice] == null_state,
                 pixels[above_slice] == null_state,
                 pixels[above2_slice] == null_state,
+                pixels[above3_slice] == null_state,
                 pixels[below_slice] == null_state,
                 pixels[below2_slice] == null_state,
+                pixels[below3_slice] == null_state,
             ))
             & (
                 (
