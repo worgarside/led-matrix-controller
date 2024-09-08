@@ -43,11 +43,11 @@ class State(StateBase):
     OLD_PLANT = 7, "P", (0, 128, 0, 255)
 
     LEAF_STEM_1 = 8, "-", (53, 143, 57, 255)
-    LEAF_STEM_2 = 9, "-", (106, 143, 57, 255)
+    LEAF_STEM_2 = 9, "-", (106, 194, 57, 255)
     LEAF_STEM_3A = 10, "-", (66, 245, 81, 255)
     LEAF_STEM_3B = 11, "-", (0, 0, 255, 255)
 
-    LEAF_A = 12, "L", (23, 150, 33, 255)
+    LEAF_A = 12, "L", (23, 245, 33, 255)
 
 
 @dataclass(kw_only=True, slots=True)
@@ -672,18 +672,17 @@ def leaf_growth_3(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     frequency="rain_speed",
 )
 def leaf_growth_a(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
-    # Pre-calculate the slices
     left_slice = ca.translate_slice(target_slice, hrz=Direction.LEFT)
     right_slice = ca.translate_slice(target_slice, hrz=Direction.RIGHT)
     below_slice = ca.translate_slice(target_slice, vrt=Direction.DOWN)
-    below_right_slice = ca.translate_slice(
+    above_right_slice = ca.translate_slice(
         target_slice,
-        vrt=Direction.DOWN,
+        vrt=Direction.UP,
         hrz=Direction.RIGHT,
     )
-    below_left_slice = ca.translate_slice(
+    above_left_slice = ca.translate_slice(
         target_slice,
-        vrt=Direction.DOWN,
+        vrt=Direction.UP,
         hrz=Direction.LEFT,
     )
     above_slice = ca.translate_slice(target_slice, vrt=Direction.UP)
@@ -694,7 +693,7 @@ def leaf_growth_a(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     def mask_gen(pixels: GridView) -> Mask:
         source_pixels = pixels[target_slice]
 
-        below_is_leaf_stem_2 = pixels[below_slice] == leaf_stem_2
+        above_is_not_leaf_stem_2 = pixels[above_slice] != leaf_stem_2
 
         return (source_pixels == State.NULL.state) & np.logical_or.reduce((  # type: ignore[no-any-return]
             pixels[below_slice] == leaf_stem_3a,
@@ -703,12 +702,12 @@ def leaf_growth_a(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
             pixels[above_slice] == leaf_stem_3a,
             np.logical_or(
                 np.logical_and(
-                    pixels[below_right_slice] == leaf_stem_3a,
-                    below_is_leaf_stem_2,
+                    pixels[above_right_slice] == leaf_stem_3a,
+                    above_is_not_leaf_stem_2,
                 ),
                 np.logical_and(
-                    pixels[below_left_slice] == leaf_stem_3a,
-                    below_is_leaf_stem_2,
+                    pixels[above_left_slice] == leaf_stem_3a,
+                    above_is_not_leaf_stem_2,
                 ),
             ),
         ))
