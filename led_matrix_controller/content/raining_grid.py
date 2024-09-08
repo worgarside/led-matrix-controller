@@ -44,8 +44,10 @@ class State(StateBase):
 
     LEAF_STEM_1 = 8, "-", (53, 143, 57, 255)
     LEAF_STEM_2 = 9, "-", (106, 143, 57, 255)
-    LEAF_STEM_3A = 10, "-", (255, 0, 0, 255)
+    LEAF_STEM_3A = 10, "-", (66, 245, 81, 255)
     LEAF_STEM_3B = 11, "-", (0, 0, 255, 255)
+
+    LEAF_A = 12, "L", (23, 150, 33, 255)
 
 
 @dataclass(kw_only=True, slots=True)
@@ -215,23 +217,15 @@ def top_of_rain_down(_: RainingGrid, __: TargetSlice) -> MaskGen:
     below_slice = slice(2, None), slice(None)
 
     def mask_gen(pixels: GridView) -> Mask:
-        top_row = pixels[0]
-        second_row = pixels[1]
-        above_pixels = pixels[above_slice]
-        middle_pixels = pixels[middle_slice]
-        below_pixels = pixels[below_slice]
-        last_row = pixels[-1]
-        penultimate_row = pixels[-2]
-
         return np.vstack(
             (
-                (top_row == raindrop) & (second_row == raindrop),
+                (pixels[0] == raindrop) & (pixels[1] == raindrop),
                 (
-                    (above_pixels != raindrop)
-                    & (middle_pixels == raindrop)
-                    & (below_pixels == raindrop)
+                    (pixels[above_slice] != raindrop)
+                    & (pixels[middle_slice] == raindrop)
+                    & (pixels[below_slice] == raindrop)
                 ),
-                (last_row == raindrop) & (penultimate_row != raindrop),
+                (pixels[-1] == raindrop) & (pixels[-2] != raindrop),
             ),
         )
 
@@ -455,6 +449,7 @@ def remove_rain_on_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
         State.LEAF_STEM_2.state,
         State.LEAF_STEM_3A.state,
         State.LEAF_STEM_3B.state,
+        State.LEAF_A.state,
     )
 
     below_slice = ca.translate_slice(target_slice, vrt=Direction.DOWN)
@@ -667,6 +662,56 @@ def leaf_growth_3(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
             & ((pixels[left_slice] == leaf_stem_2) | (pixels[right_slice] == leaf_stem_2))
             # & (const.RNG.random(source_pixels.shape) < 0.5)
         )
+
+    return mask_gen
+
+
+@RainingGrid.rule(
+    State.LEAF_A,
+    target_slice=(slice(1, -2), slice(1, -2)),
+    frequency="rain_speed",
+)
+def leaf_growth_a(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+    # Pre-calculate the slices
+    left_slice = ca.translate_slice(target_slice, hrz=Direction.LEFT)
+    right_slice = ca.translate_slice(target_slice, hrz=Direction.RIGHT)
+    below_slice = ca.translate_slice(target_slice, vrt=Direction.DOWN)
+    below_right_slice = ca.translate_slice(
+        target_slice,
+        vrt=Direction.DOWN,
+        hrz=Direction.RIGHT,
+    )
+    below_left_slice = ca.translate_slice(
+        target_slice,
+        vrt=Direction.DOWN,
+        hrz=Direction.LEFT,
+    )
+    above_slice = ca.translate_slice(target_slice, vrt=Direction.UP)
+
+    leaf_stem_2 = State.LEAF_STEM_2.state
+    leaf_stem_3a = State.LEAF_STEM_3A.state
+
+    def mask_gen(pixels: GridView) -> Mask:
+        source_pixels = pixels[target_slice]
+
+        below_is_leaf_stem_2 = pixels[below_slice] == leaf_stem_2
+
+        return (source_pixels == State.NULL.state) & np.logical_or.reduce((  # type: ignore[no-any-return]
+            pixels[below_slice] == leaf_stem_3a,
+            pixels[left_slice] == leaf_stem_3a,
+            pixels[right_slice] == leaf_stem_3a,
+            pixels[above_slice] == leaf_stem_3a,
+            np.logical_or(
+                np.logical_and(
+                    pixels[below_right_slice] == leaf_stem_3a,
+                    below_is_leaf_stem_2,
+                ),
+                np.logical_and(
+                    pixels[below_left_slice] == leaf_stem_3a,
+                    below_is_leaf_stem_2,
+                ),
+            ),
+        ))
 
     return mask_gen
 
