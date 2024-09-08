@@ -51,7 +51,12 @@ TargetSlice = tuple[slice, slice]
 Mask = NDArray[np.bool_]
 MaskGen = Callable[[GridView], Mask]
 RuleFunc = Callable[["Automaton", TargetSlice], MaskGen]
-RuleTuple = tuple[TargetSlice, MaskGen, int, Callable[["Automaton"], bool]]
+RuleTuple = tuple[
+    TargetSlice,
+    MaskGen,
+    int | tuple[int, ...],
+    Callable[["Automaton"], bool],
+]
 FrameRuleSet = tuple[RuleTuple, ...]
 
 QUEUE_SIZE: Final[int] = int(getenv("AUTOMATON_QUEUE_SIZE", "100"))
@@ -143,7 +148,7 @@ class Automaton(DynamicContent, ABC):
     @classmethod
     def rule(
         cls,
-        to_state: StateBase,
+        to_state: StateBase | tuple[StateBase, ...],
         *,
         target_slice: TargetSliceDecVal = EVERYWHERE,
         frequency: int | str = 1,
@@ -229,13 +234,20 @@ class Automaton(DynamicContent, ABC):
         while self.active:
             for ruleset in self.frame_rulesets:
                 masks = tuple(
-                    (target_view, mask_gen(pixels), state)
-                    for target_view, mask_gen, state, predicate in ruleset
+                    (target_slice, mask_gen(pixels), state)
+                    for target_slice, mask_gen, state, predicate in ruleset
                     if predicate(self)
                 )
 
                 for target_slice, mask, state in masks:
-                    pixels[target_slice][mask] = state
+                    if isinstance(state, int):
+                        pixels[target_slice][mask] = state
+                    else:
+                        # Distribute the state across the mask
+                        pixels[target_slice][mask] = const.RNG.choice(
+                            state,
+                            size=mask.sum(),
+                        )
 
                 self.mask_queue.put(pixels.copy())
 
