@@ -104,4 +104,4 @@ def test_rules(
     @benchmark  # type: ignore[misc]
     def bench() -> None:
         for mask_gen in mask_generators:
-            mask_gen()
+            mask_gen(grid.pixels)

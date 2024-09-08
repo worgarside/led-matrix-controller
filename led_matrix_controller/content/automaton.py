@@ -9,10 +9,14 @@ from dataclasses import dataclass, field
 from enum import IntEnum
 from functools import lru_cache, wraps
 from itertools import islice
+from os import getenv
+from queue import Queue
+from threading import Thread
 from typing import (
     Any,
     Callable,
     ClassVar,
+    Final,
     Generator,
     Self,
 )
@@ -45,10 +49,12 @@ class Direction(IntEnum):
 TargetSliceDecVal = slice | int | tuple[int | slice, int | slice]
 TargetSlice = tuple[slice, slice]
 Mask = NDArray[np.bool_]
-MaskGen = Callable[[], Mask]
+MaskGen = Callable[[GridView], Mask]
 RuleFunc = Callable[["Automaton", TargetSlice], MaskGen]
-RuleTuple = tuple[GridView, MaskGen, int, Callable[["Automaton"], bool]]
+RuleTuple = tuple[TargetSlice, MaskGen, int, Callable[["Automaton"], bool]]
 FrameRuleSet = tuple[RuleTuple, ...]
+
+QUEUE_SIZE: Final[int] = int(getenv("AUTOMATON_QUEUE_SIZE", "100"))
 
 
 @dataclass(kw_only=True, slots=True)
@@ -63,6 +69,9 @@ class Automaton(DynamicContent, ABC):
     frame_index: int = field(init=False, default=-1)
     frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False, repr=False)
     rules: list[Rule] = field(init=False, repr=False)
+
+    _rules_thread: Thread = field(init=False, repr=False)
+    mask_queue: Queue[GridView] = field(init=False, repr=False)
 
     class OutOfBoundsError(ValueError):
         """Error for when a slice goes out of bounds."""
@@ -97,6 +106,8 @@ class Automaton(DynamicContent, ABC):
             rule.refresh_mask_generator(self)
 
         self.setting_update_callback()
+
+        self.mask_queue = Queue(maxsize=QUEUE_SIZE)
 
     def setting_update_callback(self, update_setting: str | None = None) -> None:
         """Pre-calculate the a sequence of mask generators for each frame.
@@ -207,19 +218,69 @@ class Automaton(DynamicContent, ABC):
 
     def refresh_content(self) -> Generator[None, None, None]:
         """Generate the frames of the automaton."""
-        for ruleset in self.frame_rulesets:
-            masks = tuple(
-                (target_view, mask_gen(), state)
-                for target_view, mask_gen, state, predicate in ruleset
-                if predicate(self)
-            )
+        self.pixels[:, :] = self.mask_queue.get()
 
-            for target_view, mask, state in masks:
-                target_view[mask] = state
+        self.frame_index += 1
 
-            self.frame_index += 1
+        yield
 
-            yield
+    def _rules_worker(self) -> None:
+        pixels = self.pixels.copy()
+        while self.active:
+            for ruleset in self.frame_rulesets:
+                masks = tuple(
+                    (target_view, mask_gen(pixels), state)
+                    for target_view, mask_gen, state, predicate in ruleset
+                    if predicate(self)
+                )
+
+                for target_slice, mask, state in masks:
+                    pixels[target_slice][mask] = state
+
+                self.mask_queue.put(pixels.copy())
+
+        LOGGER.debug("Rules worker stopped")
+
+    def _start_rules_thread(self) -> None:
+        """Start the rules thread. If it has already been started, do nothing."""
+        start_new = False
+
+        if not hasattr(self, "_rules_thread"):
+            start_new = True
+        elif self._rules_thread.is_alive():
+            LOGGER.debug("Rules thread already running")
+        else:
+            try:
+                self._rules_thread.start()
+                LOGGER.info("Started existing rules thread")
+            except RuntimeError as err:
+                if str(err) != "threads can only be started once":
+                    raise
+
+                start_new = True
+
+        if start_new:
+            self._rules_thread = Thread(target=self._rules_worker)
+            self._rules_thread.start()
+
+            LOGGER.info("Started new rules thread")
+
+    def _stop_rules_thread(self) -> None:
+        self.active = False
+
+        # Clear the backlog of pending `put` calls - clearing the queue is not sufficient
+        while self._rules_thread.is_alive() and not self.mask_queue.empty():
+            self.mask_queue.get()
+
+        if not self.mask_queue.empty():
+            self.mask_queue.queue.clear()
+
+        self._rules_thread.join(timeout=1)
+
+        if self._rules_thread.is_alive():
+            LOGGER.warning("Rules thread did not stop in time")
+        else:
+            LOGGER.debug("Rules thread stopped")
 
     @property
     def str_repr(self) -> str:
@@ -268,9 +329,18 @@ class Automaton(DynamicContent, ABC):
         """
         return self
 
-    def __getitem__(self, key: TargetSliceDecVal) -> NDArray[np.int_]:
-        """Get an item from the grid."""
-        return self.pixels[key]
+    def __iter__(self) -> Generator[None, None, None]:
+        """Iterate over the frames."""
+        self.active = True
+
+        self._start_rules_thread()
+
+        while self.active:
+            yield from self.refresh_content()
+
+        LOGGER.debug(
+            "DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE",
+        )
 
 
 @lru_cache
