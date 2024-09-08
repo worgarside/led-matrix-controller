@@ -218,7 +218,7 @@ class Automaton(DynamicContent, ABC):
 
     def refresh_content(self) -> Generator[None, None, None]:
         """Generate the frames of the automaton."""
-        self.pixels = self.mask_queue.get()
+        self.pixels[:, :] = self.mask_queue.get()
 
         self.frame_index += 1
 
@@ -238,6 +238,8 @@ class Automaton(DynamicContent, ABC):
                     pixels[target_slice][mask] = state
 
                 self.mask_queue.put(pixels.copy())
+
+        LOGGER.debug("Rules worker stopped")
 
     @property
     def str_repr(self) -> str:
