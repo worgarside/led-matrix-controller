@@ -45,7 +45,7 @@ class State(StateBase):
     LEAF_STEM_1 = 8, "-", (53, 143, 57, 255)
     LEAF_STEM_2 = 9, "-", (106, 194, 57, 255)
     LEAF_STEM_3A = 10, "-", (66, 245, 81, 255)
-    LEAF_STEM_3B = 11, "-", (0, 0, 255, 255)
+    LEAF_STEM_3B = 11, "-", (99, 142, 81, 255)
 
     LEAF_A1 = 12, "L", (33, 191, 40, 255)
     LEAF_A2 = 13, "L", (48, 145, 53, 255)
@@ -716,6 +716,74 @@ def leaf_growth_a(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
                     above_is_not_leaf_stem_2,
                 ),
             ),
+        ))
+
+    return mask_gen
+
+
+@RainingGrid.rule(
+    (State.LEAF_A1, State.LEAF_A2, State.LEAF_A3, State.LEAF_A4),
+    target_slice=(slice(1, -2), slice(1, -2)),
+    frequency="rain_speed",
+)
+def leaf_growth_b(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+    left_slice = ca.translate_slice(target_slice, hrz=Direction.LEFT)
+    right_slice = ca.translate_slice(target_slice, hrz=Direction.RIGHT)
+    below_slice = ca.translate_slice(target_slice, vrt=Direction.DOWN)
+    below_left_slice = ca.translate_slice(
+        target_slice,
+        vrt=Direction.DOWN,
+        hrz=Direction.LEFT,
+    )
+    below_right_slice = ca.translate_slice(
+        target_slice,
+        vrt=Direction.DOWN,
+        hrz=Direction.RIGHT,
+    )
+    above_right_slice = ca.translate_slice(
+        target_slice,
+        vrt=Direction.UP,
+        hrz=Direction.RIGHT,
+    )
+    above_left_slice = ca.translate_slice(
+        target_slice,
+        vrt=Direction.UP,
+        hrz=Direction.LEFT,
+    )
+    above_slice = ca.translate_slice(target_slice, vrt=Direction.UP)
+
+    leaf_stem_2 = State.LEAF_STEM_2.state
+    leaf_stem_3b = State.LEAF_STEM_3B.state
+
+    def mask_gen(pixels: GridView) -> Mask:
+        source_pixels = pixels[target_slice]
+
+        above_is_not_leaf_stem_2 = pixels[above_slice] != leaf_stem_2
+        below_is_leaf_stem_2 = pixels[below_slice] == leaf_stem_2
+
+        return (source_pixels == State.NULL.state) & np.logical_or.reduce((  # type: ignore[no-any-return]
+            pixels[below_slice] == leaf_stem_3b,
+            pixels[left_slice] == leaf_stem_3b,
+            pixels[right_slice] == leaf_stem_3b,
+            pixels[above_slice] == leaf_stem_3b,
+            np.logical_or.reduce((
+                np.logical_and(
+                    pixels[above_right_slice] == leaf_stem_3b,
+                    above_is_not_leaf_stem_2,
+                ),
+                np.logical_and(
+                    pixels[above_left_slice] == leaf_stem_3b,
+                    above_is_not_leaf_stem_2,
+                ),
+                np.logical_and(
+                    pixels[below_right_slice] == leaf_stem_3b,
+                    below_is_leaf_stem_2,
+                ),
+                np.logical_and(
+                    pixels[below_left_slice] == leaf_stem_3b,
+                    below_is_leaf_stem_2,
+                ),
+            )),
         ))
 
     return mask_gen
