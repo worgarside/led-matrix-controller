@@ -47,7 +47,10 @@ class State(StateBase):
     LEAF_STEM_3A = 10, "-", (66, 245, 81, 255)
     LEAF_STEM_3B = 11, "-", (0, 0, 255, 255)
 
-    LEAF_A = 12, "L", (33, 191, 40, 255)
+    LEAF_A1 = 12, "L", (33, 191, 40, 255)
+    LEAF_A2 = 13, "L", (48, 145, 53, 255)
+    LEAF_A3 = 14, "L", (82, 171, 67, 255)
+    LEAF_A4 = 15, "L", (82, 171, 67, 255)
 
 
 @dataclass(kw_only=True, slots=True)
@@ -449,7 +452,10 @@ def remove_rain_on_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
         State.LEAF_STEM_2.state,
         State.LEAF_STEM_3A.state,
         State.LEAF_STEM_3B.state,
-        State.LEAF_A.state,
+        State.LEAF_A1.state,
+        State.LEAF_A2.state,
+        State.LEAF_A3.state,
+        State.LEAF_A4.state,
     )
 
     below_slice = ca.translate_slice(target_slice, vrt=Direction.DOWN)
@@ -667,7 +673,7 @@ def leaf_growth_3(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 
 
 @RainingGrid.rule(
-    State.LEAF_A,
+    (State.LEAF_A1, State.LEAF_A2, State.LEAF_A3, State.LEAF_A4),
     target_slice=(slice(1, -2), slice(1, -2)),
     frequency="rain_speed",
 )
