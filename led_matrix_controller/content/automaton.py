@@ -51,7 +51,7 @@ TargetSlice = tuple[slice, slice]
 Mask = NDArray[np.bool_]
 MaskGen = Callable[[GridView], Mask]
 RuleFunc = Callable[["Automaton", TargetSlice], MaskGen]
-RuleTuple = tuple[TargetSlice, MaskGen, int, Callable[["Automaton"], bool]]
+RuleTuple = tuple[TargetSlice, MaskGen, int, Callable[["Automaton"], bool], float]
 FrameRuleSet = tuple[RuleTuple, ...]
 
 QUEUE_SIZE: Final[int] = int(getenv("AUTOMATON_QUEUE_SIZE", "100"))
@@ -148,6 +148,7 @@ class Automaton(DynamicContent, ABC):
         target_slice: TargetSliceDecVal = EVERYWHERE,
         frequency: int | str = 1,
         predicate: Callable[[Automaton], bool] = lambda _: True,
+        random_multiplier: float = 1,
     ) -> Callable[[Callable[[Any, TargetSlice], MaskGen]], Callable[[Self], MaskGen]]:
         """Decorator to add a rule to the automaton.
 
@@ -158,6 +159,7 @@ class Automaton(DynamicContent, ABC):
                 a string is provided, it references the name of a `FrequencySetting`.
             predicate (Callable[[], bool], optional): Optional predicate to determine if the rule should be
                 applied.
+            random_multiplier (float, optional): Optional random multiplier for the rule. Defaults to 1.
         """
         match target_slice:
             case int(n):
@@ -191,6 +193,7 @@ class Automaton(DynamicContent, ABC):
                     to_state=to_state,
                     frequency=frequency,
                     predicate=predicate,
+                    random_multiplier=random_multiplier,
                 ),
             )
 
@@ -229,12 +232,15 @@ class Automaton(DynamicContent, ABC):
         while self.active:
             for ruleset in self.frame_rulesets:
                 masks = tuple(
-                    (target_view, mask_gen(pixels), state)
-                    for target_view, mask_gen, state, predicate in ruleset
+                    (target_slice, mask_gen(pixels), state, rand_mult)
+                    for target_slice, mask_gen, state, predicate, rand_mult in ruleset
                     if predicate(self)
                 )
 
-                for target_slice, mask, state in masks:
+                for target_slice, mask, state, rand_mult in masks:
+                    if rand_mult < 1:
+                        mask &= const.RNG.random(mask.shape) < rand_mult  # noqa: PLW2901
+
                     pixels[target_slice][mask] = state
 
                 self.mask_queue.put(pixels.copy())
