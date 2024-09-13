@@ -57,6 +57,8 @@ class State(StateBase):
 class RainingGrid(Automaton):
     """Basic rain simulation."""
 
+    TRACK_STATES_DURATION: ClassVar[tuple[int, ...]] = ()  # (State.OLD_PLANT.state,)
+
     IS_OPAQUE: ClassVar[bool] = True
     # i.e. has a full background to overwrite previous content
 
