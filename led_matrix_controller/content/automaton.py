@@ -66,12 +66,16 @@ class Automaton(DynamicContent, ABC):
     if const.DEBUG_MODE:
         _RULE_FUNCTIONS: ClassVar[list[Callable[..., MaskGen]]] = []
 
+    TRACK_STATES_DURATION: ClassVar[tuple[int, ...]] = ()
+
     frame_index: int = field(init=False, default=-1)
     frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False, repr=False)
     rules: list[Rule] = field(init=False, repr=False)
 
     _rules_thread: Thread = field(init=False, repr=False)
     mask_queue: Queue[GridView] = field(init=False, repr=False)
+
+    durations: GridView = field(init=False, repr=False)
 
     class OutOfBoundsError(ValueError):
         """Error for when a slice goes out of bounds."""
@@ -225,19 +229,44 @@ class Automaton(DynamicContent, ABC):
         yield
 
     def _rules_worker(self) -> None:
+        if not hasattr(self, "durations"):
+            self.durations = self.zeros()
+
         pixels = self.pixels.copy()
+        prev_pixels = self.pixels.copy()
+
         while self.active:
             for ruleset in self.frame_rulesets:
+                # Generate masks
                 masks = tuple(
                     (target_view, mask_gen(pixels), state)
                     for target_view, mask_gen, state, predicate in ruleset
                     if predicate(self)
                 )
 
-                for target_slice, mask, state in masks:
-                    pixels[target_slice][mask] = state
+                # Apply masks
+                for target_slice, mask, new_state in masks:
+                    if isinstance(new_state, int):
+                        pixels[target_slice][mask] = new_state
+                    else:
+                        # A tuple of ints, distribute them randomly
+                        pixels[target_slice][mask] = const.RNG.choice(
+                            new_state,
+                            size=mask.sum(),
+                        )
 
-                self.mask_queue.put(pixels.copy())
+                if self.TRACK_STATES_DURATION:
+                    # Calculate state durations
+                    tracked_states_mask = np.isin(pixels, self.TRACK_STATES_DURATION)
+                    same_state_mask = (pixels == prev_pixels) & tracked_states_mask
+                    new_tracked_state_mask = (pixels != prev_pixels) & tracked_states_mask
+
+                    self.durations[same_state_mask] += 1
+                    self.durations[new_tracked_state_mask] = 1
+                    self.durations[~tracked_states_mask] = 0
+
+                # Add new frame to queue
+                self.mask_queue.put(prev_pixels := pixels.copy())
 
         LOGGER.debug("Rules worker stopped")
 
