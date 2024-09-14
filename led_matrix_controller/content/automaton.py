@@ -139,8 +139,10 @@ class Automaton(DynamicContent, ABC):
                 if update_setting in rule.consumed_parameters:
                     rule.refresh_mask_generator(self)
 
+        Rule.clear_cached_rule_tuples()
+
         self.frame_rulesets = tuple(
-            tuple(rule.rule_tuple for rule in self.rules if rule.active_on_frame(i))
+            tuple(rule.rule_tuple(self) for rule in self.rules if rule.active_on_frame(i))
             for i in range(ruleset_count)
         )
 
@@ -379,6 +381,10 @@ class Automaton(DynamicContent, ABC):
 
         while self.active:
             yield from self.refresh_content()
+
+    def __hash__(self) -> int:
+        """Return the hash of the automaton."""
+        return hash(self.id)
 
 
 @lru_cache
