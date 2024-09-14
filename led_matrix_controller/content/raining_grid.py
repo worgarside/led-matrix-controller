@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import unique
-from itertools import islice
 from typing import Annotated, ClassVar, Generator, Literal, cast
 
 import numpy as np
@@ -52,8 +51,8 @@ class State(StateBase):
     LEAF_3 = 14, "L", (82, 171, 67, 255)
     LEAF_4 = 15, "L", (82, 171, 67, 255)
 
-    DYING_PLANT = 16, "P", (255, 255, 0, 255)
-    DEAD_PLANT = 17, "P", (255, 0, 255, 255)
+    DYING_PLANT = 16, "P", (140, 191, 31, 255)
+    DEAD_PLANT = 17, "P", (135, 118, 20, 255)
 
 
 @dataclass(kw_only=True, slots=True)
@@ -198,7 +197,7 @@ class RainingGrid(Automaton):
 
         rain_chance_setting.value = 0
 
-        for _ in islice(self, const.TICKS_PER_SECOND * 5):
+        for _ in self:
             yield
 
             if np.all(self.pixels == 0):
@@ -834,17 +833,42 @@ def leaf_growth_b(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 @RainingGrid.rule(
     State.DYING_PLANT,
     frequency=const.TICKS_PER_SECOND,
-    predicate=lambda ca: ca.rain_chance < 0.01,  # noqa: PLR2004
+    predicate=lambda ca: ca.rain_chance < 0.005,  # noqa: PLR2004
     random_multiplier=0.25,
 )
 def kill_stagnant_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+    """Kill off plants when the rain level drops below a threshold.
+
+    0.005 in the predicate above is the same as 5%.
+    """
     durations = ca.durations[target_slice]
-    killable = (State.NEW_PLANT.state, State.GROWABLE_PLANT.state)
 
     def mask_gen(pixels: GridView) -> Mask:
-        return np.isin(pixels[target_slice], killable) & (
-            durations >= ca.plant_death_propagation_speed
-        )
+        target_pixels = pixels[target_slice]
+        return (  # type: ignore[no-any-return]
+            (target_pixels == State.NEW_PLANT.state)
+            | (target_pixels == State.GROWABLE_PLANT.state)
+        ) & (durations >= ca.plant_death_propagation_speed)
+
+    return mask_gen
+
+
+@RainingGrid.rule(
+    State.DYING_PLANT,
+    frequency=const.TICKS_PER_SECOND,
+    random_multiplier=0.005,
+)
+def kill_really_stagnant_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+    """Kill off super-stagnant plants - usually when another plant has grown over them."""
+    durations = ca.durations[target_slice]
+    five_minutes = const.seconds_to_ticks(300)
+
+    def mask_gen(pixels: GridView) -> Mask:
+        target_pixels = pixels[target_slice]
+        return (  # type: ignore[no-any-return]
+            (target_pixels == State.NEW_PLANT.state)
+            | (target_pixels == State.GROWABLE_PLANT.state)
+        ) & (durations >= five_minutes)
 
     return mask_gen
 
@@ -954,6 +978,20 @@ def trim_plant_tops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
         return (pixels[target_slice] == State.MATURE_PLANT.state) & (  # type: ignore[no-any-return]
             pixels[below_slice] == State.NULL.state
         )
+
+    return mask_gen
+
+
+@RainingGrid.rule(
+    State.DYING_PLANT,
+    target_slice=(slice(None, 1)),
+    frequency=const.seconds_to_ticks(60),
+    predicate=lambda ca: ca.rain_chance == 0.0,
+    random_multiplier=0.2,
+)
+def kill_off_full_height_plants(_: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+    def mask_gen(pixels: GridView) -> Mask:
+        return pixels[target_slice] == State.MATURE_PLANT.state  # type: ignore[no-any-return]
 
     return mask_gen
 
