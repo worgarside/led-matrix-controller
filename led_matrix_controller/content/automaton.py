@@ -102,6 +102,7 @@ class Automaton(DynamicContent, ABC):
 
         # Create the automaton; 0 is the default state
         self.pixels = self.zeros()
+        self.durations = self.zeros()
 
         # Create mask generators after all setup is done
         for rule in self.rules:
@@ -234,9 +235,6 @@ class Automaton(DynamicContent, ABC):
         yield
 
     def _rules_worker(self) -> None:
-        if not hasattr(self, "durations"):
-            self.durations = self.zeros()
-
         pixels = self.pixels.copy()
         prev_pixels = self.pixels.copy()
 

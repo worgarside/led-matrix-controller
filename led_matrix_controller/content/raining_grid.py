@@ -40,24 +40,32 @@ class State(StateBase):
 
     GROWABLE_PLANT = 5, "P", (0, 192, 0, 255)
     NEW_PLANT = 6, "P", (0, 255, 0, 255)
-    OLD_PLANT = 7, "P", (0, 128, 0, 255)
+    MATURE_PLANT = 7, "P", (0, 128, 0, 255)
 
     LEAF_STEM_1 = 8, "-", (53, 143, 57, 255)
     LEAF_STEM_2 = 9, "-", (106, 194, 57, 255)
     LEAF_STEM_3A = 10, "-", (66, 245, 81, 255)
     LEAF_STEM_3B = 11, "-", (99, 142, 81, 255)
 
-    LEAF_A1 = 12, "L", (33, 191, 40, 255)
-    LEAF_A2 = 13, "L", (48, 145, 53, 255)
-    LEAF_A3 = 14, "L", (82, 171, 67, 255)
-    LEAF_A4 = 15, "L", (82, 171, 67, 255)
+    LEAF_1 = 12, "L", (33, 191, 40, 255)
+    LEAF_2 = 13, "L", (48, 145, 53, 255)
+    LEAF_3 = 14, "L", (82, 171, 67, 255)
+    LEAF_4 = 15, "L", (82, 171, 67, 255)
+
+    DYING_PLANT = 16, "P", (255, 255, 0, 255)
+    DEAD_PLANT = 17, "P", (255, 0, 255, 255)
 
 
 @dataclass(kw_only=True, slots=True)
 class RainingGrid(Automaton):
     """Basic rain simulation."""
 
-    TRACK_STATES_DURATION: ClassVar[tuple[int, ...]] = ()  # (State.OLD_PLANT.state,)
+    TRACK_STATES_DURATION: ClassVar[tuple[int, ...]] = (
+        State.NEW_PLANT.state,
+        State.GROWABLE_PLANT.state,
+        State.DYING_PLANT.state,
+        State.DEAD_PLANT.state,
+    )
 
     IS_OPAQUE: ClassVar[bool] = True
     # i.e. has a full background to overwrite previous content
@@ -138,6 +146,16 @@ class RainingGrid(Automaton):
             unit_of_measurement="pixels",
         ),
     ] = 4
+
+    plant_death_propagation_speed: Annotated[
+        int,
+        ParameterSetting(
+            minimum=1,
+            maximum=300 * const.TICKS_PER_SECOND,  # 5 minutes
+            icon="mdi:flower",
+            unit_of_measurement="ticks",
+        ),
+    ] = 10 * const.TICKS_PER_SECOND  # 10 seconds
 
     def teardown(self) -> Generator[None, None, None]:
         """Transition the rain chance to 0 then run the simulation until the grid is clear."""
@@ -394,7 +412,7 @@ def start_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     null_state = State.NULL.state
 
     plant_states = (
-        State.OLD_PLANT.state,
+        State.MATURE_PLANT.state,
         State.NEW_PLANT.state,
         State.GROWABLE_PLANT.state,
     )
@@ -449,15 +467,15 @@ def remove_rain_on_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     plant_states = (
         State.GROWABLE_PLANT.state,
         State.NEW_PLANT.state,
-        State.OLD_PLANT.state,
+        State.MATURE_PLANT.state,
         State.LEAF_STEM_1.state,
         State.LEAF_STEM_2.state,
         State.LEAF_STEM_3A.state,
         State.LEAF_STEM_3B.state,
-        State.LEAF_A1.state,
-        State.LEAF_A2.state,
-        State.LEAF_A3.state,
-        State.LEAF_A4.state,
+        State.LEAF_1.state,
+        State.LEAF_2.state,
+        State.LEAF_3.state,
+        State.LEAF_4.state,
     )
 
     below_slice = ca.translate_slice(target_slice, vrt=Direction.DOWN)
@@ -514,14 +532,14 @@ def plant_growth(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 
 
 @RainingGrid.rule(
-    State.OLD_PLANT,
+    State.MATURE_PLANT,
     target_slice=(slice(None, 2)),
     frequency="rain_speed",
 )
 def halt_plant_growth(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     below_slice = ca.translate_slice(target_slice, vrt=Direction.DOWN)
 
-    old_plant = State.OLD_PLANT.state
+    old_plant = State.MATURE_PLANT.state
 
     def mask_gen(pixels: GridView) -> Mask:
         return (pixels[target_slice] == old_plant) | (pixels[below_slice] == old_plant)  # type: ignore[no-any-return]
@@ -530,7 +548,7 @@ def halt_plant_growth(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 
 
 @RainingGrid.rule(
-    State.OLD_PLANT,
+    State.MATURE_PLANT,
     target_slice=(slice(1, None), slice(1, -1)),
     frequency="rain_speed",
 )
@@ -612,12 +630,12 @@ def leaf_growth_1(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
             ))
             & (
                 (
-                    (pixels[left_slice] == State.OLD_PLANT.state)
-                    & (pixels[left_above_slice] == State.OLD_PLANT.state)
+                    (pixels[left_slice] == State.MATURE_PLANT.state)
+                    & (pixels[left_above_slice] == State.MATURE_PLANT.state)
                 )
                 | (
-                    (pixels[right_slice] == State.OLD_PLANT.state)
-                    & (pixels[right_above_slice] == State.OLD_PLANT.state)
+                    (pixels[right_slice] == State.MATURE_PLANT.state)
+                    & (pixels[right_above_slice] == State.MATURE_PLANT.state)
                 )
             )
         )
@@ -640,11 +658,11 @@ def leaf_growth_2(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
         return (pixels[target_slice] == State.NULL.state) & (  # type: ignore[no-any-return]
             (
                 (pixels[left_slice] == State.LEAF_STEM_1.state)
-                & (pixels[left_2_slice] == State.OLD_PLANT.state)
+                & (pixels[left_2_slice] == State.MATURE_PLANT.state)
             )
             | (
                 (pixels[right_slice] == State.LEAF_STEM_1.state)
-                & (pixels[right_2_slice] == State.OLD_PLANT.state)
+                & (pixels[right_2_slice] == State.MATURE_PLANT.state)
             )
         )
 
@@ -675,7 +693,7 @@ def leaf_growth_3(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 
 
 @RainingGrid.rule(
-    (State.LEAF_A1, State.LEAF_A2, State.LEAF_A3, State.LEAF_A4),
+    (State.LEAF_1, State.LEAF_2, State.LEAF_3, State.LEAF_4),
     target_slice=(slice(1, -2), slice(1, -2)),
     frequency="rain_speed",
 )
@@ -724,7 +742,7 @@ def leaf_growth_a(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 
 
 @RainingGrid.rule(
-    (State.LEAF_A1, State.LEAF_A2, State.LEAF_A3, State.LEAF_A4),
+    (State.LEAF_1, State.LEAF_2, State.LEAF_3, State.LEAF_4),
     target_slice=(slice(1, -2), slice(1, -2)),
     frequency="rain_speed",
 )
@@ -786,6 +804,81 @@ def leaf_growth_b(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
                     below_is_leaf_stem_2,
                 ),
             )),
+        ))
+
+    return mask_gen
+
+
+@RainingGrid.rule(
+    State.DYING_PLANT,
+    frequency=const.TICKS_PER_SECOND,
+    predicate=lambda ca: ca.rain_chance < 0.01,  # noqa: PLR2004
+)
+def kill_stagnant_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+    durations = ca.durations[target_slice]
+    killable = (State.NEW_PLANT.state, State.GROWABLE_PLANT.state)
+
+    def mask_gen(pixels: GridView) -> Mask:
+        return np.isin(pixels[target_slice], killable) & (
+            durations >= ca.plant_death_propagation_speed
+        )
+
+    return mask_gen
+
+
+@RainingGrid.rule(State.DEAD_PLANT, frequency=const.TICKS_PER_SECOND)
+def kill_stagnant_plant_2(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+    durations = ca.durations[target_slice]
+
+    def mask_gen(pixels: GridView) -> Mask:
+        return (pixels[target_slice] == State.DYING_PLANT.state) & (  # type: ignore[no-any-return]
+            durations >= ca.plant_death_propagation_speed
+        )
+
+    return mask_gen
+
+
+@RainingGrid.rule(State.NULL, frequency=const.TICKS_PER_SECOND)
+def kill_stagnant_plant_3(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+    durations = ca.durations[target_slice]
+
+    def mask_gen(pixels: GridView) -> Mask:
+        return (pixels[target_slice] == State.DEAD_PLANT.state) & (  # type: ignore[no-any-return]
+            durations >= ca.plant_death_propagation_speed
+        )
+
+    return mask_gen
+
+
+@RainingGrid.rule(
+    State.DYING_PLANT,
+    target_slice=(slice(1, None), slice(1, -1)),
+    frequency=const.TICKS_PER_SECOND,
+)
+def propagate_plant_death(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+    above_slice = ca.translate_slice(target_slice, vrt=Direction.UP)
+    left_slice = ca.translate_slice(target_slice, hrz=Direction.LEFT)
+    right_slice = ca.translate_slice(target_slice, hrz=Direction.RIGHT)
+
+    dead_state = State.DEAD_PLANT.state
+
+    propagate_to = (
+        State.MATURE_PLANT.state,
+        State.LEAF_STEM_1.state,
+        State.LEAF_STEM_2.state,
+        State.LEAF_STEM_3A.state,
+        State.LEAF_STEM_3B.state,
+        State.LEAF_1.state,
+        State.LEAF_2.state,
+        State.LEAF_3.state,
+        State.LEAF_4.state,
+    )
+
+    def mask_gen(pixels: GridView) -> Mask:
+        return np.isin(pixels[target_slice], propagate_to) & np.logical_or.reduce((  # type: ignore[no-any-return]
+            pixels[above_slice] == dead_state,
+            pixels[left_slice] == dead_state,
+            pixels[right_slice] == dead_state,
         ))
 
     return mask_gen
