@@ -126,13 +126,15 @@ class Automaton(DynamicContent, ABC):
         The total number of frames (and thus rulesets) is the least common multiple of the frequencies of the
         rules. If the lowest frequency is >1, then some (e.g. every other) frames will have no rules applied.
         """
-        ruleset_count = math.lcm(
-            *(
-                setting.value
-                for setting in self.settings.values()
-                if isinstance(setting, FrequencySetting)
-            ),
-        )
+        rule_freqs = {
+            r.frequency for r in self.rules if isinstance(r.frequency, int | float)
+        } | {
+            setting.value
+            for setting in self.settings.values()
+            if isinstance(setting, FrequencySetting)
+        }
+
+        ruleset_count = math.lcm(*rule_freqs)
 
         if update_setting:
             for rule in self.rules:
