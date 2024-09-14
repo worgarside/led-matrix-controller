@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import ast
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable
 
@@ -17,22 +16,6 @@ if TYPE_CHECKING:
         TargetSlice,
     )
     from content.base import GridView, StateBase
-
-
-class AttributeVisitor(ast.NodeVisitor):
-    """Visitor to extract attributes from a function."""
-
-    def __init__(self, grid_arg_name: str) -> None:
-        self.grid_arg_name = grid_arg_name
-        self.attributes: set[str] = set()
-
-    def visit_Attribute(self, node: ast.Attribute) -> None:  # noqa: N802
-        """Visit an attribute node."""
-        if isinstance(node.value, ast.Name) and node.value.id == self.grid_arg_name:
-            # Record the consumption of the grid's attribute
-            self.attributes.add(node.attr)
-
-        self.generic_visit(node)
 
 
 @dataclass(kw_only=True, slots=True)
