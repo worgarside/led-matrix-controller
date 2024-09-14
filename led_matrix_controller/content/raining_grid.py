@@ -38,7 +38,7 @@ class State(StateBase):
     SPLASH_RIGHT = 4, "*", (170, 197, 250, 255)
 
     GROWABLE_PLANT = 5, "P", (0, 192, 0, 255)
-    NEW_PLANT = 6, "P", (0, 255, 0, 255)
+    NEW_PLANT = 6, "P", (0, 192, 0, 255)
     MATURE_PLANT = 7, "P", (0, 128, 0, 255)
 
     LEAF_STEM_1 = 8, "-", (53, 143, 57, 255)
@@ -224,8 +224,10 @@ def generate_raindrops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Generate raindrops at the top of the grid."""
     shape = ca.pixels[target_slice].shape
 
-    def mask_gen(_: GridView) -> Mask:
-        return const.RNG.random(shape) < ca.rain_chance
+    def mask_gen(pixels: GridView) -> Mask:
+        return (pixels[target_slice] == State.NULL.state) & (  # type: ignore[no-any-return]
+            const.RNG.random(shape) < ca.rain_chance
+        )
 
     return mask_gen
 
@@ -555,10 +557,14 @@ def plant_growth(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 def halt_plant_growth(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     below_slice = ca.translate_slice(target_slice, vrt=Direction.DOWN)
 
-    old_plant = State.MATURE_PLANT.state
+    mature_plant = State.MATURE_PLANT.state
 
     def mask_gen(pixels: GridView) -> Mask:
-        return (pixels[target_slice] == old_plant) | (pixels[below_slice] == old_plant)  # type: ignore[no-any-return]
+        return (  # type: ignore[no-any-return]
+            (pixels[target_slice] == State.NULL.state)
+            | (pixels[target_slice] == State.NEW_PLANT.state)
+            | (pixels[target_slice] == State.GROWABLE_PLANT.state)
+        ) & (pixels[below_slice] == mature_plant)
 
     return mask_gen
 
