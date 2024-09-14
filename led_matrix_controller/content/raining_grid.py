@@ -158,6 +158,18 @@ class RainingGrid(Automaton):
         ),
     ] = const.seconds_to_ticks(10)  # noqa: RUF009
 
+    leaf_growth_chance: Annotated[
+        float,
+        ParameterSetting(
+            minimum=0,
+            maximum=100,
+            icon="mdi:flower",
+            unit_of_measurement="%",
+            payload_modifier=lambda x, _: x / 100,
+            invoke_settings_callback=True,
+        ),
+    ] = 0.005
+
     def teardown(self) -> Generator[None, None, None]:
         """Transition the rain chance to 0 then run the simulation until the grid is clear."""
         rain_chance_setting = cast(
@@ -596,7 +608,7 @@ def plant_aging_2(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     State.LEAF_STEM_1,
     target_slice=(slice(5, -3), slice(5, -5)),
     frequency="rain_speed",
-    random_multiplier=0.1,
+    random_multiplier="leaf_growth_chance",
 )
 def leaf_growth_1(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     above_slice = ca.translate_slice(target_slice, vrt=Direction.UP)
@@ -653,7 +665,7 @@ def leaf_growth_1(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     State.LEAF_STEM_2,
     target_slice=(slice(4, -2), slice(4, -4)),
     frequency="rain_speed",
-    random_multiplier=0.1,
+    random_multiplier="leaf_growth_chance",
 )
 def leaf_growth_2(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     left_slice = ca.translate_slice(target_slice, hrz=Direction.LEFT)
@@ -680,7 +692,7 @@ def leaf_growth_2(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     (State.LEAF_STEM_3A, State.LEAF_STEM_3B),
     target_slice=(slice(2, -2), slice(2, -2)),
     frequency="rain_speed",
-    random_multiplier=0.1,
+    random_multiplier="leaf_growth_chance",
 )
 def leaf_growth_3(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     left_slice = ca.translate_slice(target_slice, hrz=Direction.LEFT)
@@ -704,7 +716,7 @@ def leaf_growth_3(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     (State.LEAF_1, State.LEAF_2, State.LEAF_3, State.LEAF_4),
     target_slice=(slice(1, -2), slice(1, -2)),
     frequency="rain_speed",
-    random_multiplier=0.1,
+    random_multiplier="leaf_growth_chance",
 )
 def leaf_growth_a(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     left_slice = ca.translate_slice(target_slice, hrz=Direction.LEFT)
@@ -754,7 +766,7 @@ def leaf_growth_a(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     (State.LEAF_1, State.LEAF_2, State.LEAF_3, State.LEAF_4),
     target_slice=(slice(1, -2), slice(1, -2)),
     frequency="rain_speed",
-    random_multiplier=0.1,
+    random_multiplier="leaf_growth_chance",
 )
 def leaf_growth_b(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     left_slice = ca.translate_slice(target_slice, hrz=Direction.LEFT)

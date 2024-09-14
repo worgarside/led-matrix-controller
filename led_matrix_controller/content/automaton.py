@@ -163,7 +163,7 @@ class Automaton(DynamicContent, ABC):
         target_slice: TargetSliceDecVal = EVERYWHERE,
         frequency: int | str = 1,
         predicate: Callable[[Self], bool] = lambda _: True,
-        random_multiplier: float = 1,
+        random_multiplier: float | str = 1,
     ) -> Callable[[Callable[[Any, TargetSlice], MaskGen]], Callable[[Self], MaskGen]]:
         """Decorator to add a rule to the automaton.
 
