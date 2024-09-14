@@ -67,18 +67,6 @@ class Rule:
     consumed_parameters: set[str] = field(init=False, repr=False)
     """The slugs of the ParameterSettings consumed by the rule function."""
 
-    rule_tuple: RuleTuple = field(init=False, repr=False)
-
-    def __post_init__(self) -> None:
-        """Post-initialization steps."""
-        states: int | tuple[int, ...] = (
-            self.to_state.state
-            if not isinstance(self.to_state, tuple)
-            else tuple(ts.state for ts in self.to_state)
-        )
-
-        self.rule_tuple = self.target_slice, self.mask_generator, states, self.predicate
-
     def active_on_frame(self, i: int, /) -> bool:
         """Return whether the rule is active on the given frame."""
         current_frequency = (
@@ -106,3 +94,14 @@ class Rule:
             }
 
         self.mask_generator = self.rule_func(automaton, self.target_slice)
+
+    @property
+    def rule_tuple(self) -> RuleTuple:
+        """Return the rule as a tuple."""
+        states: int | tuple[int, ...] = (
+            self.to_state.state
+            if not isinstance(self.to_state, tuple)
+            else tuple(ts.state for ts in self.to_state)
+        )
+
+        return self.target_slice, self.mask_generator, states, self.predicate
