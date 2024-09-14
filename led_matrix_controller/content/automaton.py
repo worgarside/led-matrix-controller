@@ -112,7 +112,7 @@ class Automaton(DynamicContent, ABC):
                 rule._frequency_setting = freq_setting  # noqa: SLF001
 
             rule.target_view = self.pixels[rule.target_slice]
-            rule.refresh_mask_generator(self)
+            rule.mask_generator = rule.rule_func(self, rule.target_slice)
 
         self.setting_update_callback()
 
@@ -124,6 +124,7 @@ class Automaton(DynamicContent, ABC):
         The total number of frames (and thus rulesets) is the least common multiple of the frequencies of the
         rules. If the lowest frequency is >1, then some (e.g. every other) frames will have no rules applied.
         """
+        _ = update_setting
         ruleset_count = math.lcm(
             *(
                 setting.value
@@ -131,11 +132,6 @@ class Automaton(DynamicContent, ABC):
                 if isinstance(setting, FrequencySetting)
             ),
         )
-
-        if update_setting:
-            for rule in self.rules:
-                if update_setting in rule.consumed_parameters:
-                    rule.refresh_mask_generator(self)
 
         self.frame_rulesets = tuple(
             tuple(rule.rule_tuple for rule in self.rules if rule.active_on_frame(i))
