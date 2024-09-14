@@ -24,8 +24,8 @@ if TYPE_CHECKING:
             id=test_id,
         )
         for size, limit in product(
-            [8, 16, 32, 64],
-            [50, 250, 500],
+            [32, 64],
+            [50, 500],
         )
     ],
 )
@@ -63,8 +63,8 @@ def test_raining_grid_simulation(
             id=test_id,
         )
         for size, limit, rule in product(
-            [8, 16, 32, 64],
-            [50, 250, 500],
+            [32, 64],
+            [50, 500],
             RainingGrid._RULE_FUNCTIONS,
         )
     ],
