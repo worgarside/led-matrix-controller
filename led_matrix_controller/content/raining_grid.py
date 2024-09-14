@@ -813,6 +813,7 @@ def leaf_growth_b(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     State.DYING_PLANT,
     frequency=const.TICKS_PER_SECOND,
     predicate=lambda ca: ca.rain_chance < 0.01,  # noqa: PLR2004
+    random_multiplier=0.25,
 )
 def kill_stagnant_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     durations = ca.durations[target_slice]
@@ -826,7 +827,11 @@ def kill_stagnant_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     return mask_gen
 
 
-@RainingGrid.rule(State.DEAD_PLANT, frequency=const.TICKS_PER_SECOND)
+@RainingGrid.rule(
+    State.DEAD_PLANT,
+    frequency=const.TICKS_PER_SECOND,
+    random_multiplier=0.25,
+)
 def kill_stagnant_plant_2(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     durations = ca.durations[target_slice]
 
@@ -838,7 +843,7 @@ def kill_stagnant_plant_2(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen
     return mask_gen
 
 
-@RainingGrid.rule(State.NULL, frequency=const.TICKS_PER_SECOND)
+@RainingGrid.rule(State.NULL, frequency=const.TICKS_PER_SECOND, random_multiplier=0.1)
 def kill_stagnant_plant_3(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     durations = ca.durations[target_slice]
 
