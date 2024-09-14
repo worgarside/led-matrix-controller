@@ -906,13 +906,14 @@ def trim_plant_bases(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 
     def mask_gen(pixels: GridView) -> Mask:
         bottom_row_mature = pixels[target_slice] == State.MATURE_PLANT.state
-        above_is_empty = pixels[above_slice] == State.NULL.state
+
+        above_row = pixels[above_slice]
 
         ca.plant_count = int(
-            np.sum(bottom_row_mature & (pixels[above_slice] == State.MATURE_PLANT.state)),
+            np.sum(bottom_row_mature & (above_row == State.MATURE_PLANT.state)),
         )
 
-        return bottom_row_mature & above_is_empty  # type: ignore[no-any-return]
+        return bottom_row_mature & (above_row == State.NULL.state)  # type: ignore[no-any-return]
 
     return mask_gen
 
