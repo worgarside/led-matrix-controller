@@ -852,13 +852,14 @@ def kill_stagnant_plant_3(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen
 
 @RainingGrid.rule(
     State.DYING_PLANT,
-    target_slice=(slice(1, None), slice(1, -1)),
+    target_slice=(slice(1, -1), slice(1, -1)),
     frequency=const.TICKS_PER_SECOND,
 )
 def propagate_plant_death(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     above_slice = ca.translate_slice(target_slice, vrt=Direction.UP)
     left_slice = ca.translate_slice(target_slice, hrz=Direction.LEFT)
     right_slice = ca.translate_slice(target_slice, hrz=Direction.RIGHT)
+    below_slice = ca.translate_slice(target_slice, vrt=Direction.DOWN)
 
     dead_state = State.DEAD_PLANT.state
 
@@ -879,6 +880,7 @@ def propagate_plant_death(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen
             pixels[above_slice] == dead_state,
             pixels[left_slice] == dead_state,
             pixels[right_slice] == dead_state,
+            pixels[below_slice] == dead_state,
         ))
 
     return mask_gen
