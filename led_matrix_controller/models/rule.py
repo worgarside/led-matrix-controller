@@ -46,7 +46,7 @@ class Rule:
     rule_func: RuleFunc
     """The function which creates the mask generator."""
 
-    to_state: StateBase
+    to_state: StateBase | tuple[StateBase, ...]
     """The state to change to."""
 
     frequency: int | str
@@ -98,4 +98,10 @@ class Rule:
     @property
     def rule_tuple(self) -> RuleTuple:
         """Return the rule as a tuple."""
-        return self.target_slice, self.mask_generator, self.to_state.value, self.predicate
+        states: int | tuple[int, ...] = (
+            self.to_state.state
+            if not isinstance(self.to_state, tuple)
+            else tuple(ts.state for ts in self.to_state)
+        )
+
+        return self.target_slice, self.mask_generator, states, self.predicate
