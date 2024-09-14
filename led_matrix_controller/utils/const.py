@@ -52,7 +52,7 @@ MAX_PRIORITY: Final[float] = 1e10
 
 def seconds_to_ticks(seconds: float, *_: Any) -> int:
     """Convert seconds to ticks."""
-    return int(seconds / TICK_LENGTH)
+    return int(seconds * TICKS_PER_SECOND)
 
 
 def ticks_to_seconds(ticks: int) -> float:

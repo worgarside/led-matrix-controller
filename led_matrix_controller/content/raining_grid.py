@@ -895,7 +895,7 @@ def propagate_plant_death(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen
 @RainingGrid.rule(
     State.NULL,
     target_slice=(slice(-1, None)),
-    frequency=const.TICKS_PER_SECOND,  # * 60,
+    frequency=const.seconds_to_ticks(60),
 )
 def trim_plant_bases(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Remove mature plant cells with nothing above them.
@@ -908,7 +908,27 @@ def trim_plant_bases(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
         bottom_row_mature = pixels[target_slice] == State.MATURE_PLANT.state
         above_is_empty = pixels[above_slice] == State.NULL.state
 
+        ca.plant_count = int(
+            np.sum(bottom_row_mature & (pixels[above_slice] == State.MATURE_PLANT.state)),
+        )
+
         return bottom_row_mature & above_is_empty  # type: ignore[no-any-return]
+
+    return mask_gen
+
+
+@RainingGrid.rule(
+    State.NULL,
+    target_slice=(slice(None, 1)),
+    frequency=const.seconds_to_ticks(60),
+)
+def trim_plant_tops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+    below_slice = ca.translate_slice(target_slice, vrt=Direction.DOWN)
+
+    def mask_gen(pixels: GridView) -> Mask:
+        return (pixels[target_slice] == State.MATURE_PLANT.state) & (  # type: ignore[no-any-return]
+            pixels[below_slice] == State.NULL.state
+        )
 
     return mask_gen
 
