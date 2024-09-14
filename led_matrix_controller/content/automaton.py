@@ -56,6 +56,7 @@ RuleTuple = tuple[
     MaskGen,
     int | tuple[int, ...],
     Callable[["Automaton"], bool],
+    float,
 ]
 FrameRuleSet = tuple[RuleTuple, ...]
 
@@ -158,6 +159,7 @@ class Automaton(DynamicContent, ABC):
         target_slice: TargetSliceDecVal = EVERYWHERE,
         frequency: int | str = 1,
         predicate: Callable[[Self], bool] = lambda _: True,
+        random_multiplier: float = 1,
     ) -> Callable[[Callable[[Any, TargetSlice], MaskGen]], Callable[[Self], MaskGen]]:
         """Decorator to add a rule to the automaton.
 
@@ -168,6 +170,7 @@ class Automaton(DynamicContent, ABC):
                 a string is provided, it references the name of a `FrequencySetting`.
             predicate (Callable[[], bool], optional): Optional predicate to determine if the rule should be
                 applied.
+            random_multiplier (float, optional): Optional random multiplier for the rule. Defaults to 1.
         """
         match target_slice:
             case int(n):
@@ -201,6 +204,7 @@ class Automaton(DynamicContent, ABC):
                     to_state=to_state,
                     frequency=frequency,
                     predicate=predicate,  # type: ignore[arg-type]
+                    random_multiplier=random_multiplier,
                 ),
             )
 
@@ -235,6 +239,9 @@ class Automaton(DynamicContent, ABC):
         yield
 
     def _rules_worker(self) -> None:
+        if not hasattr(self, "durations"):
+            self.durations = self.zeros()
+
         pixels = self.pixels.copy()
         prev_pixels = self.pixels.copy()
 
@@ -242,16 +249,20 @@ class Automaton(DynamicContent, ABC):
             for ruleset in self.frame_rulesets:
                 # Generate masks
                 masks = tuple(
-                    (target_slice, mask_gen(pixels), state)
-                    for target_slice, mask_gen, state, predicate in ruleset
+                    (target_slice, mask_gen(pixels), state, rand_mult)
+                    for target_slice, mask_gen, state, predicate, rand_mult in ruleset
                     if predicate(self)
                 )
 
-                for target_slice, mask, new_state in masks:
+                # Apply masks
+                for target_slice, mask, new_state, rand_mult in masks:
+                    if rand_mult < 1:
+                        mask &= const.RNG.random(mask.shape) < rand_mult  # noqa: PLW2901
+
                     if isinstance(new_state, int):
                         pixels[target_slice][mask] = new_state
                     else:
-                        # A tuple of ints, distribute them randomly
+                        # A tuple of ints; distribute them randomly
                         pixels[target_slice][mask] = const.RNG.choice(
                             new_state,
                             size=mask.sum(),

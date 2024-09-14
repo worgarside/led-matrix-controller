@@ -55,6 +55,9 @@ class Rule:
     predicate: Callable[[Automaton], bool] = lambda _: True
     """Optional predicate to determine if the rule should be applied."""
 
+    random_multiplier: float = 1.0
+    """Optional random multiplier for the rule."""
+
     _frequency_setting: FrequencySetting = field(init=False, repr=False)
     """Optional frequency setting for the rule. Only set if `frequency` is a string."""
 
@@ -104,4 +107,10 @@ class Rule:
             else tuple(ts.state for ts in self.to_state)
         )
 
-        return self.target_slice, self.mask_generator, states, self.predicate
+        return (
+            self.target_slice,
+            self.mask_generator,
+            states,
+            self.predicate,
+            self.random_multiplier,
+        )
