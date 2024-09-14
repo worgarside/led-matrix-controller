@@ -151,12 +151,12 @@ class RainingGrid(Automaton):
         int,
         ParameterSetting(
             minimum=1,
-            maximum=300 * const.TICKS_PER_SECOND,  # 5 minutes
+            maximum=const.seconds_to_ticks(300),  # 5 minutes
             icon="mdi:flower",
             unit_of_measurement="ticks",
-            payload_modifier=lambda x, _: x * const.TICKS_PER_SECOND,
+            payload_modifier=const.seconds_to_ticks,
         ),
-    ] = 10 * const.TICKS_PER_SECOND  # 10 seconds
+    ] = const.seconds_to_ticks(10)  # noqa: RUF009
 
     def teardown(self) -> Generator[None, None, None]:
         """Transition the rain chance to 0 then run the simulation until the grid is clear."""
@@ -888,6 +888,27 @@ def propagate_plant_death(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen
             pixels[right_slice] == dead_state,
             pixels[below_slice] == dead_state,
         ))
+
+    return mask_gen
+
+
+@RainingGrid.rule(
+    State.NULL,
+    target_slice=(slice(-1, None)),
+    frequency=const.TICKS_PER_SECOND,  # * 60,
+)
+def trim_plant_bases(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+    """Remove mature plant cells with nothing above them.
+
+    This makes it easier to track plant counts etc.
+    """
+    above_slice = ca.translate_slice(target_slice, vrt=Direction.UP)
+
+    def mask_gen(pixels: GridView) -> Mask:
+        bottom_row_mature = pixels[target_slice] == State.MATURE_PLANT.state
+        above_is_empty = pixels[above_slice] == State.NULL.state
+
+        return bottom_row_mature & above_is_empty  # type: ignore[no-any-return]
 
     return mask_gen
 

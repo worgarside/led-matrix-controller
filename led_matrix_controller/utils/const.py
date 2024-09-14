@@ -8,7 +8,7 @@ from os import environ, getenv
 from pathlib import Path
 from socket import gethostname
 from sys import platform
-from typing import Final
+from typing import Any, Final
 
 import numpy as np
 from PIL import Image
@@ -37,8 +37,8 @@ RNG = np.random.default_rng(int(getenv("RNG_SEED", datetime.now(UTC).timestamp()
 REPO_PATH: Final[Path] = Path(__file__).parents[2]
 ASSETS_DIRECTORY: Final[Path] = REPO_PATH / "assets"
 
-TICKS_PER_SECOND: Final[int] = int(getenv("TICKS_PER_SECOND", "100"))
-TICK_LENGTH: Final[float] = 1 / TICKS_PER_SECOND
+TICKS_PER_SECOND: Final[int] = int(getenv("TICKS_PER_SECOND", "100"))  # ticks
+TICK_LENGTH: Final[float] = 1 / TICKS_PER_SECOND  # seconds
 
 MATRIX_HEIGHT: Final[int] = 64
 MATRIX_WIDTH: Final[int] = 64
@@ -48,3 +48,13 @@ MATRIX_SHAPE: Final[tuple[int, int]] = (MATRIX_HEIGHT, MATRIX_WIDTH)
 EMPTY_IMAGE: Final[Image.Image] = Image.new("RGB", MATRIX_SHAPE, (0, 0, 0))
 
 MAX_PRIORITY: Final[float] = 1e10
+
+
+def seconds_to_ticks(seconds: float, *_: Any) -> int:
+    """Convert seconds to ticks."""
+    return int(seconds / TICK_LENGTH)
+
+
+def ticks_to_seconds(ticks: int) -> float:
+    """Convert ticks to seconds."""
+    return ticks * TICK_LENGTH
