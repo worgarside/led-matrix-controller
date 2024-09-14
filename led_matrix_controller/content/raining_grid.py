@@ -154,6 +154,7 @@ class RainingGrid(Automaton):
             maximum=300 * const.TICKS_PER_SECOND,  # 5 minutes
             icon="mdi:flower",
             unit_of_measurement="ticks",
+            payload_modifier=lambda x, _: x * const.TICKS_PER_SECOND,
         ),
     ] = 10 * const.TICKS_PER_SECOND  # 10 seconds
 
