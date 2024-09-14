@@ -20,6 +20,11 @@ create:
 
 	sudo rm -rf rpi-rgb-led-matrix
 
+dev-update:
+	@$(MAKE) update
+	@$(MAKE) restart
+	@$(MAKE) tail
+
 disable:
 	sudo systemctl disable led_matrix_controller.service
 
