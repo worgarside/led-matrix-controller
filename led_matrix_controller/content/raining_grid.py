@@ -993,7 +993,7 @@ def trim_plant_tops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     State.DYING_PLANT,
     target_slice=(slice(None, 1)),
     frequency=const.seconds_to_ticks(60),
-    predicate=lambda ca: ca.rain_chance == 0.0,
+    predicate=lambda ca: ca.rain_chance <= 0.0005,  # noqa: PLR2004  (0.5% rain intensity)
     random_multiplier=0.2,
 )
 def kill_off_full_height_plants(_: RainingGrid, target_slice: TargetSlice) -> MaskGen:
