@@ -839,13 +839,14 @@ def leaf_growth_b(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 @RainingGrid.rule(
     State.DYING_PLANT,
     frequency=const.TICKS_PER_SECOND,
-    predicate=lambda ca: ca.rain_chance < 0.005,  # noqa: PLR2004
+    predicate=lambda ca: ca.rain_chance < 0.002,  # noqa: PLR2004
     random_multiplier=0.25,
 )
 def kill_stagnant_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     """Kill off plants when the rain level drops below a threshold.
 
-    0.005 in the predicate above is the same as 5%.
+    0.002 (i.e. 2 / 1000) is used above because the threshold is 2% rain intensity, and the payload modifier
+    for `rain_chance` divides the value by 1000.
     """
     durations = ca.durations[target_slice]
 
