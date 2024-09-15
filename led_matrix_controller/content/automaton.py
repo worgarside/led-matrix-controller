@@ -126,16 +126,20 @@ class Automaton(DynamicContent, ABC):
         rules. If the lowest frequency is >1, then some (e.g. every other) frames will have no rules applied.
         """
         _ = update_setting
-        ruleset_count = math.lcm(
-            *(
-                setting.value
-                for setting in self.settings.values()
-                if isinstance(setting, FrequencySetting)
-            ),
-        )
+        rule_freqs = {
+            r.frequency for r in self.rules if isinstance(r.frequency, int | float)
+        } | {
+            setting.value
+            for setting in self.settings.values()
+            if isinstance(setting, FrequencySetting)
+        }
+
+        ruleset_count = math.lcm(*rule_freqs)
+
+        Rule.clear_cached_rule_tuples()
 
         self.frame_rulesets = tuple(
-            tuple(rule.rule_tuple for rule in self.rules if rule.active_on_frame(i))
+            tuple(rule.rule_tuple() for rule in self.rules if rule.active_on_frame(i))
             for i in range(ruleset_count)
         )
 
@@ -375,9 +379,9 @@ class Automaton(DynamicContent, ABC):
         while self.active:
             yield from self.refresh_content()
 
-        LOGGER.debug(
-            "DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE",
-        )
+    def __hash__(self) -> int:
+        """Return the hash of the automaton."""
+        return hash(self.id)
 
 
 @lru_cache

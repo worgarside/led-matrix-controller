@@ -139,6 +139,10 @@ class RainingGrid(Automaton):
 
         self._stop_rules_thread()
 
+    def __hash__(self) -> int:
+        """Return the hash of the object."""
+        return hash(self.id)
+
 
 @RainingGrid.rule(State.RAINDROP, target_slice=0, frequency="rain_speed")
 def generate_raindrops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
