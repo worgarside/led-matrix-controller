@@ -103,6 +103,7 @@ class Automaton(DynamicContent, ABC):
 
         # Create the automaton; 0 is the default state
         self.pixels = self.zeros()
+        self.durations = self.zeros()
 
         # Create mask generators after all setup is done
         for rule in self.rules:
@@ -143,7 +144,7 @@ class Automaton(DynamicContent, ABC):
         Rule.clear_cached_rule_tuples()
 
         self.frame_rulesets = tuple(
-            tuple(rule.rule_tuple() for rule in self.rules if rule.active_on_frame(i))
+            tuple(rule.rule_tuple(self) for rule in self.rules if rule.active_on_frame(i))
             for i in range(ruleset_count)
         )
 
@@ -161,8 +162,8 @@ class Automaton(DynamicContent, ABC):
         *,
         target_slice: TargetSliceDecVal = EVERYWHERE,
         frequency: int | str = 1,
-        predicate: Callable[[Automaton], bool] = lambda _: True,
-        random_multiplier: float = 1,
+        predicate: Callable[[Self], bool] = lambda _: True,
+        random_multiplier: float | str = 1,
     ) -> Callable[[Callable[[Any, TargetSlice], MaskGen]], Callable[[Self], MaskGen]]:
         """Decorator to add a rule to the automaton.
 
@@ -206,7 +207,7 @@ class Automaton(DynamicContent, ABC):
                     rule_func=rule_func,
                     to_state=to_state,
                     frequency=frequency,
-                    predicate=predicate,
+                    predicate=predicate,  # type: ignore[arg-type]
                     random_multiplier=random_multiplier,
                 ),
             )

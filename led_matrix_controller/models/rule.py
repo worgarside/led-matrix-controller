@@ -56,7 +56,7 @@ class Rule:
     predicate: Callable[[Automaton], bool] = field(hash=False, default=lambda _: True)
     """Optional predicate to determine if the rule should be applied."""
 
-    random_multiplier: float = 1.0
+    random_multiplier: float | str = 1.0
     """Optional random multiplier for the rule."""
 
     _frequency_setting: FrequencySetting = field(init=False, repr=False, hash=False)
@@ -99,9 +99,9 @@ class Rule:
 
         self.mask_generator = self.rule_func(automaton, self.target_slice)
 
-    def rule_tuple(self) -> RuleTuple:
+    def rule_tuple(self, ca: Automaton) -> RuleTuple:
         """Return the rule as a tuple."""
-        return _rule_tuple(self)
+        return _rule_tuple(self, ca)
 
     @classmethod
     def clear_cached_rule_tuples(cls) -> None:
@@ -110,7 +110,7 @@ class Rule:
 
 
 @lru_cache
-def _rule_tuple(rule: Rule) -> RuleTuple:
+def _rule_tuple(rule: Rule, ca: Automaton) -> RuleTuple:
     """Return the rule as a tuple."""
     states: int | tuple[int, ...] = (
         rule.to_state.state
@@ -118,10 +118,15 @@ def _rule_tuple(rule: Rule) -> RuleTuple:
         else tuple(ts.state for ts in rule.to_state)
     )
 
+    if isinstance(rule.random_multiplier, str):
+        rand_mult = float(getattr(ca, rule.random_multiplier))
+    else:
+        rand_mult = rule.random_multiplier
+
     return (
         rule.target_slice,
         rule.mask_generator,
         states,
         rule.predicate,
-        rule.random_multiplier,
+        rand_mult,
     )
