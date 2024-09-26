@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import cached_property
 from logging import DEBUG, getLogger
 from time import sleep
 from typing import TYPE_CHECKING, Callable, ClassVar, Generator, Literal
@@ -22,7 +23,7 @@ LOGGER.setLevel(DEBUG)
 add_stream_handler(LOGGER)
 
 
-@dataclass(kw_only=True, slots=True)
+@dataclass(kw_only=True)
 class ImageViewer(PreDefinedContent):
     """Content for viewing static image."""
 
@@ -45,7 +46,7 @@ class ImageViewer(PreDefinedContent):
 
         self.ticks_to_sleep = int(self.display_seconds / const.TICK_LENGTH)
 
-        super(ImageViewer, self).__post_init__()
+        super(ImageViewer, self).__post_init__()  # noqa: UP008
 
     def generate_canvases(
         self,
@@ -57,7 +58,7 @@ class ImageViewer(PreDefinedContent):
         """
         self.canvases = (new_canvas(self.image),)
 
-    @property
+    @cached_property
     def id(self) -> str:
         """Return the ID of the content."""
         return "image-" + to_kebab_case(
