@@ -4,12 +4,12 @@ default_language_version:
 
 repos:
   - repo: https://github.com/worgarside/pre-commit-hooks-dependency-sync
-    rev: 1.1.2
+    rev: 1.2.0
     hooks:
       - id: sync-additional-dependencies
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.4
+    rev: v0.6.7
     hooks:
       - id: ruff-format
       - id: ruff
@@ -99,6 +99,6 @@ repos:
           - tomli==2.0.1
 
   - repo: https://github.com/jendrikseipp/vulture
-    rev: v2.11
+    rev: v2.12
     hooks:
       - id: vulture
