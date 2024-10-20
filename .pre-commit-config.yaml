@@ -30,7 +30,7 @@ repos:
           - types-requests
           - types-Pillow
           - types-python-dateutil
-          - wg-utilities==5.16.1
+          - wg-utilities==5.17.0
           - rgbmatrixemulator==0.11.6
 
   - repo: https://github.com/python-poetry/poetry
