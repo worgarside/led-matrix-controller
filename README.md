@@ -1,43 +1,70 @@
-# RGB LED Matrix: Now Playing
+# LED Matrix Controller
 
 [![CodSpeed Badge](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://codspeed.io/worgarside/led-matrix-controller)
 
-## Components
+This service is intended to be run on a Raspberry Pi and receives messages from a MQTT broker to control an LED matrix. I currently control my matrix from [Home Assistant](https://github.com/worgarside/home-assistant).
 
-- [Pi Zero W](https://www.raspberrypi.com/products/raspberry-pi-zero-w/)
-- [Adafruit RGB Matrix Bonnet for Raspberry Pi](https://learn.adafruit.com/adafruit-rgb-matrix-bonnet-for-raspberry-pi)
-- [64x64 RGB LED Matrix Panel](https://www.adafruit.com/product/5407)
+## Content
 
-# Setup
+All content has the following parameters:
 
-- Install the matrix drivers and dependencies
+### Clock
 
-  ```bash
-  curl https://raw.githubusercontent.com/adafruit/Raspberry-Pi-Installer-Scripts/main/rgb-matrix.sh > rgb-matrix.sh
-  sudo bash rgb-matrix.sh
-  ```
+Literally just a clock.
 
-  - The source for this is [an Adafruit guide](https://learn.adafruit.com/adafruit-rgb-matrix-bonnet-for-raspberry-pi/)
-- Install the Python dependencies
+| ![Clock](./readme/clock.gif) |
+|-----------------------------|
+| *The clock, with a demonstration of the position/scale parameters being modified* |
 
-  ```bash
-  sudo pip install -r requirements.txt
-  ```
+#### Parameters
 
-  - The dependencies needs to be installed as root because the script needs to be run as root to allow use of the matrix
-- Grant `root` read and write permissions to the `crt_artwork` directory
+| Name | Description |
+|------|-------------|
+| `scale` | Scale of the clock, can only be 1 or 2 |
+| `x_pos` | X position of the content |
+| `y_pos` | Y position of the content |
 
-  ```bash
-  mkdir /home/pi/crt_artwork/
-  sudo chmod -R 777 /home/pi/crt_artwork/
-  ```
+### Raining Grid
 
-  - Again, this is because the script will be run as root
-- Install the service file for auto-running the script on boot
+A cellular automata that simulates the current rainfall. My Home Assistant instance sends messages to the Pi via MQTT to update the rain chance parameter.
 
-  ```bash
-  cd service
-  sudo bash install.sh
-  ```
+It can also display a plant growth simulation, where the plants grow according to a Home Assistant-controlled configuration and decay back to nothing when the rain drops below a given threshold.
 
-  - This will enable and start the service
+| ![Raining Grid](./readme/raining-grid.gif) |
+|--------------------------------------------|
+| *The raining grid simulation (in real time)* |
+
+| ![Raining Grid with Plants](./readme/raining-grid-plants.gif) |
+|--------------------------------------------|
+| *The raining grid simulation with plants (in 8x speed)* |
+
+#### Parameters
+
+| Name | Description |
+|------|-------------|
+| `rain_chance` | The chance of rain, between 0 and 100 |
+| `rain_speed` | The time period between rain cells, in ticks |
+| `splash_speed` | The time period between rain cells, in ticks |
+| `plant_limit` | The maximum number of plants on the grid |
+| `plant_growth_chance` | The chance of a plant growing when rain hits the bottom/the end of a plant, between 0 and 100 |
+| `distance_between_plants` | The distance between plants, in cells |
+| `plant_decay_propagation_speed` | The speed at which a plant decays, in ticks |
+| `leaf_growth_chance` | The chance of a leaf growing in a valid location on any given tick, between 0 and 100 |
+
+
+### Sorting Algorithms
+
+A visualisation of a number of sorting algorithms.
+
+| ![Sorting Algorithms](./readme/sorting-algorithms.gif) |
+|-------------------------------------------------------|
+| *A random selection of the sorting algorithms* |
+
+#### Parameters
+
+| Name | Description |
+|------|-------------|
+| `algorithm` | The algorithm to use |
+| `completion_display_time` | The time to display the sorted array for, in seconds |
+| `iterations` | The number of iterations to run the sorting algorithm for before expiring the content |
+| `randomize_algorithm` | Whether to randomize the algorithm on each iteration |

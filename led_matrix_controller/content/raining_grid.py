@@ -146,7 +146,7 @@ class RainingGrid(Automaton):
         ),
     ] = 4
 
-    plant_death_propagation_speed: Annotated[
+    plant_decay_propagation_speed: Annotated[
         int,
         ParameterSetting(
             minimum=1,
@@ -855,7 +855,7 @@ def kill_stagnant_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
         return (  # type: ignore[no-any-return]
             (target_pixels == State.NEW_PLANT.state)
             | (target_pixels == State.GROWABLE_PLANT.state)
-        ) & (durations >= ca.plant_death_propagation_speed)
+        ) & (durations >= ca.plant_decay_propagation_speed)
 
     return mask_gen
 
@@ -890,7 +890,7 @@ def kill_stagnant_plant_2(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen
 
     def mask_gen(pixels: GridView) -> Mask:
         return (pixels[target_slice] == State.DYING_PLANT.state) & (  # type: ignore[no-any-return]
-            durations >= ca.plant_death_propagation_speed
+            durations >= ca.plant_decay_propagation_speed
         )
 
     return mask_gen
@@ -902,7 +902,7 @@ def kill_stagnant_plant_3(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen
 
     def mask_gen(pixels: GridView) -> Mask:
         return (pixels[target_slice] == State.DEAD_PLANT.state) & (  # type: ignore[no-any-return]
-            durations >= ca.plant_death_propagation_speed
+            durations >= ca.plant_decay_propagation_speed
         )
 
     return mask_gen
@@ -913,7 +913,7 @@ def kill_stagnant_plant_3(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen
     target_slice=(slice(1, -1), slice(1, -1)),
     frequency=const.TICKS_PER_SECOND,
 )
-def propagate_plant_death(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
+def propagate_plant_decay(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     above_slice = ca.translate_slice(target_slice, vrt=Direction.UP)
     left_slice = ca.translate_slice(target_slice, hrz=Direction.LEFT)
     right_slice = ca.translate_slice(target_slice, hrz=Direction.RIGHT)
