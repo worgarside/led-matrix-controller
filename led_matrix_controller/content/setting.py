@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
+from functools import cached_property
 from json import dumps
 from threading import Thread
 from time import sleep
@@ -59,7 +60,7 @@ class InvalidSettingError(ValueError):
     """Raised when an invalid setting is created."""
 
 
-@dataclass(kw_only=True, slots=True)
+@dataclass(kw_only=True)
 class Setting(Generic[S]):
     """Class for a setting that can be controlled via MQTT."""
 
@@ -312,9 +313,7 @@ class Setting(Generic[S]):
         """The MQTT client to use for this setting."""
         return self.__class__._MQTT_CLIENT  # noqa: SLF001
 
-    _mqtt_topic: str = field(init=False, repr=False)
-
-    @property
+    @cached_property
     def mqtt_topic(self) -> str:
         """The MQTT topic that this setting is subscribed to.
 
@@ -322,17 +321,14 @@ class Setting(Generic[S]):
 
         e.g. /mtrxpi/raining-grid/frequency/rain-speed
         """
-        if not hasattr(self, "_mqtt_topic"):
-            self._mqtt_topic = "/" + "/".join(
-                to_kebab_case(
-                    const.HOSTNAME,
-                    self.instance.id,
-                    self.setting_type,
-                    self.slug,
-                ),
-            )
-
-        return self._mqtt_topic
+        return "/" + "/".join(
+            to_kebab_case(
+                const.HOSTNAME,
+                self.instance.id,
+                self.setting_type,
+                self.slug,
+            ),
+        )
 
     @property
     def value(self) -> S:
