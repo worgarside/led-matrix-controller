@@ -318,7 +318,7 @@ class Sorter(DynamicContent):
             unit_of_measurement="iterations",
         ),
     ] = 1
-    """Number of iterations to run the sorting algorithm per."""
+    """Number of iterations to run the sorting algorithm for."""
 
     randomize_algorithm: Annotated[
         bool,
