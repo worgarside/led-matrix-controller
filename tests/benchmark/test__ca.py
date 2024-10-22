@@ -25,7 +25,7 @@ if TYPE_CHECKING:
         )
         for size, limit in product(
             [32, 64],
-            [50, 500],
+            [50, 200],
         )
     ],
 )

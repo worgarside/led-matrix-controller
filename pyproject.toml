@@ -9,7 +9,6 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"
 pillow = "^11.0.0"
-requests = "^2.32.3"
 wg-utilities = { extras = ["exceptions"], version = "^5.17.0" }
 paho-mqtt = "^2.1.0"
 numpy = "^2.0.1"
@@ -33,7 +32,8 @@ addopts = [
   "--cov-report=xml",
   "--cov=led_matrix_controller",
   "-n",
-  "auto",
+  "logical",
+  "-vvv",
 ]
 xfail_strict = true
 log_cli_level = "warning"
@@ -60,7 +60,6 @@ exclude_lines = [
 
 [tool.coverage.run]
 relative_files = true
-
 
 [tool.mypy]
 plugins = "numpy.typing.mypy_plugin"
@@ -153,7 +152,7 @@ lint.ignore = [
   "INP",     # https://docs.astral.sh/ruff/rules/#flake8-no-pep420-inp
   "SLF001",  # https://docs.astral.sh/ruff/rules/private-member-access/
 ]
-"dev_tools/**/*.py"  = ["D", "INP", "T201"]
+"dev_tools/**/*.py" = ["D", "INP", "T201"]
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 115
@@ -181,3 +180,9 @@ min_confidence = 70
 paths = ["tests", "led_matrix_controller"]
 exclude = ["led_matrix_controller/utils/_rgbmatrix.py"]
 sort_by_size = true
+
+[tool.creosote]
+paths = ["led_matrix_controller"]
+deps-file = "pyproject.toml"
+sections = ["tool.poetry.dependencies"]
+exclude-deps = ["paho-mqtt", "pillow"]
