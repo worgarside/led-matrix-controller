@@ -605,20 +605,6 @@ files = [
 ]
 
 [[package]]
-name = "pydeps"
-version = "2.0.1"
-description = "Display module dependencies"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "pydeps-2.0.1-py3-none-any.whl", hash = "sha256:9e3589fff8ac2fc17d672c8132c8b7fab921d30fbb6b37b61bea2c9fc4f84901"},
-    {file = "pydeps-2.0.1.tar.gz", hash = "sha256:6f898ab683ef7c47b14c9cc86bf28b15adebc466cb343c784da4090b2573c704"},
-]
-
-[package.dependencies]
-stdlib-list = "*"
-
-[[package]]
 name = "pygame"
 version = "2.5.2"
 description = "Python Game Development"
@@ -832,24 +818,6 @@ files = [
 ]
 
 [[package]]
-name = "stdlib-list"
-version = "0.10.0"
-description = "A list of Python Standard Libraries (2.7 through 3.12)."
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "stdlib_list-0.10.0-py3-none-any.whl", hash = "sha256:b3a911bc441d03e0332dd1a9e7d0870ba3bb0a542a74d7524f54fb431256e214"},
-    {file = "stdlib_list-0.10.0.tar.gz", hash = "sha256:6519c50d645513ed287657bfe856d527f277331540691ddeaf77b25459964a14"},
-]
-
-[package.extras]
-dev = ["build", "stdlib-list[doc,lint,test]"]
-doc = ["furo", "sphinx"]
-lint = ["black", "mypy", "ruff"]
-support = ["sphobjinv"]
-test = ["coverage[toml]", "pytest", "pytest-cov"]
-
-[[package]]
 name = "tornado"
 version = "6.4.1"
 description = "Tornado is a Python web framework and asynchronous networking library, originally developed at FriendFeed."
@@ -926,4 +894,4 @@ testing = ["botocore"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.12"
-content-hash = "eef1ae375834d00e40bf5621a8bf464631a6ae6306b1677de46eee87e51fa84d"
+content-hash = "012a3c8bc006f91e544099a59e93ca4cda8526866520bd50024c6d613955b859"
