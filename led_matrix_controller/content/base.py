@@ -134,7 +134,7 @@ def _limit_position(
 _CONTENT_STORE: dict[str, ContentBase[Any]] = {}
 
 
-@dataclass(kw_only=True, slots=True)
+@dataclass(kw_only=True)
 class ContentBase(ABC, Generic[ContentType]):
     """Base class for content models."""
 
@@ -259,7 +259,7 @@ class ContentBase(ABC, Generic[ContentType]):
         if self.id not in _CONTENT_STORE:
             raise ValueError(f"Content with ID `{self.id}` not found")
 
-    @property
+    @cached_property
     def id(self) -> str:
         """Return the ID of the content."""
         return self.id_override or camel_to_kebab_case(self.__class__.__name__)
