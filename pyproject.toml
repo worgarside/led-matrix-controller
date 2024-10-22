@@ -8,7 +8,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"
-pillow = "^10.4.0"
+pillow = "^11.0.0"
 requests = "^2.32.3"
 wg-utilities = { extras = ["exceptions"], version = "^5.17.0" }
 paho-mqtt = "^2.1.0"
