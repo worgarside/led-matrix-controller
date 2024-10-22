@@ -18,7 +18,6 @@ typing-extensions = "^4.12.2"
 
 [tool.poetry.group.dev.dependencies]
 rgbmatrixemulator = "^0.11.6"
-pydeps = "^1.12.20"
 
 [tool.poetry.group.test.dependencies]
 pytest-codspeed = "^2.2.1"
