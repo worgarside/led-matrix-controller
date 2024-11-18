@@ -14,7 +14,7 @@ from wg_utilities.loggers import get_streaming_logger
 
 from .base import StopType
 from .dynamic_content import DynamicContent
-from .setting import ParameterSetting  # noqa: TCH001
+from .setting import ParameterSetting
 
 LOGGER = get_streaming_logger(__name__)
 
