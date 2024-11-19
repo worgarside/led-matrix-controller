@@ -33,7 +33,7 @@ from utils import const, mtrx
 from utils.helpers import camel_to_kebab_case
 from wg_utilities.loggers import get_streaming_logger
 
-from .setting import TransitionableParameterSetting  # noqa: TCH001
+from .setting import TransitionableParameterSetting
 
 if TYPE_CHECKING:
     from collections.abc import Collection
