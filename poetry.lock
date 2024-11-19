@@ -862,13 +862,13 @@ zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
 name = "wg-utilities"
-version = "5.17.0"
+version = "5.17.1"
 description = "Loads of useful stuff for the things I do :)"
 optional = false
 python-versions = "<4.0,>=3.11"
 files = [
-    {file = "wg_utilities-5.17.0-py3-none-any.whl", hash = "sha256:49284c925bd5976809ef6ff64fa8ba342e44d973dc68e712990e85fff1a08bf6"},
-    {file = "wg_utilities-5.17.0.tar.gz", hash = "sha256:25412ee5010eef95df22a18ab1af3a232765218a35de22852570d31adf55a15c"},
+    {file = "wg_utilities-5.17.1-py3-none-any.whl", hash = "sha256:c10d0233685f91e45f86def6ee32482515da445dcfd1ca25010bf31a84b0d972"},
+    {file = "wg_utilities-5.17.1.tar.gz", hash = "sha256:86e52ab6044e03718e6ad6a45b247ae844f21f7116c574c2271b7e0730a41c94"},
 ]
 
 [package.dependencies]
@@ -889,4 +889,4 @@ testing = ["botocore"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.12"
-content-hash = "d39584768e2ab79c31aaa62bc8eaf800b787818c226215562b6e1b4e1746fe11"
+content-hash = "97d04ff425a0b0690e532b5b5b590f1e57c8de4886b48c377a55aff57d94e936"
