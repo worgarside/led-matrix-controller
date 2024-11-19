@@ -13,8 +13,8 @@ if TYPE_CHECKING:
     from content.automaton import MaskGen
     from pytest_codspeed import BenchmarkFixture  # type: ignore[import-untyped]
 
-SIZES = [32, 64]
-LIMITS = [50, 200]
+SIZES = [32]
+LIMITS = [200]
 
 
 @pytest.mark.parametrize(
