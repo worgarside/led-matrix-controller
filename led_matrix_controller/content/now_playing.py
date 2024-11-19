@@ -48,7 +48,7 @@ class NowPlaying(DynamicContent):
 
     ARTWORK_DIRECTORY: ClassVar[Path] = (
         (
-            Path("/home/pi")  # Script is run as root so this needs to be hardcoded
+            Path("/var/cache")  # Script is run as root so this needs to be hardcoded
             if const.IS_PI
             else Path.home()
         )
