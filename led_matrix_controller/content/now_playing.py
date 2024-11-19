@@ -20,7 +20,7 @@ from wg_utilities.functions import backoff, force_mkdir
 from wg_utilities.loggers import get_streaming_logger
 
 from .dynamic_content import DynamicContent
-from .setting import ParameterSetting  # noqa: TCH001
+from .setting import ParameterSetting
 
 LOGGER = get_streaming_logger(__name__)
 
