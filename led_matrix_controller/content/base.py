@@ -33,7 +33,7 @@ from utils import const, mtrx
 from utils.helpers import camel_to_kebab_case
 from wg_utilities.loggers import get_streaming_logger
 
-from .setting import TransitionableParameterSetting  # noqa: TCH001
+from .setting import TransitionableParameterSetting
 
 if TYPE_CHECKING:
     from collections.abc import Collection
@@ -186,8 +186,8 @@ class ContentBase(ABC, Generic[ContentType]):
     active: bool = field(init=False, default=False)
     is_sleeping: bool = field(default=False, init=False, repr=False)
     canvas_count: int | None = field(init=False)
-    colormap: GridView = field(init=False, repr=False)
-    pixels: GridView = field(init=False, repr=False)
+    colormap: GridView = field(init=False, repr=False, compare=False)
+    pixels: GridView = field(init=False, repr=False, compare=False)
     stop_reason: StopType | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:

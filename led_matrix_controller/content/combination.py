@@ -10,7 +10,7 @@ from wg_utilities.loggers import get_streaming_logger
 
 from .base import StopType
 from .dynamic_content import DynamicContent
-from .setting import ParameterSetting  # noqa: TCH001
+from .setting import ParameterSetting
 
 if TYPE_CHECKING:
     import itertools
@@ -148,7 +148,7 @@ class Combination(DynamicContent):
             LOGGER.debug(
                 "Setting %r changed to %r, updated `multiple_opaque` to %s",
                 update_setting,
-                self.content_ids,
+                tuple((c.id, c.IS_OPAQUE) for c in self.content),
                 self.multiple_opaque,
             )
 
