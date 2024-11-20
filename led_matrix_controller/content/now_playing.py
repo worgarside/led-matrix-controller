@@ -46,18 +46,17 @@ _INITIAL_TRACK_META: Final[TrackMeta] = {
 class NowPlaying(DynamicContent):
     """Class for the creation, caching, and management of artwork images."""
 
-    ARTWORK_DIRECTORY: ClassVar[Path] = (
+    ARTWORK_DIRECTORY: ClassVar[Path] = force_mkdir(
         (
             Path("/var/cache")  # Script is run as root so this needs to be hardcoded
             if const.IS_PI
             else Path.home()
         )
         .joinpath(
-            ".cache",
             "led-matrix-controller",
             "artwork",
         )
-        .resolve()
+        .resolve(),
     )
 
     ALPHANUM_PATTERN: ClassVar[Pattern[str]] = compile_regex(r"[\W_]+")
