@@ -186,8 +186,8 @@ class ContentBase(ABC, Generic[ContentType]):
     active: bool = field(init=False, default=False)
     is_sleeping: bool = field(default=False, init=False, repr=False)
     canvas_count: int | None = field(init=False)
-    colormap: GridView = field(init=False, repr=False)
-    pixels: GridView = field(init=False, repr=False)
+    colormap: GridView = field(init=False, repr=False, compare=False)
+    pixels: GridView = field(init=False, repr=False, compare=False)
     stop_reason: StopType | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
