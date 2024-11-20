@@ -31,14 +31,14 @@ class TrackMeta(TypedDict):
     title: str | None
     album: str | None
     artist: str | None
-    artwork_uri: URL | None
+    album_artwork_url: URL | None
 
 
 _INITIAL_TRACK_META: Final[TrackMeta] = {
     "title": "",
     "album": "",
     "artist": "",
-    "artwork_uri": URL(""),
+    "album_artwork_url": URL(""),
 }
 
 
@@ -232,7 +232,7 @@ class NowPlaying(DynamicContent):
     @property
     def artwork_uri(self) -> URL | None:
         """Return the URL of the artwork."""
-        return self.track_metadata.get("artwork_uri")
+        return self.track_metadata.get("album_artwork_url")
 
     @property
     def title(self) -> str | None:
