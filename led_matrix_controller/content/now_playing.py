@@ -142,7 +142,7 @@ class NowPlaying(DynamicContent):
         img_arr = np.array(
             Image.open(BytesIO(artwork_bytes))
             .resize((self.width, self.height))
-            .convert("RGB"),
+            .convert("RGBA"),
         )
 
         np.save(force_mkdir(self.file_path, path_is_file=True), img_arr)
