@@ -148,7 +148,7 @@ class Combination(DynamicContent):
             LOGGER.debug(
                 "Setting %r changed to %r, updated `multiple_opaque` to %s",
                 update_setting,
-                self.content_ids,
+                tuple((c.id, c.IS_OPAQUE) for c in self.content),
                 self.multiple_opaque,
             )
 

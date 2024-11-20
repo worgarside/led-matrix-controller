@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ssl
 from contextlib import suppress
 from dataclasses import dataclass, field
 from io import BytesIO
@@ -24,6 +25,8 @@ from .setting import ParameterSetting
 
 LOGGER = get_streaming_logger(__name__)
 
+SSL_CONTEXT = ssl.create_default_context()
+
 
 class TrackMeta(TypedDict):
     """Type definition for the track metadata."""
@@ -31,14 +34,14 @@ class TrackMeta(TypedDict):
     title: str | None
     album: str | None
     artist: str | None
-    artwork_uri: URL | None
+    album_artwork_url: URL | None
 
 
 _INITIAL_TRACK_META: Final[TrackMeta] = {
     "title": "",
     "album": "",
     "artist": "",
-    "artwork_uri": URL(""),
+    "album_artwork_url": URL(""),
 }
 
 
@@ -46,21 +49,22 @@ _INITIAL_TRACK_META: Final[TrackMeta] = {
 class NowPlaying(DynamicContent):
     """Class for the creation, caching, and management of artwork images."""
 
-    ARTWORK_DIRECTORY: ClassVar[Path] = (
+    ARTWORK_DIRECTORY: ClassVar[Path] = force_mkdir(
         (
             Path("/var/cache")  # Script is run as root so this needs to be hardcoded
             if const.IS_PI
             else Path.home()
         )
         .joinpath(
-            ".cache",
             "led-matrix-controller",
             "artwork",
         )
-        .resolve()
+        .resolve(),
     )
 
     ALPHANUM_PATTERN: ClassVar[Pattern[str]] = compile_regex(r"[\W_]+")
+
+    IS_OPAQUE: ClassVar[bool] = True
 
     track_metadata: Annotated[TrackMeta, ParameterSetting(icon="")] = field(
         default_factory=lambda: _INITIAL_TRACK_META,
@@ -135,20 +139,21 @@ class NowPlaying(DynamicContent):
         )
 
         LOGGER.debug("Downloading artwork from remote URL: %s", self.artwork_uri)
-        res = get(self.artwork_uri, timeout=120)
+
+        res = get(self.artwork_uri, timeout=120, verify=SSL_CONTEXT)
         res.raise_for_status()
         artwork_bytes = res.content
 
         img_arr = np.array(
             Image.open(BytesIO(artwork_bytes))
             .resize((self.width, self.height))
-            .convert("RGB"),
+            .convert("RGBA"),
         )
 
         np.save(force_mkdir(self.file_path, path_is_file=True), img_arr)
 
         LOGGER.info(
-            "New image from %s saved at %s for album %s",
+            "New image from %s saved at %s for album %r",
             self.artwork_uri,
             self.file_path,
             self.album,
@@ -232,7 +237,7 @@ class NowPlaying(DynamicContent):
     @property
     def artwork_uri(self) -> URL | None:
         """Return the URL of the artwork."""
-        return self.track_metadata.get("artwork_uri")
+        return self.track_metadata.get("album_artwork_url")
 
     @property
     def title(self) -> str | None:
