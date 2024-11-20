@@ -64,6 +64,8 @@ class NowPlaying(DynamicContent):
 
     ALPHANUM_PATTERN: ClassVar[Pattern[str]] = compile_regex(r"[\W_]+")
 
+    IS_OPAQUE: ClassVar[bool] = True
+
     track_metadata: Annotated[TrackMeta, ParameterSetting(icon="")] = field(
         default_factory=lambda: _INITIAL_TRACK_META,
     )
