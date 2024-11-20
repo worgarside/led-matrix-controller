@@ -59,7 +59,7 @@ class DynamicContent(ContentBase[GridView], ABC):
 
     def zeros(self, *, dtype: DTypeLike = np.int_) -> NDArray[Any]:
         """Return a grid of zeros."""
-        return np.zeros((self.height, self.width), dtype=dtype)
+        return np.zeros((self.height, self.width, 4), dtype=dtype)
 
     @abstractmethod
     def refresh_content(self) -> Generator[None, None, None]:

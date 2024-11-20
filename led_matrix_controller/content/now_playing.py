@@ -148,7 +148,7 @@ class NowPlaying(DynamicContent):
         np.save(force_mkdir(self.file_path, path_is_file=True), img_arr)
 
         LOGGER.info(
-            "New image from %s saved at %s for album %s",
+            "New image from %s saved at %s for album %r",
             self.artwork_uri,
             self.file_path,
             self.album,
