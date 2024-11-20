@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ssl
 from contextlib import suppress
 from dataclasses import dataclass, field
 from io import BytesIO
@@ -23,6 +24,8 @@ from .dynamic_content import DynamicContent
 from .setting import ParameterSetting
 
 LOGGER = get_streaming_logger(__name__)
+
+SSL_CONTEXT = ssl.create_default_context()
 
 
 class TrackMeta(TypedDict):
@@ -134,7 +137,8 @@ class NowPlaying(DynamicContent):
         )
 
         LOGGER.debug("Downloading artwork from remote URL: %s", self.artwork_uri)
-        res = get(self.artwork_uri, timeout=120)
+
+        res = get(self.artwork_uri, timeout=120, verify=SSL_CONTEXT)
         res.raise_for_status()
         artwork_bytes = res.content
 
