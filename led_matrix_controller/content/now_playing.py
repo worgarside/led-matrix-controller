@@ -74,7 +74,13 @@ class NowPlaying(DynamicContent):
         default_factory=lambda: _INITIAL_TRACK_META,
     )
 
-    current_image: GridView = field(init=False, repr=False, compare=False, hash=False)
+    current_image: tuple[Path, GridView] = field(
+        init=False,
+        repr=False,
+        compare=False,
+        hash=False,
+    )
+    """Cache of current file path and image array."""
 
     def get_content(self) -> GridView:
         """Get the Image of the artwork image from the local file/remote URL.
@@ -82,11 +88,11 @@ class NowPlaying(DynamicContent):
         Returns:
             Image: Image instance of the artwork image
         """
-        if hasattr(self, "current_image"):
-            return self.current_image
-
         if not self.file_path:
             return self.zeros()
+
+        if hasattr(self, "current_image") and self.current_image[0] == self.file_path:
+            return self.current_image[1]
 
         if self.file_path.is_file():
             LOGGER.debug(
@@ -95,9 +101,9 @@ class NowPlaying(DynamicContent):
                 self.album,
             )
             with suppress(FileNotFoundError):
-                self.current_image = np.load(self.file_path)
+                self.current_image = (self.file_path, np.load(self.file_path))
 
-                return self.current_image
+                return self.current_image[1]
 
         LOGGER.debug("Image not found at %s for %s", self.file_path, self.album)
 
