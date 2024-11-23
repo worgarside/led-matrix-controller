@@ -232,7 +232,8 @@ class NowPlaying(DynamicContent):
 
         if None in self.track_metadata.values():
             self.stop(StopType.EXPIRED)
-            del self.current_image
+            with suppress(AttributeError):
+                del self.current_image
 
     @property
     def album(self) -> str | None:
