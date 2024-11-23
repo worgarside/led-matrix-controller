@@ -9,8 +9,7 @@ from io import BytesIO
 from pathlib import Path
 from re import Pattern
 from re import compile as compile_regex
-from time import sleep
-from typing import Annotated, ClassVar, Final, Generator, TypedDict, cast
+from typing import Annotated, ClassVar, Final, Generator, TypedDict
 
 import numpy as np
 from content.base import GridView, StopType
@@ -75,12 +74,17 @@ class NowPlaying(DynamicContent):
         default_factory=lambda: _INITIAL_TRACK_META,
     )
 
+    current_image: GridView = field(init=False, repr=False, compare=False, hash=False)
+
     def get_content(self) -> GridView:
         """Get the Image of the artwork image from the local file/remote URL.
 
         Returns:
             Image: Image instance of the artwork image
         """
+        if hasattr(self, "current_image"):
+            return self.current_image
+
         if not self.file_path:
             return self.zeros()
 
@@ -91,7 +95,9 @@ class NowPlaying(DynamicContent):
                 self.album,
             )
             with suppress(FileNotFoundError):
-                return cast(GridView, np.load(self.file_path))
+                self.current_image = np.load(self.file_path)
+
+                return self.current_image
 
         LOGGER.debug("Image not found at %s for %s", self.file_path, self.album)
 
@@ -214,15 +220,13 @@ class NowPlaying(DynamicContent):
     def refresh_content(self) -> Generator[None, None, None]:
         """Refresh the content."""
         if self.track_metadata != self.previous_track:
-            self.is_sleeping = False
             self.previous_track = self.track_metadata
-            yield
-        else:
-            self.is_sleeping = True
-            sleep(const.TICK_LENGTH)
+
+        yield
 
         if None in self.track_metadata.values():
             self.stop(StopType.EXPIRED)
+            del self.current_image
 
     @property
     def album(self) -> str | None:
