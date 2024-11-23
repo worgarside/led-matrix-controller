@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from pytest_codspeed import BenchmarkFixture  # type: ignore[import-untyped]
 
 SIZES = [32]
-LIMITS = [200]
+LIMITS = [100]
 
 
 @pytest.mark.parametrize(
