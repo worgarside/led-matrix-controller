@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import cached_property
 from json import dumps
 from queue import PriorityQueue
 from threading import Condition, Thread
@@ -675,7 +676,7 @@ class Matrix:
         """Return whether content is currently playing."""
         return self.current_content is not None and self.current_content.active
 
-    @property
+    @cached_property
     def dimensions(self) -> Dimensions:
         """Return the dimensions of the matrix."""
         return {
@@ -683,12 +684,12 @@ class Matrix:
             "width": self.width,
         }
 
-    @property
+    @cached_property
     def height(self) -> int:
         """Return the height of the matrix."""
         return int(self.matrix.height)
 
-    @property
+    @cached_property
     def width(self) -> int:
         """Return the width of the matrix."""
         return int(self.matrix.width)

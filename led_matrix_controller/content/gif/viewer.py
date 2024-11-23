@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import cached_property
 from typing import TYPE_CHECKING, Callable, ClassVar, Generator
 
 from content.base import PreDefinedContent, StopType
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 LOGGER = get_streaming_logger(__name__)
 
 
-@dataclass(kw_only=True, slots=True)
+@dataclass(kw_only=True)
 class GifViewer(PreDefinedContent):
     """Content for playing an animated GIF."""
 
@@ -37,7 +38,7 @@ class GifViewer(PreDefinedContent):
 
         self.canvas_count = self.image.n_frames
 
-        super(GifViewer, self).__post_init__()
+        super(GifViewer, self).__post_init__()  # noqa: UP008
 
     def generate_canvases(
         self,
@@ -55,7 +56,7 @@ class GifViewer(PreDefinedContent):
 
         self.canvases = tuple(canvases)
 
-    @property
+    @cached_property
     def id(self) -> str:
         """Return the ID of the content."""
         return "gif-" + to_kebab_case(
