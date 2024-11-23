@@ -9,8 +9,7 @@ from io import BytesIO
 from pathlib import Path
 from re import Pattern
 from re import compile as compile_regex
-from time import sleep
-from typing import Annotated, ClassVar, Final, Generator, TypedDict, cast
+from typing import Annotated, ClassVar, Final, Generator, TypedDict
 
 import numpy as np
 from content.base import GridView, StopType
@@ -75,6 +74,14 @@ class NowPlaying(DynamicContent):
         default_factory=lambda: _INITIAL_TRACK_META,
     )
 
+    current_image: tuple[Path, GridView] = field(
+        init=False,
+        repr=False,
+        compare=False,
+        hash=False,
+    )
+    """Cache of current file path and image array."""
+
     def get_content(self) -> GridView:
         """Get the Image of the artwork image from the local file/remote URL.
 
@@ -84,6 +91,9 @@ class NowPlaying(DynamicContent):
         if not self.file_path:
             return self.zeros()
 
+        if hasattr(self, "current_image") and self.current_image[0] == self.file_path:
+            return self.current_image[1]
+
         if self.file_path.is_file():
             LOGGER.debug(
                 "Opening image from path %s for %s",
@@ -91,7 +101,9 @@ class NowPlaying(DynamicContent):
                 self.album,
             )
             with suppress(FileNotFoundError):
-                return cast(GridView, np.load(self.file_path))
+                self.current_image = (self.file_path, np.load(self.file_path))
+
+                return self.current_image[1]
 
         LOGGER.debug("Image not found at %s for %s", self.file_path, self.album)
 
@@ -214,15 +226,14 @@ class NowPlaying(DynamicContent):
     def refresh_content(self) -> Generator[None, None, None]:
         """Refresh the content."""
         if self.track_metadata != self.previous_track:
-            self.is_sleeping = False
             self.previous_track = self.track_metadata
-            yield
-        else:
-            self.is_sleeping = True
-            sleep(const.TICK_LENGTH)
+
+        yield
 
         if None in self.track_metadata.values():
             self.stop(StopType.EXPIRED)
+            with suppress(AttributeError):
+                del self.current_image
 
     @property
     def album(self) -> str | None:

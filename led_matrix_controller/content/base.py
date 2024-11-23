@@ -217,7 +217,7 @@ class ContentBase(ABC, Generic[ContentType]):
 
     @final
     def chain_generators(self) -> itertools.chain[None]:
-        """Chain the generators of the content."""
+        """Chain the generators (setup, run, teardown) of the content."""
         chain: list[Iterator[None]] = []
 
         if (setup := self.setup()) is not None:
