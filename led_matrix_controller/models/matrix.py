@@ -192,7 +192,13 @@ class Matrix:
             "clock",
             "raining-grid",
         ),  # Rainfall in front of clock
+        ("clock", "now-playing"): ("now-playing", "clock"),
     }
+    """Overrides for content combination ordering.
+
+    Key is combination, sorted alphabetically.
+    Value is the combination's content in the desired order, from back to front.
+    """
 
     OPTIONS: ClassVar[LedMatrixOptions] = {
         "cols": const.MATRIX_HEIGHT,
