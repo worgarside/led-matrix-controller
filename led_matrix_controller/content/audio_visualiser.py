@@ -102,6 +102,13 @@ class AudioVisualiser(DynamicContent):
             buffer=self.shm.buf,
         )
 
+        min_, max_ = 0, 0
+
         while self.active:
-            self.pixels[:, :] = audio[self.freq_bin_indices]
+            value = audio[self.freq_bin_indices]
+            self.pixels[:, :] = value
+
+            min_ = min(min_, value.min())
+            max_ = max(max_, value.max())
+            print(min_, max_)
             yield
