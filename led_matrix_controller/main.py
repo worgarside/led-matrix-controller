@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from content import (
+    AudioVisualiser,
     Clock,
     Combination,
     GifViewer,
@@ -32,6 +33,7 @@ LIBRARY = (
     NowPlaying(persistent=True),
     RainingGrid(persistent=True),
     Sorter(),
+    AudioVisualiser(persistent=True),
 )
 
 WORKS_WITH: dict[type[ContentBase[Any]], set[type[ContentBase[Any]]]] = {

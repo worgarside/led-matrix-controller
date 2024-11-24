@@ -15,9 +15,13 @@ paho-mqtt = "^2.1.0"
 numpy = "^2.0.1"
 httpx = "^0.27.2"
 typing-extensions = "^4.12.2"
+pyaudio = "^0.2.14"
+scipy = "^1.14.1"
 
 [tool.poetry.group.dev.dependencies]
 rgbmatrixemulator = "^0.11.6"
+types-pyaudio = "^0.2.16.20240516"
+scipy-stubs = "^1.14.1.4"
 
 [tool.poetry.group.test.dependencies]
 pytest-codspeed = "^2.2.1"
