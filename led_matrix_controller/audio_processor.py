@@ -23,8 +23,13 @@ PYAUDIO = pyaudio.PyAudio()
 LOGGER = get_streaming_logger(__name__)
 
 
+MAX_MAGNITUDE = 0
+
+
 def get_magnitudes(stream: pyaudio.Stream) -> NDArray[np.float64]:
     """Get the magnitudes of the audio stream and apply FFT."""
+    global MAX_MAGNITUDE  # noqa: PLW0603
+
     data = np.frombuffer(
         stream.read(CHUNK, exception_on_overflow=False),
         dtype=np.int16,
@@ -32,8 +37,10 @@ def get_magnitudes(stream: pyaudio.Stream) -> NDArray[np.float64]:
 
     fft_magnitudes: NDArray[np.float64] = np.abs(rfft(data))
 
+    MAX_MAGNITUDE = max(MAX_MAGNITUDE, fft_magnitudes.max())
+
     # Get in range 0-99
-    return fft_magnitudes / np.max(fft_magnitudes) * 99
+    return fft_magnitudes / MAX_MAGNITUDE * 99
 
 
 def process_incoming_audio(
