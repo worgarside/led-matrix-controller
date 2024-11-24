@@ -44,7 +44,7 @@ class AudioVisualiser(DynamicContent):
 
     shm: shared_memory.SharedMemory = field(init=False, repr=False)
 
-    cutoff_frequency: int = 10000
+    cutoff_frequency: int = 5000
 
     def __post_init__(self) -> None:  # noqa: PLR0914
         """Initialize the audio visualiser."""
