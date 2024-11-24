@@ -1,6 +1,9 @@
 include .env
 export
 
+AUDIO ?= 1
+# Set AUDIO to 0 to disable audio processor inclusion in commands
+
 clean:
 	sudo rm -rf .venv
 	sudo rm -rf rpi-rgb-led-matrix
@@ -28,14 +31,27 @@ dev-update:
 disable:
 	sudo systemctl disable led_matrix_controller.service
 
+	ifeq ($(AUDIO), 1)
+		sudo systemctl disable audio_processor.service
+	endif
+
 enable:
 	sudo systemctl enable led_matrix_controller.service
+
+	ifeq ($(AUDIO), 1)
+		sudo systemctl enable audio_processor.service
+	endif
 
 install-python:
 	.venv/bin/pip install -r requirements.txt
 
 install-service:
 	sudo cp service/led_matrix_controller.service /etc/systemd/system/
+
+	ifeq ($(AUDIO), 1)
+		sudo cp service/audio_processor.service /etc/systemd/system/
+	endif
+
 	sudo systemctl daemon-reload
 
 install-all:
@@ -48,17 +64,32 @@ rain:
 restart:
 	sudo systemctl restart led_matrix_controller.service
 
+	ifeq ($(AUDIO), 1)
+		sudo systemctl restart audio_processor.service
+	endif
+
 run:
 	sudo .venv/bin/python led_matrix_controller/application/controller/led_matrix_controller.py
 
 start:
 	sudo systemctl start led_matrix_controller.service
 
+	ifeq ($(AUDIO), 1)
+		sudo systemctl start audio_processor.service
+	endif
+
 stop:
 	sudo systemctl stop led_matrix_controller.service
 
+	ifeq ($(AUDIO), 1)
+		sudo systemctl stop audio_processor.service
+	endif
+
 tail:
-	clear && sudo journalctl -u led_matrix_controller.service -f -n 50
+	clear && sudo journalctl -u led_matrix_controller.service -f -n 100
+
+tail-ap:
+	clear && sudo journalctl -u audio_processor.service -f -n 100
 
 test:
 	poetry run pytest

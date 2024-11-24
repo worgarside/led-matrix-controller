@@ -1,40 +1,18 @@
-"""Class for the creation, caching, and management of artwork images."""
+"""Windows Media Player? ;_;"""  # noqa: D415
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import ClassVar, Final, Generator, Literal, TypedDict
+from multiprocessing import shared_memory
+from typing import ClassVar, Generator, Literal
 
 import numpy as np
-import pyaudio
-from httpx import URL
 from numpy.typing import NDArray  # noqa: TCH002
-from scipy.fft import rfft
 from wg_utilities.loggers import get_streaming_logger
 
 from .dynamic_content import DynamicContent
 
 LOGGER = get_streaming_logger(__name__)
-
-
-PYAUDIO = pyaudio.PyAudio()
-
-
-class TrackMeta(TypedDict):
-    """Type definition for the track metadata."""
-
-    title: str | None
-    album: str | None
-    artist: str | None
-    album_artwork_url: URL | None
-
-
-_INITIAL_TRACK_META: Final[TrackMeta] = {
-    "title": "",
-    "album": "",
-    "artist": "",
-    "album_artwork_url": URL(""),
-}
 
 
 @dataclass(kw_only=True, slots=True)
@@ -63,11 +41,13 @@ class AudioVisualiser(DynamicContent):
 
     freq_bin_indices: NDArray[np.int_] = field(init=False, repr=False)
 
-    stream: pyaudio.Stream = field(init=False, repr=False)
+    shm: shared_memory.SharedMemory = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         """Initialize the audio visualiser."""
         DynamicContent.__post_init__(self)
+
+        self.shm = shared_memory.SharedMemory(name="audio1")
 
         steps = 100
 
@@ -108,43 +88,14 @@ class AudioVisualiser(DynamicContent):
         # Ensure indices are within valid range
         self.freq_bin_indices = np.clip(freq_bin_indices, 0, freq_bin_count - 1)
 
-    def setup(self) -> None:
-        """Setup the audio visualiser."""
-        LOGGER.info("Opening audio stream")
-        self.stream = PYAUDIO.open(
-            format=pyaudio.paInt16,
-            channels=self.channels,
-            rate=self.sample_rate,
-            input=True,
-            frames_per_buffer=self.chunk_size,
-            input_device_index=0,
-        )
-
     def refresh_content(self) -> Generator[None, None, None]:
         """Refresh the content."""
-        max_, min_ = 0, 0
+        audio: NDArray[np.float64] = np.ndarray(
+            shape=(self.chunk_size // 2 + 1,),
+            dtype=np.float64,
+            buffer=self.shm.buf,
+        )
+
         while self.active:
-            data = np.frombuffer(
-                self.stream.read(self.chunk_size, exception_on_overflow=False),
-                dtype=np.int16,
-            )
-
-            fft_magnitudes = np.abs(rfft(data))
-
-            # Normalize magnitudes to range [0, 100]
-            fft_magnitudes /= np.max(fft_magnitudes)
-            fft_magnitudes *= 100
-            fft_magnitudes -= 1
-
-            # Map magnitudes to the grid
-            self.pixels[:, :] = fft_magnitudes[self.freq_bin_indices]
-
-            max_ = max(max_, self.pixels.max())
-            min_ = min(min_, self.pixels.min())
-
-            LOGGER.debug("Max: %s, Min: %s", max_, min_)
+            self.pixels[:, :] = audio[self.freq_bin_indices]
             yield
-
-    def teardown(self) -> None:
-        """Teardown the audio visualiser."""
-        self.stream.close()

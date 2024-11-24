@@ -1,0 +1,17 @@
+[Unit]
+Description=LED Matrix Display Service
+After=multi-user.target
+StartLimitBurst=10
+StartLimitIntervalSec=10
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+User=root
+ExecStart=/home/pi/led-matrix-controller/.venv/bin/python /home/pi/led-matrix-controller/led_matrix_controller/audio_processor.py
+EnvironmentFile=/home/pi/led-matrix-controller/.env
+WorkingDirectory=/home/pi/led-matrix-controller
+
+[Install]
+WantedBy=multi-user.target
