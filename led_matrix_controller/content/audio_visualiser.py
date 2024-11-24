@@ -117,6 +117,7 @@ class AudioVisualiser(DynamicContent):
             rate=self.sample_rate,
             input=True,
             frames_per_buffer=self.chunk_size,
+            input_device_index=0,
         )
 
     def refresh_content(self) -> Generator[None, None, None]:
