@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 from multiprocessing import shared_memory
 from typing import TYPE_CHECKING
 
@@ -57,17 +56,9 @@ def process_incoming_audio(
         dtype=fft_magnitudes.dtype,
         buffer=shm.buf,
     )
+
     while True:
-        start_time = time.time()
-
         dest[:] = get_magnitudes(stream)
-
-        # Sleep for remaining time to achieve 0.01s interval
-        elapsed = time.time() - start_time
-        if elapsed < 0.01:  # noqa: PLR2004
-            time.sleep(0.01 - elapsed)
-        else:
-            LOGGER.warning("Audio processing took %fs", elapsed)
 
 
 def main() -> None:
@@ -83,7 +74,7 @@ def main() -> None:
     shm = shared_memory.SharedMemory(
         name="audio1",
         create=True,
-        size=64 * 64 * 4 * 4,
+        size=get_magnitudes(stream).nbytes,
     )
 
     try:
