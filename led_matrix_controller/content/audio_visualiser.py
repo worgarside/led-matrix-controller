@@ -8,6 +8,7 @@ from typing import ClassVar, Generator, Literal
 
 import numpy as np
 from numpy.typing import NDArray  # noqa: TCH002
+from scipy.fftpack import rfftfreq
 from wg_utilities.loggers import get_streaming_logger
 
 from .dynamic_content import DynamicContent
@@ -43,7 +44,9 @@ class AudioVisualiser(DynamicContent):
 
     shm: shared_memory.SharedMemory = field(init=False, repr=False)
 
-    def __post_init__(self) -> None:
+    cutoff_frequency: int = 10000
+
+    def __post_init__(self) -> None:  # noqa: PLR0914
         """Initialize the audio visualiser."""
         DynamicContent.__post_init__(self)
 
@@ -60,7 +63,10 @@ class AudioVisualiser(DynamicContent):
             dtype=np.uint8,
         )
 
-        freq_bin_count = self.chunk_size // 2 + 1
+        freqs = rfftfreq(self.chunk_size, 1 / self.sample_rate)
+        cutoff_idx = np.where(freqs <= self.cutoff_frequency)[0][-1]
+
+        freq_bin_count = cutoff_idx + 1
 
         x_coords = np.arange(self.width)
         y_coords = np.arange(self.height)

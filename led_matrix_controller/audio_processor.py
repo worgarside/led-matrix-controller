@@ -17,13 +17,15 @@ if TYPE_CHECKING:
 CHUNK = 441
 """Number of audio samples per chunk."""
 
+RATE = 44100
+"""Sampling rate in Hz."""
 
 PYAUDIO = pyaudio.PyAudio()
 
 LOGGER = get_streaming_logger(__name__)
 
 
-MAX_MAGNITUDE = 0
+MAX_MAGNITUDE = 1e-9
 
 
 def get_magnitudes(stream: pyaudio.Stream) -> NDArray[np.float64]:
@@ -73,7 +75,7 @@ def main() -> None:
     stream = PYAUDIO.open(
         format=pyaudio.paInt16,
         channels=1,
-        rate=44100,
+        rate=RATE,
         input=True,
         frames_per_buffer=CHUNK,
     )
