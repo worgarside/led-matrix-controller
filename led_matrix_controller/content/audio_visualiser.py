@@ -122,7 +122,7 @@ class AudioVisualiser(DynamicContent):
 
     def refresh_content(self) -> Generator[None, None, None]:
         """Refresh the content."""
-        # max_, min_ = 0, 0  # noqa: ERA001
+        max_, min_ = 0, 0
         while self.active:
             data = np.frombuffer(
                 self.stream.read(self.chunk_size, exception_on_overflow=False),
@@ -139,10 +139,10 @@ class AudioVisualiser(DynamicContent):
             # Map magnitudes to the grid
             self.pixels[:, :] = fft_magnitudes[self.freq_bin_indices]
 
-            # max_ = max(max_, self.pixels.max())  # noqa: ERA001
-            # min_ = min(min_, self.pixels.min())  # noqa: ERA001
+            max_ = max(max_, self.pixels.max())
+            min_ = min(min_, self.pixels.min())
 
-            # print(max_, min_)  # noqa: ERA001
+            LOGGER.debug("Max: %s, Min: %s", max_, min_)
             yield
 
     def teardown(self) -> None:
