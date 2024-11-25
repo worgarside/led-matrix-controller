@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import ssl
+from collections.abc import Generator
 from contextlib import suppress
 from dataclasses import dataclass, field
 from io import BytesIO
 from pathlib import Path
 from re import Pattern
 from re import compile as compile_regex
-from typing import Annotated, ClassVar, Final, Generator, TypedDict
+from typing import Annotated, ClassVar, Final, TypedDict
 
 import numpy as np
 from content.base import GridView, StopType

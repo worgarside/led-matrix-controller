@@ -6,6 +6,7 @@ import itertools
 import math
 import re
 from abc import ABC, abstractmethod
+from collections.abc import Generator, Iterator
 from contextlib import suppress
 from dataclasses import dataclass, field, is_dataclass
 from enum import Enum, auto
@@ -18,9 +19,7 @@ from typing import (
     Any,
     Callable,
     ClassVar,
-    Generator,
     Generic,
-    Iterator,
     Literal,
     final,
 )

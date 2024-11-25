@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from dataclasses import dataclass
 from enum import unique
-from typing import Annotated, ClassVar, Generator, Literal, cast
+from typing import Annotated, ClassVar, Literal, cast
 
 import numpy as np
 from content.automaton import (

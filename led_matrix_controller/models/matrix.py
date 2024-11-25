@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from json import dumps
 from queue import PriorityQueue
 from threading import Condition, Thread
@@ -11,7 +12,6 @@ from typing import (
     Any,
     ClassVar,
     Final,
-    Iterator,
     TypedDict,
     cast,
 )

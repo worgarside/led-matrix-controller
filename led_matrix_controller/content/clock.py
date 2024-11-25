@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Generator
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import lru_cache
-from typing import Annotated, Final, Generator, cast
+from typing import Annotated, Final, cast
 
 import numpy as np
 from content.base import GridView

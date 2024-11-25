@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from abc import ABC
+from collections.abc import Generator
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import IntEnum
@@ -17,7 +18,6 @@ from typing import (
     Callable,
     ClassVar,
     Final,
-    Generator,
     Self,
 )
 

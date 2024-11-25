@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Generator
 from enum import StrEnum
 from pathlib import Path
 from textwrap import dedent
-from typing import TYPE_CHECKING, Any, Generator
+from typing import TYPE_CHECKING, Any
 
 from content.dynamic_content import DynamicContent
 from main import LIBRARY

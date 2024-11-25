@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable, ClassVar, Generator
+from typing import TYPE_CHECKING, Callable, ClassVar
 
 from content.base import PreDefinedContent, StopType
 from PIL import Image

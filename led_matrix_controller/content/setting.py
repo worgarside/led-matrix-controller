@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from json import dumps
@@ -15,7 +16,6 @@ from typing import (
     ClassVar,
     Generic,
     Literal,
-    Mapping,
     Self,
     TypeVar,
     cast,

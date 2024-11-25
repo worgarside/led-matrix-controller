@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from dataclasses import dataclass, field
 from logging import DEBUG, getLogger
 from time import sleep
-from typing import TYPE_CHECKING, Callable, ClassVar, Generator, Literal
+from typing import TYPE_CHECKING, Callable, ClassVar, Literal
 
 from content.base import PreDefinedContent
 from PIL import Image
