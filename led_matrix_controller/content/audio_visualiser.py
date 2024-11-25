@@ -77,19 +77,6 @@ class AudioVisualiser(DynamicContent):
     ] = const.MATRIX_HEIGHT - 1
     """Y coordinate of the highest frequency in the grid."""
 
-    freq_bin_indices: NDArray[np.int_] = field(init=False, repr=False)
-
-    shm: shared_memory.SharedMemory = field(init=False, repr=False)
-
-    sample_rate: int = field(default=44100, init=False, repr=False)
-    """Number of audio samples per second."""
-
-    chunk_size: int = field(default=441, init=False, repr=False)
-    """Number of audio samples per chunk.
-
-    Set to 441 to allow for 100 FPS updates.
-    """
-
     cutoff_frequency: Annotated[
         int,
         TransitionableParameterSetting(
@@ -113,21 +100,34 @@ class AudioVisualiser(DynamicContent):
         ),
     ] = 10000
 
-    low_magnitude_color: Annotated[
-        tuple[int, int, int, int],
+    low_magnitude_hex_color: Annotated[
+        str,
         ParameterSetting(
             invoke_settings_callback=True,
             icon="mdi:palette",
         ),
-    ] = (0, 0, 255, 128)
+    ] = "#0000FF80"
 
-    high_magnitude_color: Annotated[
-        tuple[int, int, int, int],
+    high_magnitude_hex_color: Annotated[
+        str,
         ParameterSetting(
             invoke_settings_callback=True,
             icon="mdi:palette",
         ),
-    ] = (255, 0, 0, 255)
+    ] = "#FF0000FF"
+
+    freq_bin_indices: NDArray[np.int_] = field(init=False, repr=False)
+
+    shm: shared_memory.SharedMemory = field(init=False, repr=False)
+
+    sample_rate: int = field(default=44100, init=False, repr=False)
+    """Number of audio samples per second."""
+
+    chunk_size: int = field(default=441, init=False, repr=False)
+    """Number of audio samples per chunk.
+
+    Set to 441 to allow for 100 FPS updates.
+    """
 
     def __post_init__(self) -> None:
         """Initialize the audio visualiser."""
@@ -188,13 +188,22 @@ class AudioVisualiser(DynamicContent):
 
     def update_colormap(self) -> None:
         """Update the colormap."""
+        low_magnitude_color = tuple(
+            int(self.low_magnitude_hex_color.lstrip("#")[i : i + 2], 16)
+            for i in (0, 2, 4, 6)
+        )
+        high_magnitude_color = tuple(
+            int(self.high_magnitude_hex_color.lstrip("#")[i : i + 2], 16)
+            for i in (0, 2, 4, 6)
+        )
+
         colors = {
             0: (0, 0, 0, 0),
-            self.colormap_length // 100: (0, 0, 0, 0),
-            self.colormap_length // 80: self.low_magnitude_color,
-            self.colormap_length // 50: self.low_magnitude_color,
-            self.colormap_length // 10: self.high_magnitude_color,
-            self.colormap_length: self.high_magnitude_color,
+            self.colormap_length // 150: (0, 0, 0, 0),
+            self.colormap_length // 80: low_magnitude_color,
+            self.colormap_length // 50: low_magnitude_color,
+            self.colormap_length // 10: high_magnitude_color,
+            self.colormap_length: high_magnitude_color,
         }
 
         LOGGER.debug("Colormap: %s", dumps(colors))
