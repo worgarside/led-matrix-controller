@@ -133,8 +133,6 @@ class AudioVisualiser(DynamicContent):
         """Initialize the audio visualiser."""
         DynamicContent.__post_init__(self)
 
-        self.shm = shared_memory.SharedMemory(name="audio1")
-
         self.update_colormap()
 
         freqs = rfftfreq(self.chunk_size, 1 / self.sample_rate)
@@ -162,6 +160,10 @@ class AudioVisualiser(DynamicContent):
 
         # Ensure indices are within valid range
         self.freq_bin_indices = np.clip(freq_bin_indices, 0, freq_bin_count - 1)
+
+    def setup(self) -> None:
+        """Setup the audio visualiser."""
+        self.shm = shared_memory.SharedMemory(name="audio1")
 
     def refresh_content(self) -> Generator[None, None, None]:
         """Refresh the content."""

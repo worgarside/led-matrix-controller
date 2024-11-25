@@ -166,6 +166,39 @@ def mqtt_switch(setting: Setting[bool]) -> None:
     file_path.write_text(yaml)
 
 
+def mqtt_text(setting: Setting[str]) -> None:
+    yaml = (
+        dedent(
+            f"""
+    ---
+    name: "MtrxPi | {titleify(setting.instance.id)}: {titleify(setting.slug)}"
+
+    unique_id: mtrxpi_{setting.instance.id.replace("-", "_")}_{setting.slug}
+
+    command_topic: {setting.mqtt_topic}
+
+    icon: {setting.icon}
+
+    retain: true
+
+    state_topic: {setting.mqtt_topic}
+    """,
+        ).strip()
+        + "\n"
+    )
+
+    file_path = MQTT_DIR.joinpath(
+        "text",
+        "mtrxpi",
+        setting.instance.id.replace("-", "_"),
+        setting.slug,
+    ).with_suffix(".yaml")
+
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    file_path.write_text(yaml)
+
+
 def main() -> None:
     for setting in get_all_settings():
         if setting.type_ in {int, float}:
@@ -174,6 +207,8 @@ def main() -> None:
             mqtt_select(setting)
         elif setting.type_ is bool:
             mqtt_switch(setting)
+        elif setting.type_ is str:
+            mqtt_text(setting)
         else:
             print(f"Unsupported type for {setting.slug!r}: {setting.type_}")
 
