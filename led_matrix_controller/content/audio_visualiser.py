@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from json import dumps
 from multiprocessing import shared_memory
-from typing import ClassVar, Generator, Literal
+from typing import Annotated, ClassVar, Generator
 
 import numpy as np
+from content.setting import ParameterSetting, TransitionableParameterSetting
 from numpy.typing import NDArray  # noqa: TCH002
 from scipy.fftpack import rfftfreq
+from utils import const
 from wg_utilities.loggers import get_streaming_logger
 
 from .dynamic_content import DynamicContent
@@ -22,33 +25,111 @@ class AudioVisualiser(DynamicContent):
 
     IS_OPAQUE: ClassVar[bool] = False
 
-    channels: Literal[1, 2] = field(default=1)
-    """Number of audio channels."""
+    low_freq_x: Annotated[
+        int,
+        TransitionableParameterSetting(
+            minimum=0,
+            maximum=const.MATRIX_WIDTH - 1,
+            transition_rate=0.05,
+            icon="mdi:arrow-left-right",
+            unit_of_measurement="",
+            display_mode="slider",
+        ),
+    ] = 1
+    """X coordinate of the lowest frequency in the grid."""
 
-    sample_rate: int = field(default=44100)
-    """Number of audio samples per second."""
+    low_freq_y: Annotated[
+        int,
+        TransitionableParameterSetting(
+            minimum=0,
+            maximum=const.MATRIX_HEIGHT - 1,
+            transition_rate=0.05,
+            icon="mdi:arrow-up-down",
+            unit_of_measurement="",
+            display_mode="slider",
+        ),
+    ] = 1
+    """Y coordinate of the lowest frequency in the grid."""
 
-    chunk_size: int = field(default=441)
-    """Number of audio samples per chunk.
+    high_freq_x: Annotated[
+        int,
+        TransitionableParameterSetting(
+            minimum=0,
+            maximum=const.MATRIX_HEIGHT - 1,
+            transition_rate=0.05,
+            icon="mdi:arrow-up-down",
+            unit_of_measurement="",
+            display_mode="slider",
+        ),
+    ] = const.MATRIX_WIDTH - 1
+    """X coordinate of the highest frequency in the grid."""
 
-    Set to 441 to allow for 100 FPS updates.
-    """
-
-    low_freq_focus: tuple[int, int] = field(default=(0, 0))
-    """Coordinates of the lowest frequency in the grid."""
-
-    high_freq_focus: tuple[int, int] = field(default=(44, 44))
-    """Coordinates of the highest frequency in the grid."""
+    high_freq_y: Annotated[
+        int,
+        TransitionableParameterSetting(
+            minimum=0,
+            maximum=const.MATRIX_HEIGHT - 1,
+            transition_rate=0.05,
+            icon="mdi:arrow-up-down",
+            unit_of_measurement="",
+            display_mode="slider",
+        ),
+    ] = const.MATRIX_HEIGHT - 1
+    """Y coordinate of the highest frequency in the grid."""
 
     freq_bin_indices: NDArray[np.int_] = field(init=False, repr=False)
 
     shm: shared_memory.SharedMemory = field(init=False, repr=False)
 
-    cutoff_frequency: int = 5000
+    sample_rate: int = field(default=44100, init=False, repr=False)
+    """Number of audio samples per second."""
 
-    colormap_length: int = 10000
+    chunk_size: int = field(default=441, init=False, repr=False)
+    """Number of audio samples per chunk.
 
-    def __post_init__(self) -> None:  # noqa: PLR0914
+    Set to 441 to allow for 100 FPS updates.
+    """
+
+    cutoff_frequency: Annotated[
+        int,
+        TransitionableParameterSetting(
+            minimum=0,
+            maximum=20000,
+            transition_rate=1,
+            icon="mdi:sine-wave",
+            unit_of_measurement="Hz",
+            display_mode="slider",
+        ),
+    ] = 5000
+
+    colormap_length: Annotated[
+        int,
+        ParameterSetting(
+            minimum=100,
+            icon="mdi:sine-wave",
+            unit_of_measurement="",
+            display_mode="slider",
+            invoke_settings_callback=True,
+        ),
+    ] = 10000
+
+    low_magnitude_color: Annotated[
+        tuple[int, int, int, int],
+        ParameterSetting(
+            invoke_settings_callback=True,
+            icon="mdi:palette",
+        ),
+    ] = (0, 0, 255, 128)
+
+    high_magnitude_color: Annotated[
+        tuple[int, int, int, int],
+        ParameterSetting(
+            invoke_settings_callback=True,
+            icon="mdi:palette",
+        ),
+    ] = (255, 0, 0, 255)
+
+    def __post_init__(self) -> None:
         """Initialize the audio visualiser."""
         DynamicContent.__post_init__(self)
 
@@ -66,14 +147,9 @@ class AudioVisualiser(DynamicContent):
 
         x, y = np.meshgrid(x_coords, y_coords)
 
-        x1, y1 = self.high_freq_focus
-        x2, y2 = self.low_freq_focus
-
-        # Compute distances from the lowest frequency focal point (X1, Y1)
-        dist_low = np.sqrt((x - x1) ** 2 + (y - y1) ** 2)
-
-        # Compute distances from the highest frequency focal point (X2, Y2)
-        dist_high = np.sqrt((x - x2) ** 2 + (y - y2) ** 2)
+        # Compute distances from the lowest/highest frequency focal points
+        dist_low = np.sqrt((x - self.high_freq_x) ** 2 + (y - self.high_freq_y) ** 2)
+        dist_high = np.sqrt((x - self.low_freq_x) ** 2 + (y - self.low_freq_y) ** 2)
 
         # Combine distances to create a gradient
         total_distance = dist_low + dist_high
@@ -101,33 +177,39 @@ class AudioVisualiser(DynamicContent):
 
             yield
 
+    def setting_update_callback(self, update_setting: str | None = None) -> None:
+        """Update the colormap."""
+        if update_setting in {
+            "low_magnitude_color",
+            "high_magnitude_color",
+            "colormap_length",
+        }:
+            self.update_colormap()
+
     def update_colormap(self) -> None:
         """Update the colormap."""
         colors = {
             0: (0, 0, 0, 0),
             self.colormap_length // 100: (0, 0, 0, 0),
-            self.colormap_length // 50: (255, 0, 0, 255),
-            self.colormap_length // 5: (0, 0, 255, 255),
-            self.colormap_length: (0, 0, 255, 255),
+            self.colormap_length // 80: self.low_magnitude_color,
+            self.colormap_length // 50: self.low_magnitude_color,
+            self.colormap_length // 10: self.high_magnitude_color,
+            self.colormap_length: self.high_magnitude_color,
         }
 
+        LOGGER.debug("Colormap: %s", dumps(colors))
+
         gradient = []
-
         prev = None
-
         for index, color in colors.items():
             if prev is None:
                 prev = (index, color)
-
                 gradient.append(color)
-
                 continue
 
             prev_index, prev_color = prev
 
-            steps = index - prev_index
-
-            if steps > 1:
+            if (steps := index - prev_index) > 1:
                 for i in range(steps):
                     r = int(prev_color[0] + (color[0] - prev_color[0]) * i / (steps - 1))
                     g = int(prev_color[1] + (color[1] - prev_color[1]) * i / (steps - 1))
