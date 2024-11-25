@@ -71,11 +71,14 @@ def main() -> None:
         frames_per_buffer=CHUNK,
     )
 
-    shm = shared_memory.SharedMemory(
-        name="audio1",
-        create=True,
-        size=get_magnitudes(stream).nbytes,
-    )
+    try:
+        shm = shared_memory.SharedMemory(
+            name="audio1",
+            create=True,
+            size=get_magnitudes(stream).nbytes,
+        )
+    except FileExistsError:
+        shm = shared_memory.SharedMemory(name="audio1")
 
     try:
         process_incoming_audio(stream, shm)

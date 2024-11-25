@@ -34,10 +34,10 @@ class AudioVisualiser(DynamicContent):
     Set to 441 to allow for 100 FPS updates.
     """
 
-    low_freq_focus: tuple[int, int] = field(default=(44, 44))
+    low_freq_focus: tuple[int, int] = field(default=(0, 0))
     """Coordinates of the lowest frequency in the grid."""
 
-    high_freq_focus: tuple[int, int] = field(default=(0, 0))
+    high_freq_focus: tuple[int, int] = field(default=(44, 44))
     """Coordinates of the highest frequency in the grid."""
 
     freq_bin_indices: NDArray[np.int_] = field(init=False, repr=False)
@@ -102,13 +102,8 @@ class AudioVisualiser(DynamicContent):
             buffer=self.shm.buf,
         )
 
-        min_, max_ = 0, 0
-
         while self.active:
             value = audio[self.freq_bin_indices]
             self.pixels[:, :] = value
 
-            min_ = min(min_, value.min())
-            max_ = max(max_, value.max())
-            print(min_, max_)
             yield
