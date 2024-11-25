@@ -163,7 +163,7 @@ class AudioVisualiser(DynamicContent):
 
     def setup(self) -> None:
         """Setup the audio visualiser."""
-        self.shm = shared_memory.SharedMemory(name="audio1")
+        self.shm = shared_memory.SharedMemory(name=const.AUDIO_VISUALISER_SHM_NAME)
 
     def refresh_content(self) -> Generator[None, None, None]:
         """Refresh the content."""
@@ -178,6 +178,10 @@ class AudioVisualiser(DynamicContent):
             self.pixels[:, :] = audio_ints[self.freq_bin_indices]
 
             yield
+
+    def teardown(self) -> None:
+        """Teardown the audio visualiser."""
+        self.shm.close()
 
     def setting_update_callback(self, update_setting: str | None = None) -> None:
         """Update the colormap."""

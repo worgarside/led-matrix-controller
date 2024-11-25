@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pyaudio
 from scipy.fft import rfft
+from utils import const
 from wg_utilities.loggers import get_streaming_logger
 
 if TYPE_CHECKING:
@@ -73,12 +74,12 @@ def main() -> None:
 
     try:
         shm = shared_memory.SharedMemory(
-            name="audio1",
+            name=const.AUDIO_VISUALISER_SHM_NAME,
             create=True,
             size=get_magnitudes(stream).nbytes,
         )
     except FileExistsError:
-        shm = shared_memory.SharedMemory(name="audio1")
+        shm = shared_memory.SharedMemory(name=const.AUDIO_VISUALISER_SHM_NAME)
 
     try:
         process_incoming_audio(stream, shm)
@@ -87,8 +88,8 @@ def main() -> None:
         stream.close()
         PYAUDIO.terminate()
 
-        shm.unlink()
         shm.close()
+        shm.unlink()
 
 
 if __name__ == "__main__":

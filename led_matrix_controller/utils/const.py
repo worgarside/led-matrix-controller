@@ -50,6 +50,9 @@ EMPTY_IMAGE: Final[Image.Image] = Image.new("RGB", MATRIX_SHAPE, (0, 0, 0))
 MAX_PRIORITY: Final[float] = 1e10
 
 
+AUDIO_VISUALISER_SHM_NAME: Final[str] = environ["AUDIO_VISUALISER_SHM_NAME"]
+
+
 def seconds_to_ticks(seconds: float, *_: Any) -> int:
     """Convert seconds to ticks."""
     return int(seconds * TICKS_PER_SECOND)
