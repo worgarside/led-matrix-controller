@@ -21,7 +21,10 @@ from .dynamic_content import DynamicContent
 
 LOGGER = get_streaming_logger(__name__)
 
-HEX_CODE_PATTERN: Final[re.Pattern[str]] = re.compile(r"^#?[0-9A-F]{6}(?:[0-9A-F]{2})?$")
+HEX_CODE_PATTERN: Final[re.Pattern[str]] = re.compile(
+    r"^#?[0-9A-F]{6}(?:[0-9A-F]{2})?$",
+    flags=re.IGNORECASE,
+)
 
 
 @dataclass(kw_only=True, slots=True)
@@ -115,7 +118,7 @@ class AudioVisualiser(DynamicContent):
         ParameterSetting(
             invoke_settings_callback=True,
             icon="mdi:palette",
-            validator=HEX_CODE_PATTERN.match,
+            validator=HEX_CODE_PATTERN.fullmatch,
         ),
     ] = "#0000FF80"
 
@@ -124,7 +127,7 @@ class AudioVisualiser(DynamicContent):
         ParameterSetting(
             invoke_settings_callback=True,
             icon="mdi:palette",
-            validator=HEX_CODE_PATTERN.match,
+            validator=HEX_CODE_PATTERN.fullmatch,
         ),
     ] = "#FF0000FF"
 
