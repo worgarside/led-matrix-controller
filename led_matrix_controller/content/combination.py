@@ -45,6 +45,9 @@ class Combination(DynamicContent):
     will overwrite the previous array.
     """
 
+    none_opaque: bool = False
+    """Whether there are no opaque content models."""
+
     def __post_init__(self) -> None:
         """Derive the instance id."""
         DynamicContent.__post_init__(self)
@@ -78,7 +81,7 @@ class Combination(DynamicContent):
         content_chains = self.get_content_chains(force_active=True)
 
         while self.active:
-            if self.multiple_opaque:
+            if self.multiple_opaque or self.none_opaque:
                 self.pixels[:, :] = self.zeros()
 
             for content in self.content:
@@ -144,6 +147,8 @@ class Combination(DynamicContent):
             self.multiple_opaque = len(opaque) > 1 or (
                 len(opaque) == 1 and opaque[0] != self.content[0]
             )
+
+            self.none_opaque = len(opaque) == 0
 
             LOGGER.debug(
                 "Setting %r changed to %r, updated `multiple_opaque` to %s",
