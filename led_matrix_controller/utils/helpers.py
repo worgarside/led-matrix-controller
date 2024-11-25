@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from enum import Enum
+from functools import lru_cache
 from typing import Final, overload
 
 
@@ -75,3 +76,14 @@ def _remove_multiple_hyphens(*string: str) -> str | tuple[str, ...]:  # type: ig
         return Patterns.MULTIPLE_HYPHENS.sub("-", string[0]).strip("-")
 
     return tuple(Patterns.MULTIPLE_HYPHENS.sub("-", s).strip("-") for s in string)
+
+
+@lru_cache(maxsize=128)
+def hex_to_rgba(hex_code: str) -> tuple[int, int, int] | tuple[int, int, int, int]:
+    """Convert hex code to rgba tuple."""
+    hex_code = hex_code.lstrip("#")
+
+    if len(hex_code) == 6:  # noqa: PLR2004
+        return tuple(int(hex_code[i : i + 2], 16) for i in (0, 2, 4))  # type: ignore[return-value]
+
+    return tuple(int(hex_code[i : i + 2], 16) for i in (0, 2, 4, 6))  # type: ignore[return-value]

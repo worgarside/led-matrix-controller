@@ -3,21 +3,25 @@
 from __future__ import annotations
 
 import atexit
+import re
 from dataclasses import dataclass, field
 from json import dumps
 from multiprocessing import shared_memory
-from typing import Annotated, ClassVar, Generator
+from typing import Annotated, ClassVar, Final, Generator
 
 import numpy as np
 from content.setting import ParameterSetting, TransitionableParameterSetting
 from numpy.typing import NDArray  # noqa: TCH002
 from scipy.fftpack import rfftfreq
 from utils import const
+from utils.helpers import hex_to_rgba
 from wg_utilities.loggers import get_streaming_logger
 
 from .dynamic_content import DynamicContent
 
 LOGGER = get_streaming_logger(__name__)
+
+HEX_CODE_PATTERN: Final[re.Pattern[str]] = re.compile(r"^#?[0-9A-F]{6}(?:[0-9A-F]{2})?$")
 
 
 @dataclass(kw_only=True, slots=True)
@@ -111,6 +115,7 @@ class AudioVisualiser(DynamicContent):
         ParameterSetting(
             invoke_settings_callback=True,
             icon="mdi:palette",
+            validator=HEX_CODE_PATTERN.match,
         ),
     ] = "#0000FF80"
 
@@ -119,6 +124,7 @@ class AudioVisualiser(DynamicContent):
         ParameterSetting(
             invoke_settings_callback=True,
             icon="mdi:palette",
+            validator=HEX_CODE_PATTERN.match,
         ),
     ] = "#FF0000FF"
 
@@ -192,14 +198,8 @@ class AudioVisualiser(DynamicContent):
 
     def update_colormap(self) -> None:
         """Update the colormap."""
-        low_magnitude_color = tuple(
-            int(self.low_magnitude_hex_color.lstrip("#")[i : i + 2], 16)
-            for i in (0, 2, 4, 6)
-        )
-        high_magnitude_color = tuple(
-            int(self.high_magnitude_hex_color.lstrip("#")[i : i + 2], 16)
-            for i in (0, 2, 4, 6)
-        )
+        low_magnitude_color = hex_to_rgba(self.low_magnitude_hex_color)
+        high_magnitude_color = hex_to_rgba(self.high_magnitude_hex_color)
 
         colors = {
             0: (0, 0, 0, 0),

@@ -99,6 +99,9 @@ class Setting(Generic[S]):
     Setting this to False will allow type coercion, "soft" bounds
     """
 
+    validator: Callable[[S], bool] | None = None
+    """Function to validate the payload before it is coerced and formatted."""
+
     fp_precision: int = 6
     """The number of decimal places to round floats to during processing."""
 
@@ -297,6 +300,13 @@ class Setting(Generic[S]):
                 strict=self.strict,
                 coerced=err,
             ) from err
+
+        if self.validator and not self.validator(coerced_and_formatted):
+            raise InvalidPayloadError(
+                raw_payload=raw_payload,
+                strict=self.strict,
+                coerced=coerced_and_formatted,
+            )
 
         if self.strict and coerced_and_formatted != raw_payload:
             raise InvalidPayloadError(
