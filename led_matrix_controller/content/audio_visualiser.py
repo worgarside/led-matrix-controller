@@ -66,8 +66,8 @@ class AudioVisualiser(DynamicContent):
 
         x, y = np.meshgrid(x_coords, y_coords)
 
-        x1, y1 = self.low_freq_focus
-        x2, y2 = self.high_freq_focus
+        x1, y1 = self.high_freq_focus
+        x2, y2 = self.low_freq_focus
 
         # Compute distances from the lowest frequency focal point (X1, Y1)
         dist_low = np.sqrt((x - x1) ** 2 + (y - y1) ** 2)
@@ -105,6 +105,7 @@ class AudioVisualiser(DynamicContent):
         """Update the colormap."""
         colors = {
             0: (0, 0, 0, 0),
+            self.colormap_length // 100: (0, 0, 0, 0),
             self.colormap_length // 50: (255, 0, 0, 255),
             self.colormap_length // 5: (0, 0, 255, 255),
             self.colormap_length: (0, 0, 255, 255),
