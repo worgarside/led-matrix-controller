@@ -40,8 +40,8 @@ def get_magnitudes(stream: pyaudio.Stream) -> NDArray[np.float64]:
 
     MAX_MAGNITUDE = max(MAX_MAGNITUDE, fft_magnitudes.max())
 
-    # Get in range 0-99
-    return fft_magnitudes / MAX_MAGNITUDE * 99
+    # Get in range 0-1
+    return fft_magnitudes / MAX_MAGNITUDE
 
 
 def process_incoming_audio(

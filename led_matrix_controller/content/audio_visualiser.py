@@ -46,22 +46,15 @@ class AudioVisualiser(DynamicContent):
 
     cutoff_frequency: int = 5000
 
+    colormap_length: int = 10000
+
     def __post_init__(self) -> None:  # noqa: PLR0914
         """Initialize the audio visualiser."""
         DynamicContent.__post_init__(self)
 
         self.shm = shared_memory.SharedMemory(name="audio1")
 
-        steps = 100
-
-        self.colormap = np.array(
-            [((0, 0, 0, 0))]
-            + [
-                (int(255 * (1 - i / (steps - 1))), 0, int(255 * (i / (steps - 1))), 255)
-                for i in range(steps - 1)
-            ],
-            dtype=np.uint8,
-        )
+        self.update_colormap()
 
         freqs = rfftfreq(self.chunk_size, 1 / self.sample_rate)
         cutoff_idx = np.where(freqs <= self.cutoff_frequency)[0][-1]
@@ -103,7 +96,44 @@ class AudioVisualiser(DynamicContent):
         )
 
         while self.active:
-            value = audio[self.freq_bin_indices]
-            self.pixels[:, :] = value
+            audio_ints = (audio * (self.colormap_length - 1)).astype(np.int_)
+            self.pixels[:, :] = audio_ints[self.freq_bin_indices]
 
             yield
+
+    def update_colormap(self) -> None:
+        """Update the colormap."""
+        colors = {
+            0: (0, 0, 0, 0),
+            self.colormap_length // 50: (255, 0, 0, 255),
+            self.colormap_length // 5: (0, 0, 255, 255),
+            self.colormap_length: (0, 0, 255, 255),
+        }
+
+        gradient = []
+
+        prev = None
+
+        for index, color in colors.items():
+            if prev is None:
+                prev = (index, color)
+
+                gradient.append(color)
+
+                continue
+
+            prev_index, prev_color = prev
+
+            steps = index - prev_index
+
+            if steps > 1:
+                for i in range(steps):
+                    r = int(prev_color[0] + (color[0] - prev_color[0]) * i / (steps - 1))
+                    g = int(prev_color[1] + (color[1] - prev_color[1]) * i / (steps - 1))
+                    b = int(prev_color[2] + (color[2] - prev_color[2]) * i / (steps - 1))
+                    a = int(prev_color[3] + (color[3] - prev_color[3]) * i / (steps - 1))
+                    gradient.append((r, g, b, a))
+
+            prev = (index, color)
+
+        self.colormap = np.array(gradient, dtype=np.uint8)
