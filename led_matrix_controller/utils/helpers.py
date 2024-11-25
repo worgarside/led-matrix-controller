@@ -79,11 +79,14 @@ def _remove_multiple_hyphens(*string: str) -> str | tuple[str, ...]:  # type: ig
 
 
 @lru_cache(maxsize=128)
-def hex_to_rgba(hex_code: str) -> tuple[int, int, int] | tuple[int, int, int, int]:
+def hex_to_rgba(hex_code: str) -> tuple[int, int, int, int]:
     """Convert hex code to rgba tuple."""
     hex_code = hex_code.lstrip("#")
 
     if len(hex_code) == 6:  # noqa: PLR2004
-        return tuple(int(hex_code[i : i + 2], 16) for i in (0, 2, 4))  # type: ignore[return-value]
+        r, g, b = int(hex_code[0:2], 16), int(hex_code[2:4], 16), int(hex_code[4:6], 16)
+        a = 255
+    else:
+        r, g, b, a = (int(hex_code[i : i + 2], 16) for i in (0, 2, 4, 6))
 
-    return tuple(int(hex_code[i : i + 2], 16) for i in (0, 2, 4, 6))  # type: ignore[return-value]
+    return r, g, b, a
