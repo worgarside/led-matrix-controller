@@ -289,6 +289,13 @@ class Setting(Generic[S]):
     def validate_payload(self, raw_payload: S) -> S:
         """Check that the incoming payload is a valid value for this Setting."""
         if isinstance(raw_payload, self.type_) and self.type_ not in {int, float}:
+            if self.validator and not self.validator(raw_payload):
+                raise InvalidPayloadError(
+                    raw_payload=raw_payload,
+                    strict=self.strict,
+                    coerced=raw_payload,
+                )
+
             # Non-numeric type, decoded and parsed correctly
             return raw_payload
 
