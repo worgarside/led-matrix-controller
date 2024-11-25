@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import atexit
 from dataclasses import dataclass, field
 from json import dumps
 from multiprocessing import shared_memory
@@ -134,36 +135,10 @@ class AudioVisualiser(DynamicContent):
         DynamicContent.__post_init__(self)
 
         self.update_colormap()
+        self.update_frequency_foci()
 
-        freqs = rfftfreq(self.chunk_size, 1 / self.sample_rate)
-        cutoff_idx = np.where(freqs <= self.cutoff_frequency)[0][-1]
-
-        freq_bin_count = cutoff_idx + 1
-
-        x_coords = np.arange(self.width)
-        y_coords = np.arange(self.height)
-
-        x, y = np.meshgrid(x_coords, y_coords)
-
-        # Compute distances from the lowest/highest frequency focal points
-        dist_low = np.sqrt((x - self.high_freq_x) ** 2 + (y - self.high_freq_y) ** 2)
-        dist_high = np.sqrt((x - self.low_freq_x) ** 2 + (y - self.low_freq_y) ** 2)
-
-        # Combine distances to create a gradient
-        total_distance = dist_low + dist_high
-
-        # Normalize distances to range [0, 1]
-        normalized_distances = dist_high / total_distance
-
-        # Map normalized distances to frequency bin indices
-        freq_bin_indices = (normalized_distances * (freq_bin_count - 1)).astype(int)
-
-        # Ensure indices are within valid range
-        self.freq_bin_indices = np.clip(freq_bin_indices, 0, freq_bin_count - 1)
-
-    def setup(self) -> None:
-        """Setup the audio visualiser."""
         self.shm = shared_memory.SharedMemory(name=const.AUDIO_VISUALISER_SHM_NAME)
+        atexit.register(self.shm.close)
 
     def refresh_content(self) -> Generator[None, None, None]:
         """Refresh the content."""
@@ -179,10 +154,6 @@ class AudioVisualiser(DynamicContent):
 
             yield
 
-    def teardown(self) -> None:
-        """Teardown the audio visualiser."""
-        self.shm.close()
-
     def setting_update_callback(self, update_setting: str | None = None) -> None:
         """Update the colormap."""
         if update_setting in {
@@ -191,6 +162,14 @@ class AudioVisualiser(DynamicContent):
             "colormap_length",
         }:
             self.update_colormap()
+        elif update_setting in {
+            "low_freq_x",
+            "low_freq_y",
+            "high_freq_x",
+            "high_freq_y",
+            "cutoff_frequency",
+        }:
+            self.update_frequency_foci()
 
     def update_colormap(self) -> None:
         """Update the colormap."""
@@ -235,3 +214,29 @@ class AudioVisualiser(DynamicContent):
             prev = (index, color)
 
         self.colormap = np.array(gradient, dtype=np.uint8)
+
+    def update_frequency_foci(self) -> None:
+        """Update the location of the frequency foci on the visualisation."""
+        freqs = rfftfreq(self.chunk_size, 1 / self.sample_rate)
+
+        cutoff_idx = np.where(freqs <= self.cutoff_frequency)[0][-1]
+
+        freq_bin_count = cutoff_idx + 1
+
+        x, y = np.meshgrid(np.arange(self.width), np.arange(self.height))
+
+        # Compute distances from the lowest/highest frequency focal points
+        dist_low = np.sqrt((x - self.high_freq_x) ** 2 + (y - self.high_freq_y) ** 2)
+        dist_high = np.sqrt((x - self.low_freq_x) ** 2 + (y - self.low_freq_y) ** 2)
+
+        # Combine distances to create a gradient
+        total_distance = dist_low + dist_high
+
+        # Normalize distances to range [0, 1]
+        normalized_distances = dist_high / total_distance
+
+        # Map normalized distances to frequency bin indices
+        freq_bin_indices = (normalized_distances * (freq_bin_count - 1)).astype(int)
+
+        # Ensure indices are within valid range
+        self.freq_bin_indices = np.clip(freq_bin_indices, 0, freq_bin_count - 1)
