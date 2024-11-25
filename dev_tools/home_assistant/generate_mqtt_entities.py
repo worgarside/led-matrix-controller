@@ -171,17 +171,18 @@ def mqtt_text(setting: Setting[str]) -> None:
         dedent(
             f"""
     ---
-    name: "MtrxPi | {titleify(setting.instance.id)}: {titleify(setting.slug)}"
+    - text:
+        name: "MtrxPi | {titleify(setting.instance.id)}: {titleify(setting.slug)}"
 
-    unique_id: mtrxpi_{setting.instance.id.replace("-", "_")}_{setting.slug}
+        unique_id: mtrxpi_{setting.instance.id.replace("-", "_")}_{setting.slug}
 
-    command_topic: {setting.mqtt_topic}
+        command_topic: {setting.mqtt_topic}
 
-    icon: {setting.icon}
+        icon: {setting.icon}
 
-    retain: true
+        retain: true
 
-    state_topic: {setting.mqtt_topic}
+        state_topic: {setting.mqtt_topic}
     """,
         ).strip()
         + "\n"

@@ -80,10 +80,9 @@ class AudioVisualiser(DynamicContent):
 
     cutoff_frequency: Annotated[
         int,
-        TransitionableParameterSetting(
+        ParameterSetting(
             minimum=0,
             maximum=20000,
-            transition_rate=1,
             icon="mdi:sine-wave",
             unit_of_measurement="Hz",
             display_mode="slider",
@@ -94,8 +93,9 @@ class AudioVisualiser(DynamicContent):
         int,
         ParameterSetting(
             minimum=100,
+            maximum=10000,
             icon="mdi:sine-wave",
-            unit_of_measurement="",
+            unit_of_measurement="colors",
             display_mode="slider",
             invoke_settings_callback=True,
         ),
@@ -137,8 +137,12 @@ class AudioVisualiser(DynamicContent):
         self.update_colormap()
         self.update_frequency_foci()
 
-        self.shm = shared_memory.SharedMemory(name=const.AUDIO_VISUALISER_SHM_NAME)
-        atexit.register(self.shm.close)
+        self.setup_shm(allow_failure=True)
+
+    def setup(self) -> None:
+        """Setup the audio visualiser."""
+        if not hasattr(self, "shm"):
+            self.setup_shm()
 
     def refresh_content(self) -> Generator[None, None, None]:
         """Refresh the content."""
@@ -157,8 +161,8 @@ class AudioVisualiser(DynamicContent):
     def setting_update_callback(self, update_setting: str | None = None) -> None:
         """Update the colormap."""
         if update_setting in {
-            "low_magnitude_color",
-            "high_magnitude_color",
+            "low_magnitude_hex_color",
+            "high_magnitude_hex_color",
             "colormap_length",
         }:
             self.update_colormap()
@@ -170,6 +174,16 @@ class AudioVisualiser(DynamicContent):
             "cutoff_frequency",
         }:
             self.update_frequency_foci()
+
+    def setup_shm(self, *, allow_failure: bool = False) -> None:
+        """Setup the shared memory."""
+        try:
+            self.shm = shared_memory.SharedMemory(name=const.AUDIO_VISUALISER_SHM_NAME)
+            atexit.register(self.shm.close)
+        except FileNotFoundError:
+            LOGGER.critical("Shared memory %r not found", const.AUDIO_VISUALISER_SHM_NAME)
+            if not allow_failure:
+                raise
 
     def update_colormap(self) -> None:
         """Update the colormap."""
