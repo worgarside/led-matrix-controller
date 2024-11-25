@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass, field
 from json import dumps
 from multiprocessing import shared_memory
-from typing import Annotated, ClassVar, Final, Generator
+from typing import Annotated, Final, Generator
 
 import numpy as np
 from content.setting import ParameterSetting, TransitionableParameterSetting
@@ -30,8 +30,6 @@ HEX_CODE_PATTERN: Final[re.Pattern[str]] = re.compile(
 @dataclass(kw_only=True, slots=True)
 class AudioVisualiser(DynamicContent):
     """Visualise the audio from an incoming mic/aux feed."""
-
-    IS_OPAQUE: ClassVar[bool] = False
 
     low_freq_x: Annotated[
         int,
