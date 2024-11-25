@@ -37,12 +37,13 @@ LIBRARY = (
 )
 
 WORKS_WITH: dict[type[ContentBase[Any]], set[type[ContentBase[Any]]]] = {
-    Clock: {RainingGrid, Sorter, NowPlaying},
+    Clock: {RainingGrid, Sorter, NowPlaying, AudioVisualiser},
     GifViewer: set(),
     ImageViewer: set(),
     NowPlaying: {Clock},
     RainingGrid: {Clock},
     Sorter: {Clock},
+    AudioVisualiser: {Clock},
 }
 
 
