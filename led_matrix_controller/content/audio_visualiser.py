@@ -35,6 +35,7 @@ class AudioVisualiser(DynamicContent):
             icon="mdi:arrow-left-right",
             unit_of_measurement="",
             display_mode="slider",
+            invoke_settings_callback=True,
         ),
     ] = 1
     """X coordinate of the lowest frequency in the grid."""
@@ -48,6 +49,7 @@ class AudioVisualiser(DynamicContent):
             icon="mdi:arrow-up-down",
             unit_of_measurement="",
             display_mode="slider",
+            invoke_settings_callback=True,
         ),
     ] = 1
     """Y coordinate of the lowest frequency in the grid."""
@@ -61,6 +63,7 @@ class AudioVisualiser(DynamicContent):
             icon="mdi:arrow-up-down",
             unit_of_measurement="",
             display_mode="slider",
+            invoke_settings_callback=True,
         ),
     ] = const.MATRIX_WIDTH - 1
     """X coordinate of the highest frequency in the grid."""
@@ -74,6 +77,7 @@ class AudioVisualiser(DynamicContent):
             icon="mdi:arrow-up-down",
             unit_of_measurement="",
             display_mode="slider",
+            invoke_settings_callback=True,
         ),
     ] = const.MATRIX_HEIGHT - 1
     """Y coordinate of the highest frequency in the grid."""
@@ -86,6 +90,7 @@ class AudioVisualiser(DynamicContent):
             icon="mdi:sine-wave",
             unit_of_measurement="Hz",
             display_mode="slider",
+            invoke_settings_callback=True,
         ),
     ] = 5000
 
