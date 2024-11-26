@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Annotated, Any, Generator
+from typing import TYPE_CHECKING, Annotated, Any
 
 import numpy as np
 from wg_utilities.loggers import get_streaming_logger
@@ -14,6 +14,7 @@ from .setting import ParameterSetting
 
 if TYPE_CHECKING:
     import itertools
+    from collections.abc import Generator
 
     from content.base import GridView
     from numpy.typing import DTypeLike, NDArray
