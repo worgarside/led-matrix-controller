@@ -6,7 +6,7 @@ from textwrap import dedent
 from typing import TYPE_CHECKING, Any
 
 from content.dynamic_content import DynamicContent
-from main import LIBRARY
+from main import get_library
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -20,7 +20,7 @@ MQTT_DIR = HA_REPO / "entities/mqtt"
 
 
 def get_all_settings() -> Generator[Setting[Any], None, None]:
-    for content in LIBRARY:
+    for content in get_library():
         if isinstance(content, DynamicContent):
             yield from content.settings.values()
 
@@ -180,7 +180,7 @@ def mqtt_text(setting: Setting[str]) -> None:
 
           command_topic: {setting.mqtt_topic}
 
-          command_template: "{{{{ value | tojson }}}}"
+          command_template: '"{{ value }}"'  # hacv disable: InvalidTemplateVar:value
 
           icon: {setting.icon}
 
@@ -188,7 +188,7 @@ def mqtt_text(setting: Setting[str]) -> None:
 
           state_topic: {setting.mqtt_topic}
 
-          value_template: "{{{{ value_json | from_json }}}}"
+          value_template: "{{{{ value_json.strip('\\"') }}}}"
     """,
         ).strip()
         + "\n"
