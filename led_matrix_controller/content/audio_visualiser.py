@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import atexit
 import re
-from collections.abc import Generator
 from dataclasses import dataclass, field
 from json import dumps
 from multiprocessing import shared_memory
-from typing import Annotated, Final
+from typing import TYPE_CHECKING, Annotated, Final
 
 import numpy as np
 from content.setting import ParameterSetting, TransitionableParameterSetting
@@ -19,6 +18,9 @@ from utils.helpers import hex_to_rgba
 from wg_utilities.loggers import get_streaming_logger
 
 from .dynamic_content import DynamicContent
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 LOGGER = get_streaming_logger(__name__)
 
