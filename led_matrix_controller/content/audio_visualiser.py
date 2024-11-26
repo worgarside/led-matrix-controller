@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import atexit
 import re
+from collections.abc import Generator
 from dataclasses import dataclass, field
 from json import dumps
 from multiprocessing import shared_memory
-from typing import Annotated, Final, Generator
+from typing import Annotated, Final
 
 import numpy as np
 from content.setting import ParameterSetting, TransitionableParameterSetting
-from numpy.typing import NDArray  # noqa: TCH002
+from numpy.typing import NDArray  # noqa: TC002
 from scipy.fftpack import rfftfreq
 from utils import const
 from utils.helpers import hex_to_rgba
