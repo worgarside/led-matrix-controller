@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator
 from dataclasses import dataclass, field
 from logging import DEBUG, getLogger
 from time import sleep
@@ -14,6 +13,7 @@ from utils import const, to_kebab_case
 from wg_utilities.loggers import add_stream_handler
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
     from pathlib import Path
 
     from utils import mtrx

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Annotated, Any
 
@@ -15,6 +14,7 @@ from .setting import ParameterSetting
 
 if TYPE_CHECKING:
     import itertools
+    from collections.abc import Generator
 
     from content.base import GridView
     from numpy.typing import DTypeLike, NDArray

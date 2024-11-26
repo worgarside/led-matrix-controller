@@ -6,7 +6,6 @@ import itertools
 import math
 import re
 from abc import ABC, abstractmethod
-from collections.abc import Generator, Iterator
 from contextlib import suppress
 from dataclasses import dataclass, field, is_dataclass
 from enum import Enum, auto
@@ -35,7 +34,7 @@ from wg_utilities.loggers import get_streaming_logger
 from .setting import TransitionableParameterSetting
 
 if TYPE_CHECKING:
-    from collections.abc import Collection
+    from collections.abc import Collection, Generator, Iterator
 
     from PIL import Image
 

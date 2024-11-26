@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable, ClassVar
 
@@ -12,6 +11,7 @@ from utils import const, to_kebab_case
 from wg_utilities.loggers import get_streaming_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
     from pathlib import Path
 
     from utils import mtrx

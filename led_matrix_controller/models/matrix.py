@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from json import dumps
 from queue import PriorityQueue
 from threading import Condition, Thread
@@ -33,6 +32,8 @@ from wg_utilities.decorators import process_exception
 from wg_utilities.loggers import get_streaming_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from numpy.typing import DTypeLike, NDArray
     from utils.mqtt import MqttClient
 

@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Generator
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import lru_cache
-from typing import Annotated, Final, cast
+from typing import TYPE_CHECKING, Annotated, Final, cast
 
 import numpy as np
 from content.base import GridView
@@ -16,6 +15,9 @@ from wg_utilities.loggers import get_streaming_logger
 
 from .dynamic_content import DynamicContent
 from .setting import ParameterSetting
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 LOGGER = get_streaming_logger(__name__)
 

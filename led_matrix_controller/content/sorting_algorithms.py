@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator
 from colorsys import hls_to_rgb
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from random import choice, randint, shuffle, uniform
-from typing import Annotated, ClassVar
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 import numpy as np
 from utils import const
@@ -16,6 +15,9 @@ from wg_utilities.loggers import get_streaming_logger
 from .base import StopType
 from .dynamic_content import DynamicContent
 from .setting import ParameterSetting
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 LOGGER = get_streaming_logger(__name__)
 

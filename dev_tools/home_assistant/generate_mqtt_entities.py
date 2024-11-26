@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Generator
 from enum import StrEnum
 from pathlib import Path
 from textwrap import dedent
@@ -10,6 +9,8 @@ from content.dynamic_content import DynamicContent
 from main import LIBRARY
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from content.setting import Setting
 
 REPO_PATH = Path(__file__).parents[2]
