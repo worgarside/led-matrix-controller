@@ -183,17 +183,27 @@ def main() -> None:
         mqtt.CLIENT.subscribe(COMBO_CONTENT_TOPIC, qos=2)
 
         mqtt.CLIENT.loop_forever()
+
+        LOGGER.info("MQTT loop finished.")
     finally:
         if processor.worker_thread:
             with suppress(Exception):
                 processor.worker_thread.join()
+                LOGGER.info("Audio processing thread joined.")
 
         processor.stream.stop_stream()
         processor.stream.close()
+        LOGGER.info("PyAudio stream closed.")
+
         PYAUDIO.terminate()
+        LOGGER.info("PyAudio terminated.")
 
         processor.shm.close()
         processor.shm.unlink()
+        LOGGER.info("Shared memory closed and unlinked.")
+
+    LOGGER.info("Audio processor finished.")
+    raise SystemExit
 
 
 if __name__ == "__main__":
