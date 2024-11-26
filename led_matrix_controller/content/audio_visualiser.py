@@ -136,14 +136,33 @@ class AudioVisualiser(DynamicContent):
 
     shm: shared_memory.SharedMemory = field(init=False, repr=False)
 
-    sample_rate: int = field(default=44100, init=False, repr=False)
+    sample_rate: Annotated[
+        int,
+        ParameterSetting(
+            invoke_settings_callback=True,
+            icon="mdi:sine-wave",
+            unit_of_measurement="Hz",
+        ),
+    ] = 44100
     """Number of audio samples per second."""
 
-    chunk_size: int = field(default=441, init=False, repr=False)
+    chunk_size: Annotated[
+        int,
+        ParameterSetting(
+            invoke_settings_callback=True,
+            icon="mdi:table-split-cell",
+            unit_of_measurement="",
+        ),
+    ] = 441
     """Number of audio samples per chunk.
 
     Set to 441 to allow for 100 FPS updates.
     """
+
+    _refresh_audio_array: bool = field(default=False, init=False, repr=False)
+    """Whether to refresh the audio array.
+
+    Used when the chunk size (and thus the shape of the array) is updated."""
 
     def __post_init__(self) -> None:
         """Initialize the audio visualiser."""
@@ -161,13 +180,17 @@ class AudioVisualiser(DynamicContent):
 
     def refresh_content(self) -> Generator[None, None, None]:
         """Refresh the content."""
-        audio: NDArray[np.float64] = np.ndarray(
-            shape=(self.chunk_size // 2 + 1,),
-            dtype=np.float64,
-            buffer=self.shm.buf,
-        )
+        self._refresh_audio_array = True
 
         while self.active:
+            if self._refresh_audio_array:
+                audio: NDArray[np.float64] = np.ndarray(
+                    shape=(self.chunk_size // 2 + 1,),
+                    dtype=np.float64,
+                    buffer=self.shm.buf,
+                )
+                self._refresh_audio_array = False
+
             audio_ints = (audio * (self.colormap_length - 1)).astype(np.int_)
             self.pixels[:, :] = audio_ints[self.freq_bin_indices]
 
@@ -187,8 +210,13 @@ class AudioVisualiser(DynamicContent):
             "high_freq_x",
             "high_freq_y",
             "cutoff_frequency",
+            "sample_rate",
+            "chunk_size",
         }:
             self.update_frequency_foci()
+
+        if update_setting == "chunk_size":
+            self._refresh_audio_array = True
 
     def setup_shm(self, *, allow_failure: bool = False) -> None:
         """Setup the shared memory."""
