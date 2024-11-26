@@ -108,6 +108,8 @@ class AudioProcessor:
         while self.active:
             dest[:] = self.get_magnitudes(self.stream)
 
+        LOGGER.info("Audio processing loop exiting.")
+
     def _on_current_content_message(
         self,
         _: paho.mqtt.client.Client,
@@ -161,6 +163,13 @@ class AudioProcessor:
             self.active = False
             if self.worker_thread:
                 self.worker_thread.join()
+
+            LOGGER.info(
+                "Audio processing loop stopped. Thread %s alive.",
+                "is"
+                if self.worker_thread and self.worker_thread.is_alive()
+                else "is not",
+            )
 
 
 def main() -> None:
