@@ -13,11 +13,11 @@ from os import getenv
 from queue import Queue
 from threading import Thread
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     ClassVar,
     Final,
-    Generator,
     Self,
 )
 
@@ -30,6 +30,9 @@ from wg_utilities.loggers import get_streaming_logger
 from .base import GridView, StateBase
 from .dynamic_content import DynamicContent
 from .setting import FrequencySetting
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 LOGGER = get_streaming_logger(__name__)
 
