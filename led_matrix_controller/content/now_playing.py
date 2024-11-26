@@ -9,7 +9,7 @@ from io import BytesIO
 from pathlib import Path
 from re import Pattern
 from re import compile as compile_regex
-from typing import Annotated, ClassVar, Final, Generator, TypedDict
+from typing import TYPE_CHECKING, Annotated, ClassVar, Final, TypedDict
 
 import numpy as np
 from content.base import GridView, StopType
@@ -21,6 +21,9 @@ from wg_utilities.loggers import get_streaming_logger
 
 from .dynamic_content import DynamicContent
 from .setting import ParameterSetting
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 LOGGER = get_streaming_logger(__name__)
 
