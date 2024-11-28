@@ -180,7 +180,7 @@ def mqtt_text(setting: Setting[str]) -> None:
 
           command_topic: {setting.mqtt_topic}
 
-          command_template: '"{{ value }}"'  # hacv disable: InvalidTemplateVar:value
+          command_template: '"{{{{ value }}}}"'  # hacv disable: InvalidTemplateVar:value
 
           icon: {setting.icon}
 

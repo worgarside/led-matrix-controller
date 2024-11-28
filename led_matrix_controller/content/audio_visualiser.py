@@ -22,6 +22,7 @@ from .dynamic_content import DynamicContent
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+
 LOGGER = get_streaming_logger(__name__)
 
 HEX_CODE_PATTERN: Final[re.Pattern[str]] = re.compile(
@@ -40,7 +41,7 @@ class AudioVisualiser(DynamicContent):
             minimum=0,
             maximum=const.MATRIX_WIDTH - 1,
             transition_rate=0.05,
-            icon="mdi:arrow-left-right",
+            icon="mdi:star-four-points-circle-outline",
             unit_of_measurement="",
             display_mode="slider",
             invoke_settings_callback=True,
@@ -54,7 +55,7 @@ class AudioVisualiser(DynamicContent):
             minimum=0,
             maximum=const.MATRIX_HEIGHT - 1,
             transition_rate=0.05,
-            icon="mdi:arrow-up-down",
+            icon="mdi:star-four-points-circle-outline",
             unit_of_measurement="",
             display_mode="slider",
             invoke_settings_callback=True,
@@ -68,7 +69,7 @@ class AudioVisualiser(DynamicContent):
             minimum=0,
             maximum=const.MATRIX_HEIGHT - 1,
             transition_rate=0.05,
-            icon="mdi:arrow-up-down",
+            icon="mdi:star-four-points-circle",
             unit_of_measurement="",
             display_mode="slider",
             invoke_settings_callback=True,
@@ -82,7 +83,7 @@ class AudioVisualiser(DynamicContent):
             minimum=0,
             maximum=const.MATRIX_HEIGHT - 1,
             transition_rate=0.05,
-            icon="mdi:arrow-up-down",
+            icon="mdi:star-four-points-circle",
             unit_of_measurement="",
             display_mode="slider",
             invoke_settings_callback=True,
@@ -93,9 +94,9 @@ class AudioVisualiser(DynamicContent):
     cutoff_frequency: Annotated[
         int,
         ParameterSetting(
-            minimum=0,
+            minimum=20,
             maximum=20000,
-            icon="mdi:sine-wave",
+            icon="mdi:arrow-collapse-up",
             unit_of_measurement="Hz",
             display_mode="slider",
             invoke_settings_callback=True,
@@ -107,9 +108,9 @@ class AudioVisualiser(DynamicContent):
         ParameterSetting(
             minimum=100,
             maximum=10000,
-            icon="mdi:sine-wave",
+            icon="mdi:palette",
             unit_of_measurement="colors",
-            display_mode="slider",
+            display_mode="box",
             invoke_settings_callback=True,
         ),
     ] = 10000
@@ -139,6 +140,8 @@ class AudioVisualiser(DynamicContent):
     sample_rate: Annotated[
         int,
         ParameterSetting(
+            minimum=1,
+            maximum=100000,
             invoke_settings_callback=True,
             icon="mdi:sine-wave",
             unit_of_measurement="Hz",
@@ -149,6 +152,8 @@ class AudioVisualiser(DynamicContent):
     chunk_size: Annotated[
         int,
         ParameterSetting(
+            minimum=1,
+            maximum=20000,
             invoke_settings_callback=True,
             icon="mdi:table-split-cell",
             unit_of_measurement="",

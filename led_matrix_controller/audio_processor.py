@@ -25,35 +25,40 @@ if TYPE_CHECKING:
 
 LOGGER = get_streaming_logger(__name__)
 
-AV_CONTENT_ID: Final = AudioVisualiser().id
+_AV = AudioVisualiser()
+AV_CONTENT_ID: Final = _AV.id
+CHUNK_SIZE_TOPIC: Final = _AV.settings["chunk_size"].mqtt_topic
+SAMPLE_RATE_TOPIC: Final = _AV.settings["sample_rate"].mqtt_topic
 CURRENT_CONTENT_TOPIC: Final = Matrix.mqtt_topic("current-content")
 _COMBO = Combination()
 COMBO_CONTENT_ID: Final = _COMBO.id
 COMBO_CONTENT_TOPIC: Final = _COMBO.settings["content"].mqtt_topic
-del _COMBO
+del _AV, _COMBO
 
 PYAUDIO = pyaudio.PyAudio()
-
-CHUNK = 441
-"""Number of audio samples per chunk."""
-
-RATE = 44100
-"""Sampling rate in Hz."""
 
 
 class AudioProcessor:
     """Process incoming audio and save it to shared memory."""
 
+    stream: pyaudio.Stream
+
     def __init__(self) -> None:
         self.active = False
 
-        self.stream = PYAUDIO.open(
-            format=pyaudio.paInt16,
-            channels=1,
-            rate=RATE,
-            input=True,
-            frames_per_buffer=CHUNK,
-        )
+        self.chunk_size = 441
+        """Number of audio samples per chunk.
+
+        /mtrxpi/audio-visualiser/parameter/chunk-size
+        """
+
+        self.sample_rate = 44100
+        """Sampling rate in Hz.
+
+        /mtrxpi/audio-visualiser/parameter/sample-rate
+        """
+
+        self.create_stream()
 
         self.max_magnitude = 1e-9
 
@@ -61,7 +66,7 @@ class AudioProcessor:
             self.shm = shared_memory.SharedMemory(
                 name=const.AUDIO_VISUALISER_SHM_NAME,
                 create=True,
-                size=self.get_magnitudes(self.stream).nbytes,
+                size=self.get_magnitudes().nbytes,
             )
         except FileExistsError:
             self.shm = shared_memory.SharedMemory(name=const.AUDIO_VISUALISER_SHM_NAME)
@@ -78,11 +83,38 @@ class AudioProcessor:
             COMBO_CONTENT_TOPIC,
             self._on_combined_content_message,
         )
+        mqtt.CLIENT.message_callback_add(
+            CHUNK_SIZE_TOPIC,
+            self._on_chunk_size_message,
+        )
+        mqtt.CLIENT.message_callback_add(
+            SAMPLE_RATE_TOPIC,
+            self._on_sample_rate_message,
+        )
 
-    def get_magnitudes(self, stream: pyaudio.Stream) -> NDArray[np.float64]:
+    def create_stream(self) -> None:
+        """Create the PyAudio stream."""
+        if hasattr(self, "stream"):
+            self.stream.close()
+
+        self.stream = PYAUDIO.open(
+            format=pyaudio.paInt16,
+            channels=1,
+            rate=self.sample_rate,
+            input=True,
+            frames_per_buffer=self.chunk_size,
+        )
+
+        LOGGER.info(
+            "Created stream with chunk size %s and sample rate %s",
+            self.chunk_size,
+            self.sample_rate,
+        )
+
+    def get_magnitudes(self) -> NDArray[np.float64]:
         """Get the magnitudes of the audio stream and apply FFT."""
         data = np.frombuffer(
-            stream.read(CHUNK, exception_on_overflow=False),
+            self.stream.read(self.chunk_size, exception_on_overflow=False),
             dtype=np.int16,
         )
 
@@ -97,7 +129,7 @@ class AudioProcessor:
         self,
     ) -> None:
         """Take incoming audio and save it to shared memory."""
-        fft_magnitudes = self.get_magnitudes(self.stream)
+        fft_magnitudes = self.get_magnitudes()
 
         dest: NDArray[np.float64] = np.ndarray(
             shape=fft_magnitudes.shape,
@@ -106,20 +138,24 @@ class AudioProcessor:
         )
 
         while self.active:
-            dest[:] = self.get_magnitudes(self.stream)
+            dest[:] = self.get_magnitudes()
 
         LOGGER.info("Audio processing loop exiting.")
 
-    def _on_current_content_message(
+    def _on_chunk_size_message(
         self,
         _: paho.mqtt.client.Client,
         __: Any,
         message: MQTTMessage,
     ) -> None:
-        self.current_content = message.payload.decode()
-        LOGGER.info("Current content: %s", self.current_content)
+        """Update the chunk size and refresh the stream."""
+        try:
+            self.chunk_size = int(message.payload)
+        except ValueError:
+            LOGGER.exception("Failed to decode chunk size payload: %s", message.payload)
+            return
 
-        self.update_loop_status()
+        self.create_stream()
 
     def _on_combined_content_message(
         self,
@@ -143,6 +179,32 @@ class AudioProcessor:
         )
 
         self.update_loop_status()
+
+    def _on_current_content_message(
+        self,
+        _: paho.mqtt.client.Client,
+        __: Any,
+        message: MQTTMessage,
+    ) -> None:
+        self.current_content = message.payload.decode()
+        LOGGER.info("Current content: %s", self.current_content)
+
+        self.update_loop_status()
+
+    def _on_sample_rate_message(
+        self,
+        _: paho.mqtt.client.Client,
+        __: Any,
+        message: MQTTMessage,
+    ) -> None:
+        """Update the sample rate and refresh the stream."""
+        try:
+            self.sample_rate = int(message.payload)
+        except ValueError:
+            LOGGER.exception("Failed to decode sample rate payload: %s", message.payload)
+            return
+
+        self.create_stream()
 
     def update_loop_status(self) -> None:
         """Start or stop the audio processing loop based on the current content."""
@@ -181,6 +243,8 @@ def main() -> None:
 
         mqtt.CLIENT.subscribe(CURRENT_CONTENT_TOPIC, qos=2)
         mqtt.CLIENT.subscribe(COMBO_CONTENT_TOPIC, qos=2)
+        mqtt.CLIENT.subscribe(CHUNK_SIZE_TOPIC, qos=2)
+        mqtt.CLIENT.subscribe(SAMPLE_RATE_TOPIC, qos=2)
 
         mqtt.CLIENT.loop_forever()
 

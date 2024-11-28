@@ -336,7 +336,7 @@ class Setting(Generic[S]):
     def mqtt_topic(self) -> str:
         """The MQTT topic that this setting is subscribed to.
 
-        Auto-generated, in the form `/<hostname>/<automaton ID>/<setting type>/<kebab-case-slug>`
+        Auto-generated, in the form `/<hostname>/<content ID>/<setting type>/<kebab-case-slug>`
 
         e.g. /mtrxpi/raining-grid/frequency/rain-speed
         """
