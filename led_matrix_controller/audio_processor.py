@@ -15,6 +15,7 @@ from content.audio_visualiser import AudioVisualiser
 from models import Matrix
 from scipy.fft import rfft
 from utils import const
+from wg_utilities.functions import backoff
 from wg_utilities.loggers import get_streaming_logger
 from wg_utilities.utils import mqtt
 
@@ -125,9 +126,8 @@ class AudioProcessor:
         # Get in range 0-1
         return fft_magnitudes / self.max_magnitude
 
-    def process_incoming_audio(
-        self,
-    ) -> None:
+    @backoff(OSError, logger=LOGGER, max_delay=1, max_tries=20)
+    def process_incoming_audio(self) -> None:
         """Take incoming audio and save it to shared memory."""
         fft_magnitudes = self.get_magnitudes()
 
@@ -137,8 +137,16 @@ class AudioProcessor:
             buffer=self.shm.buf,
         )
 
-        while self.active:
-            dest[:] = self.get_magnitudes()
+        try:
+            while self.active:
+                dest[:] = self.get_magnitudes()
+        except OSError as err:
+            if "Unanticipated host error" in str(err):
+                LOGGER.warning(
+                    "Error with PyAudio stream, falling back to backoff: %s",
+                    err,
+                )
+                raise
 
         LOGGER.info("Audio processing loop exiting.")
 
