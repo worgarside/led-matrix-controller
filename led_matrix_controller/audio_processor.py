@@ -69,8 +69,14 @@ class AudioProcessor:
                 create=True,
                 size=self.get_magnitudes().nbytes,
             )
+            LOGGER.info(
+                "Created shared memory %r with size %s",
+                self.shm.name,
+                self.shm.size,
+            )
         except FileExistsError:
             self.shm = shared_memory.SharedMemory(name=const.AUDIO_VISUALISER_SHM_NAME)
+            LOGGER.info("Opened existing shared memory %r", self.shm.name)
 
         self.audio_visualiser_in_combination = False
         self.current_content: str | None = None
@@ -229,7 +235,12 @@ class AudioProcessor:
             self.worker_thread = threading.Thread(target=self.process_incoming_audio)
             self.worker_thread.start()
         else:
-            LOGGER.info("Stopping audio processing")
+            LOGGER.info(
+                "Stopping audio processing (current content: %s, AV in combination: %s)",
+                self.current_content,
+                self.audio_visualiser_in_combination,
+            )
+
             self.active = False
             if self.worker_thread:
                 self.worker_thread.join()

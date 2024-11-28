@@ -15,6 +15,7 @@ from numpy.typing import NDArray  # noqa: TC002
 from scipy.fftpack import rfftfreq
 from utils import const
 from utils.helpers import hex_to_rgba
+from wg_utilities.functions import backoff
 from wg_utilities.loggers import get_streaming_logger
 
 from .dynamic_content import DynamicContent
@@ -176,7 +177,13 @@ class AudioVisualiser(DynamicContent):
         self.update_colormap()
         self.update_frequency_foci()
 
-        self.setup_shm(allow_failure=True)
+        try:
+            self.setup_shm()
+        except Exception:
+            LOGGER.exception(
+                "Error setting up shared memory %s",
+                const.AUDIO_VISUALISER_SHM_NAME,
+            )
 
     def setup(self) -> None:
         """Setup the audio visualiser."""
@@ -223,15 +230,13 @@ class AudioVisualiser(DynamicContent):
         if update_setting == "chunk_size":
             self._refresh_audio_array = True
 
-    def setup_shm(self, *, allow_failure: bool = False) -> None:
+    @backoff(FileNotFoundError, logger=LOGGER, max_delay=1, max_tries=20, timeout=60)
+    def setup_shm(self) -> None:
         """Setup the shared memory."""
-        try:
-            self.shm = shared_memory.SharedMemory(name=const.AUDIO_VISUALISER_SHM_NAME)
-            atexit.register(self.shm.close)
-        except FileNotFoundError:
-            LOGGER.critical("Shared memory %r not found", const.AUDIO_VISUALISER_SHM_NAME)
-            if not allow_failure:
-                raise
+        self.shm = shared_memory.SharedMemory(name=const.AUDIO_VISUALISER_SHM_NAME)
+        atexit.register(self.shm.close)
+
+        LOGGER.info("Opened shared memory %r", self.shm.name)
 
     def update_colormap(self) -> None:
         """Update the colormap."""

@@ -18,6 +18,9 @@ from content import (
 )
 from models import Matrix
 from utils import MqttClient
+from wg_utilities.loggers import get_streaming_logger
+
+LOGGER = get_streaming_logger(__name__)
 
 if TYPE_CHECKING:
     from content.base import ContentBase
@@ -64,7 +67,9 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except Exception as err:
+        LOGGER.critical("Unhandled %s in main", type(err).__name__, exc_info=True)
+
         with suppress(Exception):
             Matrix(
                 mqtt_client=MqttClient(connect=False),
