@@ -183,7 +183,7 @@ class AudioVisualiser(DynamicContent):
         while self.active:
             if self._refresh_audio_array:
                 audio: NDArray[np.float64] = np.ndarray(
-                    shape=(self.chunk_size // 2 + 2,),
+                    shape=(self.chunk_size // 2 + 3,),
                     dtype=np.float64,
                     buffer=self.shm.buf,
                 )
