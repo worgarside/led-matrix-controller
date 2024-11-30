@@ -48,6 +48,7 @@ env = [
   "MQTT_USERNAME=test",
   "MQTT_PASSWORD=test",
   "DEBUG_MODE=1",
+  "AUDIO_VISUALISER_SHM_NAME=audio-visualiser",
 ]
 
 [tool.coverage.report]
