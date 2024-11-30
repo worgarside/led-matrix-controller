@@ -260,8 +260,6 @@ class AudioVisualiser(DynamicContent):
 
         cutoff_idx = np.where(freqs <= self.cutoff_frequency)[0][-1]
 
-        freq_bin_count = cutoff_idx + 1
-
         x, y = np.meshgrid(np.arange(self.width), np.arange(self.height))
 
         # Compute distances from the lowest/highest frequency focal points
@@ -275,7 +273,7 @@ class AudioVisualiser(DynamicContent):
         normalized_distances = dist_high / total_distance
 
         # Map normalized distances to frequency bin indices
-        freq_bin_indices = (normalized_distances * (freq_bin_count - 1)).astype(int)
+        freq_bin_indices = (normalized_distances * cutoff_idx).astype(int)
 
         # Ensure indices are within valid range
-        self.freq_bin_indices = np.clip(freq_bin_indices, 0, freq_bin_count - 1)
+        self.freq_bin_indices = np.clip(freq_bin_indices, 0, cutoff_idx)
