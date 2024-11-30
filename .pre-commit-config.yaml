@@ -27,9 +27,7 @@ repos:
           - paho-mqtt==2.1.0
           - pytest==8.3.3
           - pytest-codspeed==2.2.1
-          - types-requests
           - types-Pillow
-          - types-python-dateutil
           - wg-utilities==5.17.1
           - rgbmatrixemulator==0.11.6
 
@@ -99,3 +97,8 @@ repos:
     rev: v2.13
     hooks:
       - id: vulture
+
+  - repo: https://github.com/fredrikaverpil/creosote
+    rev: v3.1.0
+    hooks:
+      - id: creosote
