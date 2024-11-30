@@ -257,17 +257,17 @@ class Matrix:
 
         self._content: dict[str, ContentBase[Any]] = {}
 
-        self.queue_content_topic = self._mqtt_topic("queue-content")
+        self.queue_content_topic = self.mqtt_topic("queue-content")
         self.mqtt_client.add_topic_callback(
             self.queue_content_topic,
             self._on_content_message,
         )
 
-        self.current_content_topic = self._mqtt_topic("current-content")
+        self.current_content_topic = self.mqtt_topic("current-content")
 
         self._content_queue = ContentQueue(
             mqtt_client=self.mqtt_client,
-            topic_root=self._mqtt_topic("content-queue"),
+            topic_root=self.mqtt_topic("content-queue"),
         )
 
         self._content_thread = Thread(target=self._content_loop)
@@ -530,10 +530,11 @@ class Matrix:
 
         return next_content, parameters
 
-    def _mqtt_topic(self, suffix: str) -> str:
+    @classmethod
+    def mqtt_topic(cls, suffix: str) -> str:
         """Create an MQTT topic with the given suffix."""
         return "/" + "/".join(
-            to_kebab_case(const.HOSTNAME, self.__class__.__name__, *suffix.split("/")),
+            to_kebab_case(const.HOSTNAME, cls.__name__, *suffix.split("/")),
         )
 
     @process_exception(logger=LOGGER, raise_after_processing=False)

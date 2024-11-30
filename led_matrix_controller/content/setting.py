@@ -100,6 +100,9 @@ class Setting(Generic[S]):
     Setting this to False will allow type coercion, "soft" bounds
     """
 
+    validator: Callable[[S], bool] | None = None
+    """Function to validate the payload before it is coerced and formatted."""
+
     fp_precision: int = 6
     """The number of decimal places to round floats to during processing."""
 
@@ -287,6 +290,13 @@ class Setting(Generic[S]):
     def validate_payload(self, raw_payload: S) -> S:
         """Check that the incoming payload is a valid value for this Setting."""
         if isinstance(raw_payload, self.type_) and self.type_ not in {int, float}:
+            if self.validator and not self.validator(raw_payload):
+                raise InvalidPayloadError(
+                    raw_payload=raw_payload,
+                    strict=self.strict,
+                    coerced=raw_payload,
+                )
+
             # Non-numeric type, decoded and parsed correctly
             return raw_payload
 
@@ -298,6 +308,13 @@ class Setting(Generic[S]):
                 strict=self.strict,
                 coerced=err,
             ) from err
+
+        if self.validator and not self.validator(coerced_and_formatted):
+            raise InvalidPayloadError(
+                raw_payload=raw_payload,
+                strict=self.strict,
+                coerced=coerced_and_formatted,
+            )
 
         if self.strict and coerced_and_formatted != raw_payload:
             raise InvalidPayloadError(
@@ -319,7 +336,7 @@ class Setting(Generic[S]):
     def mqtt_topic(self) -> str:
         """The MQTT topic that this setting is subscribed to.
 
-        Auto-generated, in the form `/<hostname>/<automaton ID>/<setting type>/<kebab-case-slug>`
+        Auto-generated, in the form `/<hostname>/<content ID>/<setting type>/<kebab-case-slug>`
 
         e.g. /mtrxpi/raining-grid/frequency/rain-speed
         """

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .audio_visualiser import AudioVisualiser
 from .clock import Clock
 from .combination import Combination
 from .gif import GifViewer
@@ -9,6 +10,7 @@ from .raining_grid import RainingGrid
 from .sorting_algorithms import Sorter
 
 __all__ = [
+    "AudioVisualiser",
     "Clock",
     "Combination",
     "GifViewer",
