@@ -32,15 +32,21 @@ disable:
 	sudo systemctl disable led_matrix_controller.service
 
 ifeq ($(AUDIO), 1)
-	sudo systemctl disable audio_processor.service
+	$(MAKE) disable-ap
 endif
+
+disable-ap:
+	sudo systemctl disable audio_processor.service
 
 enable:
 	sudo systemctl enable led_matrix_controller.service
 
 ifeq ($(AUDIO), 1)
-	sudo systemctl enable audio_processor.service
+	$(MAKE) enable-ap
 endif
+
+enable-ap:
+	sudo systemctl enable audio_processor.service
 
 install-python:
 	.venv/bin/pip install -r requirements.txt
@@ -49,10 +55,13 @@ install-service:
 	sudo cp service/led_matrix_controller.service /etc/systemd/system/
 
 ifeq ($(AUDIO), 1)
-	sudo cp service/audio_processor.service /etc/systemd/system/
+	$(MAKE) install-service-ap
 endif
 
 	sudo systemctl daemon-reload
+
+install-service-ap:
+	sudo cp service/audio_processor.service /etc/systemd/system/
 
 install-all:
 	@$(MAKE) install-python
@@ -65,8 +74,11 @@ restart:
 	sudo systemctl restart led_matrix_controller.service
 
 ifeq ($(AUDIO), 1)
-	sudo systemctl restart audio_processor.service
+	$(MAKE) restart-ap
 endif
+
+restart-ap:
+	sudo systemctl restart audio_processor.service
 
 run:
 	sudo .venv/bin/python led_matrix_controller/application/controller/led_matrix_controller.py
@@ -75,15 +87,21 @@ start:
 	sudo systemctl start led_matrix_controller.service
 
 ifeq ($(AUDIO), 1)
-	sudo systemctl start audio_processor.service
+	$(MAKE) start-ap
 endif
+
+start-ap:
+	sudo systemctl start audio_processor.service
 
 stop:
 	sudo systemctl stop led_matrix_controller.service
 
 ifeq ($(AUDIO), 1)
-	sudo systemctl stop audio_processor.service
+	$(MAKE) stop-ap
 endif
+
+stop-ap:
+	sudo systemctl stop audio_processor.service
 
 tail:
 	clear && sudo journalctl -u led_matrix_controller.service -f -n 100
