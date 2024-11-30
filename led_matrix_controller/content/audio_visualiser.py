@@ -28,6 +28,8 @@ HEX_CODE_PATTERN: Final[re.Pattern[str]] = re.compile(
     flags=re.IGNORECASE,
 )
 
+A_REASONABLE_NUMBER_OF_RETRIES: Final = 10
+
 
 @dataclass(kw_only=True, slots=True)
 class AudioVisualiser(DynamicContent):
@@ -180,17 +182,33 @@ class AudioVisualiser(DynamicContent):
         """Refresh the content."""
         self._refresh_audio_array = True
 
+        index_error_autofix_count = 0
+
         while self.active:
             if self._refresh_audio_array:
                 audio: NDArray[np.float64] = np.ndarray(
-                    shape=(self.chunk_size // 2 + 4,),
+                    shape=(self.freq_bin_indices.max() + 1,),
                     dtype=np.float64,
                     buffer=self.shm.buf,
                 )
                 self._refresh_audio_array = False
 
             audio_ints = (audio * (self.colormap_length - 1)).astype(np.int_)
-            self.pixels[:, :] = audio_ints[self.freq_bin_indices]
+            try:
+                self.pixels[:, :] = audio_ints[self.freq_bin_indices]
+
+                index_error_autofix_count = 0
+            except IndexError:
+                LOGGER.warning(
+                    "Index error: %s, %s",
+                    self.freq_bin_indices.max(),
+                    audio_ints.shape,
+                )
+                self._refresh_audio_array = True
+                index_error_autofix_count += 1
+
+                if index_error_autofix_count > A_REASONABLE_NUMBER_OF_RETRIES:
+                    raise
 
             yield
 
