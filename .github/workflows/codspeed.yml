@@ -52,7 +52,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          apt-get install -y portaudio19-dev
+          sudo apt-get install -y portaudio19-dev
 
           poetry install --sync
 
