@@ -93,7 +93,7 @@ class AudioVisualiser(DynamicContent):
         int,
         ParameterSetting(
             minimum=20,
-            maximum=20000,
+            maximum=22000,
             icon="mdi:arrow-collapse-up",
             unit_of_measurement="Hz",
             display_mode="slider",
