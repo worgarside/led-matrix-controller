@@ -156,11 +156,19 @@ class AudioProcessor:
         """Take incoming audio and save it to shared memory."""
         fft_magnitudes = self.get_magnitudes()
 
-        dest: NDArray[np.float64] = np.ndarray(
-            shape=fft_magnitudes.shape,
-            dtype=fft_magnitudes.dtype,
-            buffer=self.shm.buf,
-        )
+        try:
+            dest: NDArray[np.float64] = np.ndarray(
+                shape=fft_magnitudes.shape,
+                dtype=fft_magnitudes.dtype,
+                buffer=self.shm.buf,
+            )
+        except TypeError as err:
+            if "buffer is too small" in str(err):
+                LOGGER.warning(
+                    "Shared memory buffer too small (%s bytes required)",
+                    fft_magnitudes.nbytes,
+                )
+            raise
 
         try:
             while self.active:
