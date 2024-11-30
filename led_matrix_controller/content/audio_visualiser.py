@@ -28,8 +28,6 @@ HEX_CODE_PATTERN: Final[re.Pattern[str]] = re.compile(
     flags=re.IGNORECASE,
 )
 
-A_REASONABLE_NUMBER_OF_RETRIES: Final = 10
-
 
 @dataclass(kw_only=True, slots=True)
 class AudioVisualiser(DynamicContent):
@@ -182,33 +180,17 @@ class AudioVisualiser(DynamicContent):
         """Refresh the content."""
         self._refresh_audio_array = True
 
-        index_error_autofix_count = 0
-
         while self.active:
             if self._refresh_audio_array:
                 audio: NDArray[np.float64] = np.ndarray(
-                    shape=(self.freq_bin_indices.max() + 1,),
+                    shape=(self.chunk_size // 2 + 1,),
                     dtype=np.float64,
                     buffer=self.shm.buf,
                 )
                 self._refresh_audio_array = False
 
             audio_ints = (audio * (self.colormap_length - 1)).astype(np.int_)
-            try:
-                self.pixels[:, :] = audio_ints[self.freq_bin_indices]
-
-                index_error_autofix_count = 0
-            except IndexError:
-                LOGGER.warning(
-                    "Index error: %s, %s",
-                    self.freq_bin_indices.max(),
-                    audio_ints.shape,
-                )
-                self._refresh_audio_array = True
-                index_error_autofix_count += 1
-
-                if index_error_autofix_count > A_REASONABLE_NUMBER_OF_RETRIES:
-                    raise
+            self.pixels[:, :] = audio_ints[self.freq_bin_indices]
 
             yield
 
@@ -231,7 +213,7 @@ class AudioVisualiser(DynamicContent):
         }:
             self.update_frequency_foci()
 
-        if update_setting == "chunk_size":
+        if update_setting in {"chunk_size", "cutoff_frequency"}:
             self._refresh_audio_array = True
 
     def update_colormap(self) -> None:
@@ -274,10 +256,6 @@ class AudioVisualiser(DynamicContent):
 
     def update_frequency_foci(self) -> None:
         """Update the location of the frequency foci on the visualisation."""
-        freqs = rfftfreq(self.chunk_size, 1 / self.sample_rate)
-
-        cutoff_idx = np.where(freqs <= self.cutoff_frequency)[0][-1]
-
         x, y = np.meshgrid(np.arange(self.width), np.arange(self.height))
 
         # Compute distances from the lowest/highest frequency focal points
@@ -289,6 +267,12 @@ class AudioVisualiser(DynamicContent):
 
         # Normalize distances to range [0, 1]
         normalized_distances = dist_high / total_distance
+
+        freqs = rfftfreq(self.chunk_size, 1 / self.sample_rate)
+        cutoff_idx = min(
+            np.where(freqs <= self.cutoff_frequency)[0][-1],
+            self.chunk_size // 2,
+        )
 
         # Map normalized distances to frequency bin indices
         freq_bin_indices = (normalized_distances * cutoff_idx).astype(int)

@@ -57,7 +57,10 @@ def main() -> None:
         AudioVisualiser: {Clock},
     }
 
-    Matrix(mqtt_client=mqtt_client, content_works_with=works_with).register_content(
+    Matrix(
+        mqtt_client=mqtt_client,
+        content_works_with=works_with,
+    ).register_content(
         *library,
     )
 
