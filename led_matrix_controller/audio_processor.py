@@ -13,7 +13,7 @@ from content import Combination
 from content.audio_visualiser import AudioVisualiser
 from models import Matrix
 from scipy.fft import rfft
-from utils import get_shared_memory
+from utils import const, get_shared_memory
 from wg_utilities.functions import backoff
 from wg_utilities.loggers import get_streaming_logger
 from wg_utilities.utils import mqtt
@@ -36,6 +36,8 @@ COMBO_CONTENT_TOPIC: Final = _COMBO.settings["content"].mqtt_topic
 del _AV, _COMBO
 
 PYAUDIO = pyaudio.PyAudio()
+
+MAX_MAGNITUDE_TOPIC: Final = f"/{const.HOSTNAME}/audio-processor/max-magnitude"
 
 
 class AudioProcessor:
@@ -90,6 +92,8 @@ class AudioProcessor:
             self._on_sample_rate_message,
         )
 
+        self.get_magnitudes()
+
     def create_stream(self) -> None:
         """Create the PyAudio stream."""
         if (
@@ -136,6 +140,13 @@ class AudioProcessor:
 
         if prev != self.max_magnitude:
             LOGGER.info("Max magnitude: %s", self.max_magnitude)
+
+            mqtt.CLIENT.publish(
+                MAX_MAGNITUDE_TOPIC,
+                payload=self.max_magnitude,
+                qos=2,
+                retain=True,
+            )
 
         # Get in range 0-1
         return fft_magnitudes / self.max_magnitude
