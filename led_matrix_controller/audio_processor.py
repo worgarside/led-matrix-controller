@@ -234,14 +234,15 @@ class AudioProcessor:
             self.current_content == COMBO_CONTENT_ID
             and self.audio_visualiser_in_combination
         ):
-            LOGGER.info(
-                "Starting audio processing (current content: %s, AV in combination: %s)",
-                self.current_content,
-                self.audio_visualiser_in_combination,
-            )
-            self.active = True
-            self.worker_thread = threading.Thread(target=self.process_incoming_audio)
-            self.worker_thread.start()
+            if not self.active:
+                LOGGER.info(
+                    "Starting audio processing (current content: %s, AV in combination: %s)",
+                    self.current_content,
+                    self.audio_visualiser_in_combination,
+                )
+                self.active = True
+                self.worker_thread = threading.Thread(target=self.process_incoming_audio)
+                self.worker_thread.start()
         else:
             LOGGER.info(
                 "Stopping audio processing (current content: %s, AV in combination: %s)",
