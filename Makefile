@@ -1,8 +1,8 @@
 include .env
 export
 
-AUDIO ?= 1
-# Set AUDIO to 0 to disable audio processor inclusion in commands
+# Set AP to 0 to disable audio processor inclusion in commands
+AP ?= 0
 
 clean:
 	sudo rm -rf .venv
@@ -31,7 +31,7 @@ dev-update:
 disable:
 	sudo systemctl disable led_matrix_controller.service
 
-ifeq ($(AUDIO), 1)
+ifeq ($(AP), 1)
 	$(MAKE) disable-ap
 endif
 
@@ -41,7 +41,7 @@ disable-ap:
 enable:
 	sudo systemctl enable led_matrix_controller.service
 
-ifeq ($(AUDIO), 1)
+ifeq ($(AP), 1)
 	$(MAKE) enable-ap
 endif
 
@@ -54,14 +54,16 @@ install-python:
 install-service:
 	sudo cp service/led_matrix_controller.service /etc/systemd/system/
 
-ifeq ($(AUDIO), 1)
+ifeq ($(AP), 1)
 	$(MAKE) install-service-ap
-endif
-
+else
 	sudo systemctl daemon-reload
+endif
 
 install-service-ap:
 	sudo cp service/audio_processor.service /etc/systemd/system/
+
+	sudo systemctl daemon-reload
 
 install-all:
 	@$(MAKE) install-python
@@ -73,7 +75,7 @@ rain:
 restart:
 	sudo systemctl restart led_matrix_controller.service
 
-ifeq ($(AUDIO), 1)
+ifeq ($(AP), 1)
 	$(MAKE) restart-ap
 endif
 
@@ -86,7 +88,7 @@ run:
 start:
 	sudo systemctl start led_matrix_controller.service
 
-ifeq ($(AUDIO), 1)
+ifeq ($(AP), 1)
 	$(MAKE) start-ap
 endif
 
@@ -96,7 +98,7 @@ start-ap:
 stop:
 	sudo systemctl stop led_matrix_controller.service
 
-ifeq ($(AUDIO), 1)
+ifeq ($(AP), 1)
 	$(MAKE) stop-ap
 endif
 
