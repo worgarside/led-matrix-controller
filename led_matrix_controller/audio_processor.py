@@ -94,6 +94,24 @@ class AudioProcessor:
 
         self.get_magnitudes()
 
+    def create_shm_array(self) -> None:
+        """Create the shared memory array."""
+        fft_magnitudes = self.get_magnitudes()
+
+        try:
+            self.shm_array: NDArray[np.float64] = np.ndarray(
+                shape=fft_magnitudes.shape,
+                dtype=fft_magnitudes.dtype,
+                buffer=self.shm.buf,
+            )
+        except TypeError as err:
+            if "buffer is too small" in str(err):
+                LOGGER.critical(
+                    "Shared memory buffer too small (%s bytes required)",
+                    fft_magnitudes.nbytes,
+                )
+            raise
+
     def create_stream(self) -> None:
         """Create the PyAudio stream."""
         if (
@@ -159,25 +177,11 @@ class AudioProcessor:
     @backoff(OSError, logger=LOGGER, max_delay=1, max_tries=20)
     def process_incoming_audio(self) -> None:
         """Take incoming audio and save it to shared memory."""
-        fft_magnitudes = self.get_magnitudes()
-
-        try:
-            dest: NDArray[np.float64] = np.ndarray(
-                shape=fft_magnitudes.shape,
-                dtype=fft_magnitudes.dtype,
-                buffer=self.shm.buf,
-            )
-        except TypeError as err:
-            if "buffer is too small" in str(err):
-                LOGGER.warning(
-                    "Shared memory buffer too small (%s bytes required)",
-                    fft_magnitudes.nbytes,
-                )
-            raise
+        self.create_shm_array()
 
         try:
             while self.active:
-                dest[:] = self.get_magnitudes()
+                self.shm_array[:] = self.get_magnitudes()
         except OSError as err:
             if "Unanticipated host error" in str(err):
                 LOGGER.warning(
@@ -202,6 +206,7 @@ class AudioProcessor:
             return
 
         self.create_stream()
+        self.create_shm_array()
 
     def _on_combined_content_message(
         self,
@@ -251,6 +256,7 @@ class AudioProcessor:
             return
 
         self.create_stream()
+        self.create_shm_array()
 
     def update_loop_status(self) -> None:
         """Start or stop the audio processing loop based on the current content."""
