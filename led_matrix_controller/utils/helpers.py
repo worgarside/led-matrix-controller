@@ -106,7 +106,7 @@ def hex_to_rgba(hex_code: str) -> tuple[int, int, int, int]:
 def get_shared_memory(
     *,
     logger: Logger = LOGGER,
-    size: int = 2048,
+    size: int = 5120,
     close_at_exit: bool = True,
 ) -> shared_memory.SharedMemory:
     """Get a shared memory object for use in the AudioVisualiser."""
