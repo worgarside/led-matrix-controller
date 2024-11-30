@@ -130,7 +130,12 @@ class AudioProcessor:
 
         fft_magnitudes: NDArray[np.float64] = np.abs(rfft(data))
 
+        prev = self.max_magnitude
+
         self.max_magnitude = max(self.max_magnitude, fft_magnitudes.max())
+
+        if prev != self.max_magnitude:
+            LOGGER.info("Max magnitude: %s", self.max_magnitude)
 
         # Get in range 0-1
         return fft_magnitudes / self.max_magnitude
