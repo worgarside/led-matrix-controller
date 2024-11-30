@@ -125,6 +125,11 @@ class AudioProcessor:
             self.sample_rate,
         )
 
+        self._stream_config = (
+            self.chunk_size,
+            self.sample_rate,
+        )
+
     def get_magnitudes(self) -> NDArray[np.float64]:
         """Get the magnitudes of the audio stream and apply FFT."""
         data = np.frombuffer(
