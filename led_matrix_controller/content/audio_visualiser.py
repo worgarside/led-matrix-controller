@@ -2,20 +2,17 @@
 
 from __future__ import annotations
 
-import atexit
 import re
 from dataclasses import dataclass, field
 from json import dumps
-from multiprocessing import shared_memory
+from multiprocessing import shared_memory  # noqa: TC003
 from typing import TYPE_CHECKING, Annotated, Final
 
 import numpy as np
 from content.setting import ParameterSetting, TransitionableParameterSetting
 from numpy.typing import NDArray  # noqa: TC002
 from scipy.fftpack import rfftfreq
-from utils import const
-from utils.helpers import hex_to_rgba
-from wg_utilities.functions import backoff
+from utils import const, get_shared_memory, hex_to_rgba
 from wg_utilities.loggers import get_streaming_logger
 
 from .dynamic_content import DynamicContent
@@ -177,18 +174,7 @@ class AudioVisualiser(DynamicContent):
         self.update_colormap()
         self.update_frequency_foci()
 
-        try:
-            self.setup_shm()
-        except Exception:
-            LOGGER.exception(
-                "Error setting up shared memory %s",
-                const.AUDIO_VISUALISER_SHM_NAME,
-            )
-
-    def setup(self) -> None:
-        """Setup the audio visualiser."""
-        if not hasattr(self, "shm"):
-            self.setup_shm()
+        self.shm = get_shared_memory(size=self.chunk_size // 2 + 1, close_at_exit=False)
 
     def refresh_content(self) -> Generator[None, None, None]:
         """Refresh the content."""
@@ -229,14 +215,6 @@ class AudioVisualiser(DynamicContent):
 
         if update_setting == "chunk_size":
             self._refresh_audio_array = True
-
-    @backoff(FileNotFoundError, logger=LOGGER, max_delay=1, max_tries=20, timeout=60)
-    def setup_shm(self) -> None:
-        """Setup the shared memory."""
-        self.shm = shared_memory.SharedMemory(name=const.AUDIO_VISUALISER_SHM_NAME)
-        atexit.register(self.shm.close)
-
-        LOGGER.info("Opened shared memory %r", self.shm.name)
 
     def update_colormap(self) -> None:
         """Update the colormap."""

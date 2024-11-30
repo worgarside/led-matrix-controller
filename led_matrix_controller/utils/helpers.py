@@ -2,10 +2,21 @@
 
 from __future__ import annotations
 
+import atexit
 import re
 from enum import Enum
 from functools import lru_cache
-from typing import Final, overload
+from multiprocessing import shared_memory
+from typing import TYPE_CHECKING, Final, overload
+
+from wg_utilities.loggers import get_streaming_logger
+
+from .const import AUDIO_VISUALISER_SHM_NAME
+
+if TYPE_CHECKING:
+    from logging import Logger
+
+LOGGER = get_streaming_logger(__name__)
 
 
 class Patterns(Enum):
@@ -90,3 +101,32 @@ def hex_to_rgba(hex_code: str) -> tuple[int, int, int, int]:
         r, g, b, a = (int(hex_code[i : i + 2], 16) for i in (0, 2, 4, 6))
 
     return r, g, b, a
+
+
+def get_shared_memory(
+    *,
+    logger: Logger = LOGGER,
+    size: int = 2048,
+    close_at_exit: bool = True,
+) -> shared_memory.SharedMemory:
+    """Get a shared memory object for use in the AudioVisualiser."""
+    try:
+        shm = shared_memory.SharedMemory(
+            name=AUDIO_VISUALISER_SHM_NAME,
+            create=True,
+            size=size,
+        )
+        logger.info(
+            "Created shared memory %r with size %s",
+            shm.name,
+            shm.size,
+        )
+    except FileExistsError:
+        shm = shared_memory.SharedMemory(name=AUDIO_VISUALISER_SHM_NAME)
+        logger.info("Opened existing shared memory %r with size %s", shm.name, shm.size)
+
+    if close_at_exit:
+        atexit.register(shm.close)
+        atexit.register(shm.unlink)
+
+    return shm

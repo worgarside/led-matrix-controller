@@ -5,7 +5,6 @@ from __future__ import annotations
 import threading
 from contextlib import suppress
 from json import JSONDecodeError, loads
-from multiprocessing import shared_memory
 from typing import TYPE_CHECKING, Any, Final
 
 import numpy as np
@@ -14,7 +13,7 @@ from content import Combination
 from content.audio_visualiser import AudioVisualiser
 from models import Matrix
 from scipy.fft import rfft
-from utils import const
+from utils import get_shared_memory
 from wg_utilities.functions import backoff
 from wg_utilities.loggers import get_streaming_logger
 from wg_utilities.utils import mqtt
@@ -59,24 +58,16 @@ class AudioProcessor:
         /mtrxpi/audio-visualiser/parameter/sample-rate
         """
 
+        self._stream_config = (
+            self.chunk_size,
+            self.sample_rate,
+        )
+
         self.create_stream()
 
         self.max_magnitude = 1e-9
 
-        try:
-            self.shm = shared_memory.SharedMemory(
-                name=const.AUDIO_VISUALISER_SHM_NAME,
-                create=True,
-                size=self.get_magnitudes().nbytes,
-            )
-            LOGGER.info(
-                "Created shared memory %r with size %s",
-                self.shm.name,
-                self.shm.size,
-            )
-        except FileExistsError:
-            self.shm = shared_memory.SharedMemory(name=const.AUDIO_VISUALISER_SHM_NAME)
-            LOGGER.info("Opened existing shared memory %r", self.shm.name)
+        self.shm = get_shared_memory(size=self.get_magnitudes().nbytes)
 
         self.audio_visualiser_in_combination = False
         self.current_content: str | None = None
@@ -101,6 +92,18 @@ class AudioProcessor:
 
     def create_stream(self) -> None:
         """Create the PyAudio stream."""
+        if (
+            hasattr(self, "stream")
+            and self.stream.is_active()
+            and self._stream_config
+            == (
+                self.chunk_size,
+                self.sample_rate,
+            )
+        ):
+            # i.e. the stream is already created with the correct config
+            return
+
         if hasattr(self, "stream"):
             self.stream.close()
 
@@ -280,10 +283,6 @@ def main() -> None:
 
         PYAUDIO.terminate()
         LOGGER.info("PyAudio terminated.")
-
-        processor.shm.close()
-        processor.shm.unlink()
-        LOGGER.info("Shared memory closed and unlinked.")
 
     LOGGER.info("Audio processor finished.")
     raise SystemExit
