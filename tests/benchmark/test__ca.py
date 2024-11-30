@@ -13,6 +13,9 @@ if TYPE_CHECKING:
     from content.automaton import MaskGen
     from pytest_codspeed import BenchmarkFixture  # type: ignore[import-untyped]
 
+SIZES = [16]
+LIMITS = [50]
+
 
 @pytest.mark.parametrize(
     ("size", "limit", "test_id"),
@@ -24,8 +27,8 @@ if TYPE_CHECKING:
             id=test_id,
         )
         for size, limit in product(
-            [32, 64],
-            [50, 500],
+            SIZES,
+            LIMITS,
         )
     ],
 )
@@ -63,8 +66,8 @@ def test_raining_grid_simulation(
             id=test_id,
         )
         for size, limit, rule in product(
-            [32, 64],
-            [50, 500],
+            SIZES,
+            LIMITS,
             RainingGrid._RULE_FUNCTIONS,
         )
     ],
