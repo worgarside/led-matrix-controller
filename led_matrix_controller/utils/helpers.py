@@ -125,6 +125,13 @@ def get_shared_memory(
         shm = shared_memory.SharedMemory(name=AUDIO_VISUALISER_SHM_NAME)
         logger.info("Opened existing shared memory %r with size %s", shm.name, shm.size)
 
+        if shm.size != size:
+            logger.warning(
+                "Existing shared memory size (%s) does not match expected size (%s)",
+                shm.size,
+                size,
+            )
+
     if close_at_exit:
         atexit.register(shm.close)
 
