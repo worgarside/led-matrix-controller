@@ -67,7 +67,7 @@ class AudioProcessor:
 
         self.max_magnitude = 1e-9
 
-        self.shm = get_shared_memory(size=self.get_magnitudes().nbytes)
+        self.shm = get_shared_memory(logger=LOGGER)
 
         self.audio_visualiser_in_combination = False
         self.current_content: str | None = None

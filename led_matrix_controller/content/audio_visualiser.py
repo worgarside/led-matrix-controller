@@ -174,7 +174,7 @@ class AudioVisualiser(DynamicContent):
         self.update_colormap()
         self.update_frequency_foci()
 
-        self.shm = get_shared_memory(size=self.chunk_size // 2 + 1, close_at_exit=False)
+        self.shm = get_shared_memory(logger=LOGGER, close_at_exit=False)
 
     def refresh_content(self) -> Generator[None, None, None]:
         """Refresh the content."""
