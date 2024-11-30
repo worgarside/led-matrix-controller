@@ -127,6 +127,5 @@ def get_shared_memory(
 
     if close_at_exit:
         atexit.register(shm.close)
-        atexit.register(shm.unlink)
 
     return shm
