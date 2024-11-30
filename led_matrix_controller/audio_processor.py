@@ -143,7 +143,7 @@ class AudioProcessor:
 
             mqtt.CLIENT.publish(
                 MAX_MAGNITUDE_TOPIC,
-                payload=self.max_magnitude,
+                payload=round(self.max_magnitude, 3),
                 qos=2,
                 retain=True,
             )
