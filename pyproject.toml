@@ -23,7 +23,7 @@ types-pyaudio = "^0.2.16.20240516"
 scipy-stubs = "^1.14.1.4"
 
 [tool.poetry.group.test.dependencies]
-pytest-codspeed = "^2.2.1"
+pytest-codspeed = "^3.0.0"
 pytest-env = "^1.1.5"
 pytest-cov = "^6.0.0"
 pytest-xdist = "^3.6.1"
