@@ -176,7 +176,6 @@ class ContentBase(ABC, Generic[ContentType]):
     ] = 0
 
     id_override: str | None = None
-    persistent: bool = field(default=False)
     priority: float = const.MAX_PRIORITY
 
     # init=False below
