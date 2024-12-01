@@ -11,7 +11,7 @@ from content import RainingGrid
 
 if TYPE_CHECKING:
     from content.automaton import MaskGen
-    from pytest_codspeed import BenchmarkFixture  # type: ignore[import-untyped]
+    from pytest_codspeed import BenchmarkFixture
 
 SIZES = [16]
 LIMITS = [50]
@@ -48,7 +48,7 @@ def test_raining_grid_simulation(
         id_override=test_id,
     )
 
-    @benchmark  # type: ignore[misc]
+    @benchmark
     def bench() -> None:
         for _ in grid.islice(limit=limit):
             pass
@@ -104,7 +104,7 @@ def test_rules(
 
     mask_generators = [rule(grid) for grid in grids_to_eval]
 
-    @benchmark  # type: ignore[misc]
+    @benchmark
     def bench() -> None:
         for mask_gen in mask_generators:
             mask_gen(grid.pixels)
