@@ -113,6 +113,14 @@ class ContentQueue(
         parameters: ContentParameters,
     ) -> None:
         """Put an item into the queue and send MQTT messages."""
+        if content.priority in {None, const.MAX_PRIORITY}:
+            LOGGER.warning(
+                "Content with ID `%s` has priority %s, skipping",
+                content.id,
+                content.priority,
+            )
+            return
+
         super().put((round(content.priority, 3), content, parameters))
 
         self.send_mqtt_messages()
@@ -484,8 +492,7 @@ class Matrix:
             LOGGER.info("Content `%s` complete", self.current_content.id)
 
             if (
-                self.current_content.persistent
-                and self.current_content.priority != const.MAX_PRIORITY
+                self.current_content.priority != const.MAX_PRIORITY
                 and self.current_content.stop_reason
                 not in {StopType.CANCEL, StopType.EXPIRED}
             ):
@@ -494,7 +501,7 @@ class Matrix:
                     parameters,
                 )
                 LOGGER.debug(
-                    "Content `%s` is persistent with priority %s",
+                    "Content `%s` re-added to queue with priority %s",
                     self.current_content.id,
                     self.current_content.priority,
                 )

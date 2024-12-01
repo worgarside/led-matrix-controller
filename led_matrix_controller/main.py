@@ -29,14 +29,14 @@ if TYPE_CHECKING:
 def get_library() -> tuple[ContentBase[Any], ...]:
     """Get the library of content."""
     return (
-        Clock(persistent=True),
+        Clock(),
         Combination(),
         GifViewer(path=Path("door/animated.gif")),
         ImageViewer(path=Path("door/closed.bmp"), display_seconds=5),
-        NowPlaying(persistent=True),
-        RainingGrid(persistent=True),
+        NowPlaying(),
+        RainingGrid(),
         Sorter(),
-        AudioVisualiser(persistent=True),
+        AudioVisualiser(),
     )
 
 
