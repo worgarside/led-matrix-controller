@@ -681,12 +681,11 @@ class Matrix:
     def clear_matrix(self) -> None:
         """Clear the matrix."""
         if self.current_content is not None:
-            LOGGER.debug(
-                "Setting priority of %r to %s with clear matrix",
+            LOGGER.warning(
+                "Clearing matrix with content %r still active at priority %f",
                 self.current_content.id,
-                const.MAX_PRIORITY,
+                self.current_content.priority,
             )
-            self.current_content.priority = const.MAX_PRIORITY
         self.current_content = None
 
         self.canvas.Clear()
