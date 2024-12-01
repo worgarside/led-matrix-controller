@@ -125,7 +125,7 @@ class ContentQueue(
         """Put an item into the queue and send MQTT messages."""
         if content.priority in {None, const.MAX_PRIORITY}:
             LOGGER.warning(
-                "Content with ID `%s` has priority %s, skipping",
+                "Content with ID `%s` has priority %s, not adding to queue",
                 content.id,
                 content.priority,
             )
@@ -421,7 +421,7 @@ class Matrix:
 
             LOGGER.debug(
                 "Created new Combination(content=(%s)) with priority %.3f",
-                ", ".join(c.id for c in combined_content),
+                ", ".join(f"{c.id}@P{c.priority:.3f}" for c in combined_content),
                 combo_content.priority,
             )
 
@@ -497,14 +497,17 @@ class Matrix:
             for c in self.current_content.content:
                 if c.active:  # Also unlikely, but for safety
                     LOGGER.debug(
-                        "Adding %r to queue from stopping combination",
+                        "Adding %r to queue with priority %f from stopping combination",
                         c.id,
+                        c.priority,
                     )
                     self._content_queue.add(c, {})  # type: ignore[arg-type]
                 else:
                     LOGGER.warning(
-                        "Content %r is not active, but is still in a combination that is stopping",
+                        "Content %r with priority %f is not active, but is still in a"
+                        " combination that is stopping",
                         c.id,
+                        c.priority,
                     )
 
         elif self.current_content.stop_reason != StopType.PRIORITY and (
