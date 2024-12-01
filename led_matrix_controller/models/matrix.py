@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from json import dumps
-from queue import PriorityQueue
+from queue import Empty, PriorityQueue
 from threading import Condition, Thread
 from types import MappingProxyType
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     ClassVar,
     Final,
     TypedDict,
@@ -99,11 +100,20 @@ class ContentQueue(
         self,
         block: bool = True,  # noqa: FBT001,FBT002
         timeout: float | None = None,
+        *,
+        pop: bool = True,
     ) -> tuple[float, ContentBase[Any], ContentParameters]:
         """Get the next item from the queue and send MQTT messages."""
-        next_content = super().get(block, timeout)
+        if pop:
+            next_content = super().get(block, timeout)
+        else:
+            try:
+                next_content = self.queue[0]
+            except IndexError as err:
+                raise Empty from err
 
-        self.send_mqtt_messages()
+        if pop:
+            self.send_mqtt_messages()
 
         return next_content
 
@@ -433,7 +443,7 @@ class Matrix:
 
         return target_content
 
-    def _content_loop(self) -> None:  # noqa: C901
+    def _content_loop(self) -> None:
         """Loop through the content queue."""
         while not self._content_queue.empty():
             self.current_content, parameters = self._get_next_content()
@@ -444,12 +454,11 @@ class Matrix:
                 self.current_content.priority,
             )
 
-            if self.current_content.canvas_count is None:
-                # DynamicContent
-                set_content = self.set_image_swap_canvas
-            else:
-                # PreDefinedContent
-                set_content = self.get_canvas_swap_canvas
+            set_content = (
+                self.set_image_swap_canvas  # DynamicContent
+                if self.current_content.canvas_count is None
+                else self.get_canvas_swap_canvas  # PreDefinedContent
+            )
 
             self.current_content.active = True
 
@@ -467,34 +476,59 @@ class Matrix:
             for _ in self.current_content:
                 set_content()
 
-            if (
-                self.current_content.stop_reason == StopType.TRANSFORM_REQUIRED
-                and isinstance(self.current_content, Combination)
-            ):
-                # Unlikely to ever be more than one iteration, but just in case
-                for c in self.current_content.content:
-                    if c.active:  # Also unlikely, but for safety
-                        self._content_queue.add(c, {})  # type: ignore[arg-type]
-            elif self.current_content.stop_reason != StopType.PRIORITY and (
-                teardown_gen := self.current_content.teardown()
-            ):
-                # Only run teardown if the stop isn't due to higher priority content
-                LOGGER.info(
-                    "Running teardown sequence for %s",
-                    self.current_content.id,
-                )
-
-                for _ in teardown_gen:
-                    set_content()
+            self._handle_content_stop(set_content)
 
             self.current_content.active = False
 
             LOGGER.info("Content `%s` complete", self.current_content.id)
 
-            if (
-                self.current_content.priority != const.MAX_PRIORITY
-                and self.current_content.stop_reason
-                not in {StopType.CANCEL, StopType.EXPIRED}
+            self._re_add_content_to_queue(parameters)
+
+        self.clear_matrix()
+
+    def _handle_content_stop(self, set_content: Callable[[], None]) -> None:
+        """Handle the content stopping."""
+        if self.current_content is None:
+            return
+
+        if self.current_content.stop_reason == StopType.TRANSFORM_REQUIRED and isinstance(
+            self.current_content,
+            Combination,
+        ):
+            # Unlikely to ever be more than one iteration, but just in case
+            for c in self.current_content.content:
+                if c.active:  # Also unlikely, but for safety
+                    self._content_queue.add(c, {})  # type: ignore[arg-type]
+
+        elif self.current_content.stop_reason != StopType.PRIORITY and (
+            teardown_gen := self.current_content.teardown()
+        ):
+            # Only run teardown if the stop isn't due to higher priority content
+            LOGGER.info(
+                "Running teardown sequence for %s",
+                self.current_content.id,
+            )
+
+            for _ in teardown_gen:
+                set_content()
+
+    def _re_add_content_to_queue(self, parameters: ContentParameters) -> None:
+        """Re-add the current content to the queue as needed."""
+        if self.current_content is None:
+            return
+
+        if (
+            self.current_content.priority != const.MAX_PRIORITY
+            and self.current_content.stop_reason
+            not in {StopType.CANCEL, StopType.EXPIRED}
+        ):
+            # This is checking that the next content isn't a combination that contains
+            # the current content (i.e. is replacing it)
+            next_content, _ = self._get_next_content(dry_run=True)
+
+            if not (
+                isinstance(next_content, Combination)
+                and self.current_content in next_content.content
             ):
                 self._content_queue.add(
                     self.current_content,
@@ -506,15 +540,17 @@ class Matrix:
                     self.current_content.priority,
                 )
 
-        self.clear_matrix()
-
-    def _get_next_content(self) -> tuple[ContentBase[Any], ContentParameters]:
+    def _get_next_content(
+        self,
+        *,
+        dry_run: bool = False,
+    ) -> tuple[ContentBase[Any], ContentParameters]:
         """Get the next content from the queue and check for available combinations."""
         (
             _,
             next_content,
             parameters,
-        ) = self._content_queue.get()
+        ) = self._content_queue.get(pop=not dry_run)
 
         to_remove = []
 
@@ -532,8 +568,9 @@ class Matrix:
 
                 to_remove.append((queued_content, q_prms))
 
-        for queued_content, q_prms in to_remove:
-            self._content_queue.remove(queued_content, q_prms)
+        if not dry_run:
+            for queued_content, q_prms in to_remove:
+                self._content_queue.remove(queued_content, q_prms)
 
         return next_content, parameters
 
