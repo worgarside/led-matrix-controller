@@ -628,6 +628,17 @@ class Matrix:
             self.current_content.priority = target_content.priority
             return
 
+        if (
+            isinstance(self.current_content, Combination)
+            and target_content in self.current_content.content
+        ):
+            LOGGER.debug(
+                "Content %r is already in combination %r, not adding to queue",
+                target_content.id,
+                ", ".join(c.id for c in self.current_content.content),
+            )
+            return
+
         # Add it to the queue, this will get picked up within the _content_loop
         self._content_queue.add(target_content, parameters)
 
