@@ -600,19 +600,8 @@ class Matrix:
         target_content.priority = payload["priority"] or const.MAX_PRIORITY
         parameters = cast(ContentParameters, payload.get("parameters", {}))
 
-        if target_content.priority == const.MAX_PRIORITY:
-            for _, ctnt, prms in self._content_queue:
-                if ctnt is target_content:
-                    self._content_queue.remove(ctnt, prms)
-                    LOGGER.info(
-                        "Removed content with ID `%s` from queue",
-                        target_content.id,
-                    )
-                    break
-
-            if self.current_content is target_content:
-                self.current_content.stop(StopType.CANCEL)
-
+        if target_content.priority == const.MAX_PRIORITY:  # i.e. null, i.e. de-queue
+            self._remove_content(target_content)
             return
 
         target_content.priority = round(
@@ -660,6 +649,33 @@ class Matrix:
         self._start_content_thread()
 
         return
+
+    def _remove_content(self, target_content: ContentBase[Any]) -> None:
+        """Handle a request to remove content from the queue."""
+        for _, ctnt, prms in self._content_queue:
+            if ctnt is target_content:
+                self._content_queue.remove(ctnt, prms)
+                LOGGER.info(
+                    "Removed content with ID `%s` from queue",
+                    target_content.id,
+                )
+                break
+
+        if self.current_content is target_content:
+            LOGGER.info(
+                "Cancelling current content with ID `%s`",
+                target_content.id,
+            )
+            self.current_content.stop(StopType.CANCEL)
+        elif isinstance(self.current_content, Combination):
+            for combined_content in self.current_content.content:
+                if combined_content is target_content:
+                    combined_content.stop(StopType.CANCEL)
+                    LOGGER.info(
+                        "Removed content with ID `%s` from combination",
+                        target_content.id,
+                    )
+                    break
 
     def _start_content_thread(self) -> None:
         """Start the content thread. If it has already been started, do nothing."""
