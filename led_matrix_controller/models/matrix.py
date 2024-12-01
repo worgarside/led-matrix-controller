@@ -476,17 +476,15 @@ class Matrix:
             for _ in self.current_content:
                 set_content()
 
-            self._handle_content_stop(set_content)
-
-            self.current_content.active = False
-
-            LOGGER.info("Content `%s` complete", self.current_content.id)
-
-            self._re_add_content_to_queue(parameters)
+            self._handle_content_stop(parameters, set_content)
 
         self.clear_matrix()
 
-    def _handle_content_stop(self, set_content: Callable[[], None]) -> None:
+    def _handle_content_stop(
+        self,
+        parameters: ContentParameters,
+        set_content: Callable[[], None],
+    ) -> None:
         """Handle the content stopping."""
         if self.current_content is None:
             return
@@ -498,7 +496,16 @@ class Matrix:
             # Unlikely to ever be more than one iteration, but just in case
             for c in self.current_content.content:
                 if c.active:  # Also unlikely, but for safety
+                    LOGGER.debug(
+                        "Adding %r to queue from stopping combination",
+                        c.id,
+                    )
                     self._content_queue.add(c, {})  # type: ignore[arg-type]
+                else:
+                    LOGGER.warning(
+                        "Content %r is not active, but is still in a combination that is stopping",
+                        c.id,
+                    )
 
         elif self.current_content.stop_reason != StopType.PRIORITY and (
             teardown_gen := self.current_content.teardown()
@@ -512,10 +519,9 @@ class Matrix:
             for _ in teardown_gen:
                 set_content()
 
-    def _re_add_content_to_queue(self, parameters: ContentParameters) -> None:
-        """Re-add the current content to the queue as needed."""
-        if self.current_content is None:
-            return
+        self.current_content.active = False
+
+        LOGGER.info("Content `%s` complete", self.current_content.id)
 
         if (
             self.current_content.priority != const.MAX_PRIORITY
