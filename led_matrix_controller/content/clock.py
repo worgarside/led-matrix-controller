@@ -62,7 +62,7 @@ class Symbol:
         elif _v == " ":
             symbol = Symbol.PADDING
         else:
-            symbol = cast(GridView, getattr(Symbol, f"N{_v}"))
+            symbol = cast("GridView", getattr(Symbol, f"N{_v}"))
 
         return np.kron(symbol, np.ones(scale, dtype=np.int_))
 

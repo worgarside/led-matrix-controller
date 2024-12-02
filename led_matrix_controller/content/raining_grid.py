@@ -175,7 +175,7 @@ class RainingGrid(Automaton):
     def teardown(self) -> Generator[None, None, None]:
         """Transition the rain chance to 0 then run the simulation until the grid is clear."""
         rain_chance_setting = cast(
-            TransitionableParameterSetting[float],
+            "TransitionableParameterSetting[float]",
             self.settings["rain_chance"],
         )
 

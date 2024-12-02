@@ -411,7 +411,7 @@ class Matrix:
 
         if self._content_works_with(combine_with, target_content):
             # Not a combination, but can be combined
-            combo_content = cast(Combination, ContentBase.get("combination"))
+            combo_content = cast("Combination", ContentBase.get("combination"))
             combo_content.priority = min(
                 combine_with.priority,
                 target_content.priority,
@@ -598,7 +598,7 @@ class Matrix:
         """Add/remove content to/from the queue."""
         target_content = self._content[payload["id"]]
         target_content.priority = payload["priority"] or const.MAX_PRIORITY
-        parameters = cast(ContentParameters, payload.get("parameters", {}))
+        parameters = cast("ContentParameters", payload.get("parameters", {}))
 
         if target_content.priority == const.MAX_PRIORITY:  # i.e. null, i.e. de-queue
             self._remove_content(target_content)
@@ -722,7 +722,7 @@ class Matrix:
 
     def new_canvas(self, image: Image.Image | None = None) -> mtrx.Canvas:
         """Return a new canvas, optionally with an image."""
-        canvas = cast(mtrx.Canvas, self.matrix.CreateFrameCanvas())
+        canvas = cast("mtrx.Canvas", self.matrix.CreateFrameCanvas())
 
         if image is not None:
             canvas.SetImage(image.convert("RGB"))
