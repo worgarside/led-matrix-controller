@@ -9,7 +9,7 @@ from functools import lru_cache
 from typing import TYPE_CHECKING, Annotated, Final, cast
 
 import numpy as np
-from content.base import GridView
+from content.base import GridView  # noqa: TC002
 from utils import const
 from wg_utilities.loggers import get_streaming_logger
 
@@ -62,7 +62,7 @@ class Symbol:
         elif _v == " ":
             symbol = Symbol.PADDING
         else:
-            symbol = cast(GridView, getattr(Symbol, f"N{_v}"))
+            symbol = cast("GridView", getattr(Symbol, f"N{_v}"))
 
         return np.kron(symbol, np.ones(scale, dtype=np.int_))
 
