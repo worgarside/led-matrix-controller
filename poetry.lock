@@ -535,13 +535,13 @@ files = [
 
 [[package]]
 name = "optype"
-version = "0.7.1"
+version = "0.7.3"
 description = "Building blocks for precise & flexible type hints"
 optional = false
 python-versions = ">=3.10"
 files = [
-    {file = "optype-0.7.1-py3-none-any.whl", hash = "sha256:ba36d5d72322adfdf3dccf3d4cb2dbbac4a85785e12f96637d912ec0ffdddb56"},
-    {file = "optype-0.7.1.tar.gz", hash = "sha256:001d255ebe7391782730c8154f96c2b5f4a32bd4024c29408e92f33272b34256"},
+    {file = "optype-0.7.3-py3-none-any.whl", hash = "sha256:856416484131038799e0e9cefc19d0ef37e7b4fde2144f25e8bb0e8981ebbe95"},
+    {file = "optype-0.7.3.tar.gz", hash = "sha256:51c8dd104ac197457059bcee5e256160a641ca72c6c852012d952790a5e0cac0"},
 ]
 
 [package.dependencies]
@@ -1009,17 +1009,17 @@ test = ["Cython", "array-api-strict (>=2.0)", "asv", "gmpy2", "hypothesis (>=6.3
 
 [[package]]
 name = "scipy-stubs"
-version = "1.14.1.4"
-description = "Typing Stubs for SciPy"
+version = "1.14.1.5"
+description = "Precise type-hints for all of SciPy"
 optional = false
-python-versions = "<4.0,>=3.10"
+python-versions = ">=3.10"
 files = [
-    {file = "scipy_stubs-1.14.1.4-py3-none-any.whl", hash = "sha256:137523d0eb4936ec249ddb01a3afd172ae8ad52cef9fddffc913a32a5f71c412"},
-    {file = "scipy_stubs-1.14.1.4.tar.gz", hash = "sha256:215a2c9d865e355a5c5cc088ec6d87f489a584396256113d72d7d24cfb0e889c"},
+    {file = "scipy_stubs-1.14.1.5-py3-none-any.whl", hash = "sha256:ca927802cae4c83e75b2a4b8c41271f36ebe0d928cee25ef3968e143b1793a75"},
+    {file = "scipy_stubs-1.14.1.5.tar.gz", hash = "sha256:66c160c6b72b1406edc7827879ef25ea81dc3d95ab7e4af3a2de836f27c26ce6"},
 ]
 
 [package.dependencies]
-optype = ">=0.7.1"
+optype = ">=0.7.3"
 
 [package.extras]
 scipy = ["scipy (>=1.10)"]
@@ -1123,4 +1123,4 @@ testing = ["botocore"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.12"
-content-hash = "dcb1f0b8884151fe00e87214ed4626350e6d28e4929992207004e6d5af3bbfd8"
+content-hash = "d1adeaed6da5f62496be62b3aaec43ff9a3e42ec9fc9e4ee1dd73967b5034663"
