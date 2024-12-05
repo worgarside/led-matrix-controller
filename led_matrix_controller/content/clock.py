@@ -9,7 +9,7 @@ from functools import lru_cache
 from typing import TYPE_CHECKING, Annotated, Final, cast
 
 import numpy as np
-from content.base import GridView
+from content.base import GridView  # noqa: TC002
 from utils import const
 from wg_utilities.loggers import get_streaming_logger
 

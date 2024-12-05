@@ -300,67 +300,6 @@ class Matrix:
 
         self.array = self.zeros(dtype=np.uint8)
 
-    def _content_works_with(
-        self,
-        cls_a: type[ContentBase[Any]] | ContentBase[Any],
-        cls_b: type[ContentBase[Any]] | ContentBase[Any],
-    ) -> bool:
-        """Check if the classes are compatible."""
-        if not isinstance(cls_a, type):
-            cls_a = cls_a.__class__
-
-        if not isinstance(cls_b, type):
-            cls_b = cls_b.__class__
-
-        return cls_b in self.content_works_with.get(cls_a, set())
-
-    def _sort_content(self, *content: ContentBase[Any]) -> tuple[ContentBase[Any], ...]:
-        """Sort the content by priority, or override."""
-        if override_ids := self.COMBINATION_OVERRIDES.get(
-            tuple(sorted(c.id for c in content)),
-        ):
-            return ContentBase.get_many(override_ids)
-
-        return tuple(
-            sorted(
-                content,
-                key=lambda c: (not c.IS_OPAQUE, -c.priority),
-            ),
-        )
-
-    def get_canvas_swap_canvas(self) -> None:
-        """Get the canvas and swap it."""
-        self.swap_canvas(self.current_content.get_content())  # type: ignore[union-attr]
-
-    def set_image_swap_canvas(self) -> None:
-        """Set the image and swap the canvas."""
-        content_array = self.current_content.get_content()  # type: ignore[union-attr]
-
-        self.array.fill(0)
-
-        x, y = self.current_content.position  # type: ignore[union-attr]
-
-        self.array[
-            y : y + self.current_content.height,  # type: ignore[union-attr]
-            x : x + self.current_content.width,  # type: ignore[union-attr]
-        ] = content_array
-
-        image = Image.fromarray(self.array, "RGBA").convert("RGB")
-
-        self.canvas.SetImage(image)
-
-        self.swap_canvas(self.canvas)
-
-    def swap_canvas(self, content: mtrx.Canvas | None = None, /) -> None:
-        """Update the content of the canvas and increment the tick count."""
-        self.canvas = self.matrix.SwapOnVSync(content or self.canvas)
-
-        self.tick += 1
-
-        self.tick_condition.acquire(timeout=const.TICK_LENGTH)
-        self.tick_condition.notify_all()
-        self.tick_condition.release()
-
     def _attempt_combination(
         self,
         target_content: DynamicContent,
@@ -480,6 +419,54 @@ class Matrix:
 
         self.clear_matrix()
 
+    def _content_works_with(
+        self,
+        cls_a: type[ContentBase[Any]] | ContentBase[Any],
+        cls_b: type[ContentBase[Any]] | ContentBase[Any],
+    ) -> bool:
+        """Check if the classes are compatible."""
+        if not isinstance(cls_a, type):
+            cls_a = cls_a.__class__
+
+        if not isinstance(cls_b, type):
+            cls_b = cls_b.__class__
+
+        return cls_b in self.content_works_with.get(cls_a, set())
+
+    def _get_next_content(
+        self,
+        *,
+        dry_run: bool = False,
+    ) -> tuple[ContentBase[Any], ContentParameters]:
+        """Get the next content from the queue and check for available combinations."""
+        (
+            _,
+            next_content,
+            parameters,
+        ) = self._content_queue.get(pop=not dry_run)
+
+        to_remove = []
+
+        # Check if the new content can be combined with anything else that is queued
+        for _, queued_content, q_prms in self._content_queue:
+            if isinstance(queued_content, DynamicContent) and isinstance(
+                combined := self._attempt_combination(
+                    queued_content,
+                    combine_with=next_content,
+                ),
+                Combination,
+            ):
+                # Combination has been created, so overwrite the current content
+                next_content = combined
+
+                to_remove.append((queued_content, q_prms))
+
+        if not dry_run:
+            for queued_content, q_prms in to_remove:
+                self._content_queue.remove(queued_content, q_prms)
+
+        return next_content, parameters
+
     def _handle_content_stop(
         self,
         parameters: ContentParameters,
@@ -548,47 +535,6 @@ class Matrix:
                     self.current_content.id,
                     self.current_content.priority,
                 )
-
-    def _get_next_content(
-        self,
-        *,
-        dry_run: bool = False,
-    ) -> tuple[ContentBase[Any], ContentParameters]:
-        """Get the next content from the queue and check for available combinations."""
-        (
-            _,
-            next_content,
-            parameters,
-        ) = self._content_queue.get(pop=not dry_run)
-
-        to_remove = []
-
-        # Check if the new content can be combined with anything else that is queued
-        for _, queued_content, q_prms in self._content_queue:
-            if isinstance(queued_content, DynamicContent) and isinstance(
-                combined := self._attempt_combination(
-                    queued_content,
-                    combine_with=next_content,
-                ),
-                Combination,
-            ):
-                # Combination has been created, so overwrite the current content
-                next_content = combined
-
-                to_remove.append((queued_content, q_prms))
-
-        if not dry_run:
-            for queued_content, q_prms in to_remove:
-                self._content_queue.remove(queued_content, q_prms)
-
-        return next_content, parameters
-
-    @classmethod
-    def mqtt_topic(cls, suffix: str) -> str:
-        """Create an MQTT topic with the given suffix."""
-        return "/" + "/".join(
-            to_kebab_case(const.HOSTNAME, cls.__name__, *suffix.split("/")),
-        )
 
     @process_exception(logger=LOGGER, raise_after_processing=False)
     def _on_content_message(
@@ -688,6 +634,20 @@ class Matrix:
                     )
                     break
 
+    def _sort_content(self, *content: ContentBase[Any]) -> tuple[ContentBase[Any], ...]:
+        """Sort the content by priority, or override."""
+        if override_ids := self.COMBINATION_OVERRIDES.get(
+            tuple(sorted(c.id for c in content)),
+        ):
+            return ContentBase.get_many(override_ids)
+
+        return tuple(
+            sorted(
+                content,
+                key=lambda c: (not c.IS_OPAQUE, -c.priority),
+            ),
+        )
+
     def _start_content_thread(self) -> None:
         """Start the content thread. If it has already been started, do nothing."""
         if self._content_thread.is_alive():
@@ -719,6 +679,10 @@ class Matrix:
         self.swap_canvas()
 
         LOGGER.info("Matrix cleared")
+
+    def get_canvas_swap_canvas(self) -> None:
+        """Get the canvas and swap it."""
+        self.swap_canvas(self.current_content.get_content())  # type: ignore[union-attr]
 
     def new_canvas(self, image: Image.Image | None = None) -> mtrx.Canvas:
         """Return a new canvas, optionally with an image."""
@@ -752,9 +716,45 @@ class Matrix:
                         setting.on_message,
                     )
 
+    def set_image_swap_canvas(self) -> None:
+        """Set the image and swap the canvas."""
+        content_array = self.current_content.get_content()  # type: ignore[union-attr]
+
+        self.array.fill(0)
+
+        x, y = self.current_content.position  # type: ignore[union-attr]
+
+        self.array[
+            y : y + self.current_content.height,  # type: ignore[union-attr]
+            x : x + self.current_content.width,  # type: ignore[union-attr]
+        ] = content_array
+
+        image = Image.fromarray(self.array, "RGBA").convert("RGB")
+
+        self.canvas.SetImage(image)
+
+        self.swap_canvas(self.canvas)
+
+    def swap_canvas(self, content: mtrx.Canvas | None = None, /) -> None:
+        """Update the content of the canvas and increment the tick count."""
+        self.canvas = self.matrix.SwapOnVSync(content or self.canvas)
+
+        self.tick += 1
+
+        self.tick_condition.acquire(timeout=const.TICK_LENGTH)
+        self.tick_condition.notify_all()
+        self.tick_condition.release()
+
     def zeros(self, *, dtype: DTypeLike = np.int_) -> NDArray[Any]:
         """Return a grid of zeros."""
         return np.zeros((self.height, self.width, 4), dtype=dtype)
+
+    @classmethod
+    def mqtt_topic(cls, suffix: str) -> str:
+        """Create an MQTT topic with the given suffix."""
+        return "/" + "/".join(
+            to_kebab_case(const.HOSTNAME, cls.__name__, *suffix.split("/")),
+        )
 
     @property
     def active(self) -> bool:
