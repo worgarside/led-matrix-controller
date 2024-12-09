@@ -9,7 +9,7 @@ repos:
       - id: sync-additional-dependencies
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.1
+    rev: v0.8.2
     hooks:
       - id: ruff-format
       - id: ruff
@@ -96,7 +96,7 @@ repos:
           - tomli==2.0.1
 
   - repo: https://github.com/jendrikseipp/vulture
-    rev: v2.13
+    rev: v2.14
     hooks:
       - id: vulture
 
