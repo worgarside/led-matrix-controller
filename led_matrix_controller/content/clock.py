@@ -55,14 +55,14 @@ class Symbol:
 
     @staticmethod
     @lru_cache(maxsize=12)
-    def get(_v: str, scale: tuple[int, int] = (2, 2)) -> GridView:
+    def get(v: str, scale: tuple[int, int] = (2, 2)) -> GridView:
         """Gt an array representation of the symbol."""
-        if _v == ":":
+        if v == ":":
             symbol = Symbol.COLON
-        elif _v == " ":
+        elif v == " ":
             symbol = Symbol.PADDING
         else:
-            symbol = cast("GridView", getattr(Symbol, f"N{_v}"))
+            symbol = cast("GridView", getattr(Symbol, f"N{v}"))
 
         return np.kron(symbol, np.ones(scale, dtype=np.int_))
 
