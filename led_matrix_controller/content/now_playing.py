@@ -24,6 +24,7 @@ from .setting import ParameterSetting
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
     from numpy.typing import DTypeLike, NDArray
 
 LOGGER = get_streaming_logger(__name__)
@@ -73,12 +74,7 @@ class NowPlaying(DynamicContent):
         default_factory=lambda: _INITIAL_TRACK_META,
     )
 
-    previous_track: TrackMeta = field(
-        init=False,
-        default_factory=lambda: _INITIAL_TRACK_META,
-    )
-
-    current_image: tuple[Path, GridView] = field(
+    _current_image: tuple[Path, GridView] = field(
         init=False,
         repr=False,
         compare=False,
@@ -95,8 +91,8 @@ class NowPlaying(DynamicContent):
         if not self.file_path:
             return self.zeros()
 
-        if hasattr(self, "current_image") and self.current_image[0] == self.file_path:
-            return self.current_image[1]
+        if hasattr(self, "_current_image") and self._current_image[0] == self.file_path:
+            return self._current_image[1]
 
         if self.file_path.is_file():
             LOGGER.debug(
@@ -105,9 +101,9 @@ class NowPlaying(DynamicContent):
                 self.album,
             )
             with suppress(FileNotFoundError):
-                self.current_image = (self.file_path, np.load(self.file_path))
+                self._current_image = (self.file_path, np.load(self.file_path))
 
-                return self.current_image[1]
+                return self._current_image[1]
 
         LOGGER.debug("Image not found at %s for %s", self.file_path, self.album)
 
@@ -177,6 +173,14 @@ class NowPlaying(DynamicContent):
 
         return img_arr
 
+    def refresh_content(self) -> Generator[None, None, None]:
+        """Refresh the content."""
+        yield
+
+        if None in self.track_metadata.values():
+            self.stop(StopType.EXPIRED)
+            with suppress(AttributeError):
+                del self._current_image
 
     def zeros(self, *, dtype: DTypeLike = np.int_) -> NDArray[Any]:
         """Return a grid of zeros."""
@@ -218,32 +222,6 @@ class NowPlaying(DynamicContent):
 
         return self.ARTWORK_DIRECTORY / self.artist_directory / self.filename
 
-    def __hash__(self) -> int:
-        """Return the hash of the object."""
-        return hash((self.artist, self.album, self.artwork_uri))
-
-    def __str__(self) -> str:
-        """Return the string representation of the object."""
-        return self.__repr__()
-
-    def __repr__(self) -> str:
-        """Return the string representation of the object."""
-        return (
-            f"{self.__class__.__name__}({self.artist}, {self.album}, {self.artwork_uri})"
-        )
-
-    def refresh_content(self) -> Generator[None, None, None]:
-        """Refresh the content."""
-        if self.track_metadata != self.previous_track:
-            self.previous_track = self.track_metadata
-
-        yield
-
-        if None in self.track_metadata.values():
-            self.stop(StopType.EXPIRED)
-            with suppress(AttributeError):
-                del self.current_image
-
     @property
     def album(self) -> str | None:
         """Return the album name."""
@@ -263,3 +241,17 @@ class NowPlaying(DynamicContent):
     def title(self) -> str | None:
         """Return the title of the track."""
         return self.track_metadata.get("title")
+
+    def __hash__(self) -> int:
+        """Return the hash of the object."""
+        return hash((self.artist, self.album, self.artwork_uri))
+
+    def __str__(self) -> str:
+        """Return the string representation of the object."""
+        return self.__repr__()
+
+    def __repr__(self) -> str:
+        """Return the string representation of the object."""
+        return (
+            f"{self.__class__.__name__}({self.artist}, {self.album}, {self.artwork_uri})"
+        )
