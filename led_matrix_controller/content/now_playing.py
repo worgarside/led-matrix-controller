@@ -11,6 +11,8 @@ from re import Pattern
 from re import compile as compile_regex
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Final, TypedDict
 
+# The httpcore import is needed because httpx throws an error here for some reason
+# https://github.com/encode/httpx/blob/master/httpx/_transports/default.py#L150
 import httpcore  # noqa: F401
 import httpx
 import numpy as np
