@@ -11,6 +11,7 @@ from re import Pattern
 from re import compile as compile_regex
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Final, TypedDict
 
+import httpcore  # noqa: F401
 import httpx
 import numpy as np
 from content.base import GridView, StopType
