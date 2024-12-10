@@ -89,7 +89,7 @@ class NowPlaying(DynamicContent):
             unit_of_measurement="px",
             display_mode="slider",
         ),
-    ]
+    ] = const.MATRIX_WIDTH
 
     _current_image: tuple[Path, GridView] = field(
         init=False,
