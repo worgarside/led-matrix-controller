@@ -16,6 +16,7 @@ httpx = "^0.28.1"
 typing-extensions = "^4.12.2"
 pyaudio = "^0.2.14"
 scipy = "^1.14.1"
+httpcore = "^1.0.7"
 
 [tool.poetry.group.dev.dependencies]
 rgbmatrixemulator = "^0.11.6"
@@ -189,4 +190,4 @@ sort_by_size = true
 paths = ["led_matrix_controller"]
 deps-file = "pyproject.toml"
 sections = ["tool.poetry.dependencies"]
-exclude-deps = ["paho-mqtt", "pillow"]
+exclude-deps = ["paho-mqtt", "pillow", "httpcore"]

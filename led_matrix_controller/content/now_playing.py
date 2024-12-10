@@ -9,11 +9,14 @@ from io import BytesIO
 from pathlib import Path
 from re import Pattern
 from re import compile as compile_regex
-from typing import TYPE_CHECKING, Annotated, ClassVar, Final, TypedDict
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Final, TypedDict
 
+# The httpcore import is needed because httpx throws an error here for some reason
+# https://github.com/encode/httpx/blob/master/httpx/_transports/default.py#L150
+import httpcore  # noqa: F401
+import httpx
 import numpy as np
 from content.base import GridView, StopType
-from httpx import URL, HTTPStatusError, get
 from PIL import Image
 from utils import const
 from wg_utilities.functions import backoff, force_mkdir
@@ -24,6 +27,8 @@ from .setting import ParameterSetting
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+    from numpy.typing import DTypeLike, NDArray
 
 LOGGER = get_streaming_logger(__name__)
 
@@ -36,14 +41,14 @@ class TrackMeta(TypedDict):
     title: str | None
     album: str | None
     artist: str | None
-    album_artwork_url: URL | None
+    album_artwork_url: httpx.URL | None
 
 
 _INITIAL_TRACK_META: Final[TrackMeta] = {
     "title": "",
     "album": "",
     "artist": "",
-    "album_artwork_url": URL(""),
+    "album_artwork_url": httpx.URL(""),
 }
 
 
@@ -72,12 +77,7 @@ class NowPlaying(DynamicContent):
         default_factory=lambda: _INITIAL_TRACK_META,
     )
 
-    previous_track: TrackMeta = field(
-        init=False,
-        default_factory=lambda: _INITIAL_TRACK_META,
-    )
-
-    current_image: tuple[Path, GridView] = field(
+    _current_image: tuple[Path, GridView] = field(
         init=False,
         repr=False,
         compare=False,
@@ -94,8 +94,8 @@ class NowPlaying(DynamicContent):
         if not self.file_path:
             return self.zeros()
 
-        if hasattr(self, "current_image") and self.current_image[0] == self.file_path:
-            return self.current_image[1]
+        if hasattr(self, "_current_image") and self._current_image[0] == self.file_path:
+            return self._current_image[1]
 
         if self.file_path.is_file():
             LOGGER.debug(
@@ -104,15 +104,15 @@ class NowPlaying(DynamicContent):
                 self.album,
             )
             with suppress(FileNotFoundError):
-                self.current_image = (self.file_path, np.load(self.file_path))
+                self._current_image = (self.file_path, np.load(self.file_path))
 
-                return self.current_image[1]
+                return self._current_image[1]
 
         LOGGER.debug("Image not found at %s for %s", self.file_path, self.album)
 
         try:
             return self.download()
-        except HTTPStatusError as err:
+        except httpx.HTTPStatusError as err:
             LOGGER.exception(
                 "HTTP error (%s %s) downloading artwork from %s for album %s",
                 err.response.status_code,
@@ -129,7 +129,7 @@ class NowPlaying(DynamicContent):
             )
         return self.zeros()
 
-    @backoff(HTTPStatusError, logger=LOGGER, timeout=60, max_delay=10)
+    @backoff(httpx.HTTPStatusError, logger=LOGGER, timeout=60, max_delay=10)
     def download(self) -> GridView:
         """Download the image from the URL to store it locally for future use."""
         if not (
@@ -155,7 +155,7 @@ class NowPlaying(DynamicContent):
 
         LOGGER.debug("Downloading artwork from remote URL: %s", self.artwork_uri)
 
-        res = get(self.artwork_uri, timeout=120, verify=SSL_CONTEXT)
+        res = httpx.get(self.artwork_uri, timeout=120, verify=SSL_CONTEXT)
         res.raise_for_status()
         artwork_bytes = res.content
 
@@ -175,6 +175,19 @@ class NowPlaying(DynamicContent):
         )
 
         return img_arr
+
+    def refresh_content(self) -> Generator[None, None, None]:
+        """Refresh the content."""
+        yield
+
+        if None in self.track_metadata.values():
+            self.stop(StopType.EXPIRED)
+            with suppress(AttributeError):
+                del self._current_image
+
+    def zeros(self, *, dtype: DTypeLike = np.int_) -> NDArray[Any]:
+        """Return a grid of zeros."""
+        return np.zeros((self.height, self.width, 4), dtype=dtype)
 
     @property
     def artist_directory(self) -> str | None:
@@ -212,6 +225,26 @@ class NowPlaying(DynamicContent):
 
         return self.ARTWORK_DIRECTORY / self.artist_directory / self.filename
 
+    @property
+    def album(self) -> str | None:
+        """Return the album name."""
+        return self.track_metadata.get("album")
+
+    @property
+    def artist(self) -> str | None:
+        """Return the artist name."""
+        return self.track_metadata.get("artist")
+
+    @property
+    def artwork_uri(self) -> httpx.URL | None:
+        """Return the URL of the artwork."""
+        return self.track_metadata.get("album_artwork_url")
+
+    @property
+    def title(self) -> str | None:
+        """Return the title of the track."""
+        return self.track_metadata.get("title")
+
     def __hash__(self) -> int:
         """Return the hash of the object."""
         return hash((self.artist, self.album, self.artwork_uri))
@@ -225,35 +258,3 @@ class NowPlaying(DynamicContent):
         return (
             f"{self.__class__.__name__}({self.artist}, {self.album}, {self.artwork_uri})"
         )
-
-    def refresh_content(self) -> Generator[None, None, None]:
-        """Refresh the content."""
-        if self.track_metadata != self.previous_track:
-            self.previous_track = self.track_metadata
-
-        yield
-
-        if None in self.track_metadata.values():
-            self.stop(StopType.EXPIRED)
-            with suppress(AttributeError):
-                del self.current_image
-
-    @property
-    def album(self) -> str | None:
-        """Return the album name."""
-        return self.track_metadata.get("album")
-
-    @property
-    def artist(self) -> str | None:
-        """Return the artist name."""
-        return self.track_metadata.get("artist")
-
-    @property
-    def artwork_uri(self) -> URL | None:
-        """Return the URL of the artwork."""
-        return self.track_metadata.get("album_artwork_url")
-
-    @property
-    def title(self) -> str | None:
-        """Return the title of the track."""
-        return self.track_metadata.get("title")
