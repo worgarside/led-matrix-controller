@@ -9,7 +9,7 @@ from io import BytesIO
 from pathlib import Path
 from re import Pattern
 from re import compile as compile_regex
-from typing import TYPE_CHECKING, Annotated, ClassVar, Final, TypedDict
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Final, TypedDict
 
 import numpy as np
 from content.base import GridView, StopType
@@ -24,6 +24,7 @@ from .setting import ParameterSetting
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+    from numpy.typing import DTypeLike, NDArray
 
 LOGGER = get_streaming_logger(__name__)
 
@@ -175,6 +176,11 @@ class NowPlaying(DynamicContent):
         )
 
         return img_arr
+
+
+    def zeros(self, *, dtype: DTypeLike = np.int_) -> NDArray[Any]:
+        """Return a grid of zeros."""
+        return np.zeros((self.height, self.width, 4), dtype=dtype)
 
     @property
     def artist_directory(self) -> str | None:
