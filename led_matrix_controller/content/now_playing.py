@@ -11,9 +11,9 @@ from re import Pattern
 from re import compile as compile_regex
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Final, TypedDict
 
+import httpx
 import numpy as np
 from content.base import GridView, StopType
-from httpx import URL, HTTPStatusError, get
 from PIL import Image
 from utils import const
 from wg_utilities.functions import backoff, force_mkdir
@@ -38,14 +38,14 @@ class TrackMeta(TypedDict):
     title: str | None
     album: str | None
     artist: str | None
-    album_artwork_url: URL | None
+    album_artwork_url: httpx.URL | None
 
 
 _INITIAL_TRACK_META: Final[TrackMeta] = {
     "title": "",
     "album": "",
     "artist": "",
-    "album_artwork_url": URL(""),
+    "album_artwork_url": httpx.URL(""),
 }
 
 
@@ -109,7 +109,7 @@ class NowPlaying(DynamicContent):
 
         try:
             return self.download()
-        except HTTPStatusError as err:
+        except httpx.HTTPStatusError as err:
             LOGGER.exception(
                 "HTTP error (%s %s) downloading artwork from %s for album %s",
                 err.response.status_code,
@@ -126,7 +126,7 @@ class NowPlaying(DynamicContent):
             )
         return self.zeros()
 
-    @backoff(HTTPStatusError, logger=LOGGER, timeout=60, max_delay=10)
+    @backoff(httpx.HTTPStatusError, logger=LOGGER, timeout=60, max_delay=10)
     def download(self) -> GridView:
         """Download the image from the URL to store it locally for future use."""
         if not (
@@ -152,7 +152,7 @@ class NowPlaying(DynamicContent):
 
         LOGGER.debug("Downloading artwork from remote URL: %s", self.artwork_uri)
 
-        res = get(self.artwork_uri, timeout=120, verify=SSL_CONTEXT)
+        res = httpx.get(self.artwork_uri, timeout=120, verify=SSL_CONTEXT)
         res.raise_for_status()
         artwork_bytes = res.content
 
@@ -233,7 +233,7 @@ class NowPlaying(DynamicContent):
         return self.track_metadata.get("artist")
 
     @property
-    def artwork_uri(self) -> URL | None:
+    def artwork_uri(self) -> httpx.URL | None:
         """Return the URL of the artwork."""
         return self.track_metadata.get("album_artwork_url")
 
