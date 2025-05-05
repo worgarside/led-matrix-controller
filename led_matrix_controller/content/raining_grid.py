@@ -158,7 +158,7 @@ class RainingGrid(Automaton):
             unit_of_measurement="ticks",
             payload_modifier=const.seconds_to_ticks,
         ),
-    ] = const.seconds_to_ticks(10)  # noqa: RUF009
+    ] = const.seconds_to_ticks(10)
 
     leaf_growth_chance: Annotated[
         float,
