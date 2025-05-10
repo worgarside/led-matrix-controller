@@ -194,10 +194,7 @@ class AudioProcessor:
         elif target_max_magnitude < prev:
             self.max_magnitude = max(target_max_magnitude, prev - actual_step_limit)
 
-        if (
-            prev != self.max_magnitude
-            and time.time() - self.last_mqtt_update > MAX_MAGNITUDE_UPDATE_FREQUENCY
-        ):
+        if prev != self.max_magnitude:
             LOGGER.info("Max magnitude: %.3f", self.max_magnitude)
 
             mqtt.CLIENT.publish(
@@ -219,7 +216,8 @@ class AudioProcessor:
 
         try:
             while self.active:
-                self.shm_array[:] = self.get_magnitudes()
+                if time.time() - self.last_mqtt_update > MAX_MAGNITUDE_UPDATE_FREQUENCY:
+                    self.shm_array[:] = self.get_magnitudes()
         except OSError as err:
             if "Unanticipated host error" in str(err):
                 LOGGER.warning(
