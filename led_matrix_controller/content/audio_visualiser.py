@@ -189,7 +189,7 @@ class AudioVisualiser(DynamicContent):
                 )
                 self._refresh_audio_array = False
 
-            audio_ints = (audio * (self.colormap_length - 1)).astype(np.int_)
+            audio_ints = (audio * self.colormap_length).astype(np.int_)
             self.pixels[:, :] = audio_ints[self.freq_bin_indices]
 
             yield
