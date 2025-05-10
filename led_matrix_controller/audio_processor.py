@@ -41,7 +41,7 @@ del _AV, _COMBO
 PYAUDIO = pyaudio.PyAudio()
 
 MAX_MAGNITUDE_TOPIC: Final = f"/{const.HOSTNAME}/audio-processor/max-magnitude"
-MAGNITUDE_HISTORY_SIZE: Final = 200
+MAGNITUDE_HISTORY_SIZE: Final = int(os.getenv("MAGNITUDE_HISTORY_SIZE", "200"))
 MAX_MAGNITUDE_RELATIVE_STEP: Final = float(
     os.getenv("MAX_MAGNITUDE_RELATIVE_STEP", "0.01"),
 )  # Max 1% change relative to current value
