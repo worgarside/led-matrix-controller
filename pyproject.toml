@@ -19,7 +19,7 @@ scipy = "^1.14.1"
 httpcore = "^1.0.7"
 
 [tool.poetry.group.dev.dependencies]
-rgbmatrixemulator = "^0.11.6"
+rgbmatrixemulator = "^0.13.3"
 types-pyaudio = "^0.2.16.20240516"
 scipy-stubs = "^1.14.1.5"
 
