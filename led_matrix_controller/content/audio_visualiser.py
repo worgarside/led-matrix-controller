@@ -177,7 +177,12 @@ class AudioVisualiser(DynamicContent):
         self.shm = get_shared_memory(logger=LOGGER, close_at_exit=False)
 
     def refresh_content(self) -> Generator[None, None, None]:
-        """Refresh the content."""
+        """Continuously updates the visualizer's pixel grid with audio frequency magnitudes.
+
+        While active, reads audio data from shared memory, maps magnitudes to colormap indices,
+        and updates the display grid based on frequency bin mappings. Yields control after each update
+        to allow asynchronous operation.
+        """
         self._refresh_audio_array = True
 
         while self.active:
@@ -189,7 +194,7 @@ class AudioVisualiser(DynamicContent):
                 )
                 self._refresh_audio_array = False
 
-            audio_ints = (audio * (self.colormap_length - 1)).astype(np.int_)
+            audio_ints = (audio * self.colormap_length).astype(np.int_)
             self.pixels[:, :] = audio_ints[self.freq_bin_indices]
 
             yield
