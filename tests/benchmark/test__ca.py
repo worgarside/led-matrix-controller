@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import dataclasses
 from itertools import islice, product
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import pytest
 from content import RainingGrid
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from content.automaton import MaskGen
     from pytest_codspeed import BenchmarkFixture
 

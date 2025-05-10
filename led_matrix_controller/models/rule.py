@@ -6,11 +6,13 @@ import ast
 import inspect
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from content.setting import FrequencySetting, ParameterSetting
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from content.automaton import (
         Automaton,
         MaskGen,

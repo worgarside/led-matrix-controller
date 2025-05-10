@@ -16,7 +16,6 @@ from typing import (
     TYPE_CHECKING,
     Annotated,
     Any,
-    Callable,
     ClassVar,
     Generic,
     Literal,
@@ -34,7 +33,7 @@ from wg_utilities.loggers import get_streaming_logger
 from .setting import TransitionableParameterSetting
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Generator, Iterator
+    from collections.abc import Callable, Collection, Generator, Iterator
 
     from PIL import Image
 

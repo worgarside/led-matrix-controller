@@ -7,7 +7,7 @@ import re
 from enum import Enum
 from functools import lru_cache
 from multiprocessing import shared_memory
-from typing import TYPE_CHECKING, Final, overload
+from typing import TYPE_CHECKING, overload
 
 from wg_utilities.loggers import get_streaming_logger
 
@@ -22,9 +22,9 @@ LOGGER = get_streaming_logger(__name__)
 class Patterns(Enum):
     """Regex patterns."""
 
-    NOT_LETTERS: Final[re.Pattern[str]] = re.compile(r"[^a-z]", flags=re.IGNORECASE)
-    CAMELCASE: Final[re.Pattern[str]] = re.compile(r"(?<!^)(?=[A-Z])")
-    MULTIPLE_HYPHENS: Final[re.Pattern[str]] = re.compile(r"-+")
+    NOT_LETTERS = re.compile(r"[^a-z]", flags=re.IGNORECASE)
+    CAMELCASE = re.compile(r"(?<!^)(?=[A-Z])")
+    MULTIPLE_HYPHENS = re.compile(r"-+")
 
     def sub(self, repl: str, string: str) -> str:
         """Substitute pattern with replacement."""

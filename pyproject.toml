@@ -122,6 +122,7 @@ fix = true
 preview = true
 line-length = 90
 lint.select = ["ALL"]
+target-version = "py311"
 lint.ignore = [
   "ANN401", # https://docs.astral.sh/ruff/rules/any-type/
   "D107",   # https://docs.astral.sh/ruff/rules/undocumented-public-init/
