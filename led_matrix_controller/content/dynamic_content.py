@@ -62,12 +62,13 @@ class DynamicContent(ContentBase[GridView], ABC):
         """
         try:
             return self.colormap[self.pixels]
-        except IndexError:
+        except IndexError as err:
             # This is usually due to an increase in magnitude, which then causes the pixels values
             # to exceed the colormap bounds
             LOGGER.warning(
-                "IndexError in get_content for %s. Pixel values exceed colormap bounds. Scaling down.",
+                "IndexError in get_content for %s. Pixel values exceed colormap bounds. Scaling down. %s",
                 self.__class__.__name__,
+                err,
             )
             colormap_size = self.colormap.shape[0]
 
