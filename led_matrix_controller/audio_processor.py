@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import collections
 import threading
 from contextlib import suppress
 from json import JSONDecodeError, loads
@@ -38,6 +39,7 @@ del _AV, _COMBO
 PYAUDIO = pyaudio.PyAudio()
 
 MAX_MAGNITUDE_TOPIC: Final = f"/{const.HOSTNAME}/audio-processor/max-magnitude"
+MAGNITUDE_HISTORY_SIZE: Final = 200
 
 
 class AudioProcessor:
@@ -68,6 +70,9 @@ class AudioProcessor:
         self.create_stream()
 
         self.max_magnitude = 1e-9
+        self.magnitude_history: collections.deque[float] = collections.deque(
+            maxlen=MAGNITUDE_HISTORY_SIZE,
+        )
 
         self.shm = get_shared_memory(logger=LOGGER)
 
@@ -157,9 +162,16 @@ class AudioProcessor:
 
         fft_magnitudes: NDArray[np.float64] = np.abs(rfft(data))
 
+        current_max_fft = fft_magnitudes.max()
+        self.magnitude_history.append(current_max_fft)
+
         prev = self.max_magnitude
 
-        self.max_magnitude = max(self.max_magnitude, fft_magnitudes.max())
+        # Calculate 95th percentile if we have enough data, otherwise use a growing max
+        if len(self.magnitude_history) >= MAGNITUDE_HISTORY_SIZE / 2:
+            self.max_magnitude = float(np.percentile(self.magnitude_history, 95))
+        else:
+            self.max_magnitude = max(self.max_magnitude, current_max_fft)
 
         if prev != self.max_magnitude:
             LOGGER.info("Max magnitude: %s", self.max_magnitude)
