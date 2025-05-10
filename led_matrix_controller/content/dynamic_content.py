@@ -56,7 +56,11 @@ class DynamicContent(ContentBase[GridView], ABC):
                     self.settings[annotation.slug] = annotation
 
     def get_content(self) -> GridView:
-        """Convert the pixels to an image."""
+        """
+        Converts the pixel array to an image using the colormap.
+        
+        If pixel values exceed the colormap bounds, rescales them to fit within the valid range before conversion.
+        """
         try:
             return self.colormap[self.pixels]
         except IndexError:
@@ -76,7 +80,15 @@ class DynamicContent(ContentBase[GridView], ABC):
             return self.colormap[scaled_pixels]
 
     def zeros(self, *, dtype: DTypeLike = np.int_) -> NDArray[Any]:
-        """Return a grid of zeros."""
+        """
+        Returns a zero-filled grid array matching the content's height and width.
+        
+        Args:
+        	dtype: Data type of the returned array (default: int).
+        
+        Returns:
+        	A NumPy array of zeros with shape (height, width).
+        """
         return np.zeros((self.height, self.width), dtype=dtype)
 
     @abstractmethod
