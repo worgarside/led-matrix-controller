@@ -88,7 +88,7 @@ class AudioProcessor:
         self.audio_visualiser_in_combination = False
         self.current_content: str | None = None
         self.worker_thread: threading.Thread | None = None
-        self.last_mqtt_update = time.time()
+        self.last_magnitude_update = time.time()
 
         mqtt.CLIENT.message_callback_add(
             CURRENT_CONTENT_TOPIC,
@@ -189,25 +189,26 @@ class AudioProcessor:
         relative_step_size = prev * MAX_MAGNITUDE_RELATIVE_STEP
         actual_step_limit = max(relative_step_size, MIN_MAGNITUDE_ABSOLUTE_STEP)
 
-        if target_max_magnitude > prev:
-            self.max_magnitude = min(target_max_magnitude, prev + actual_step_limit)
-        elif target_max_magnitude < prev:
-            self.max_magnitude = max(target_max_magnitude, prev - actual_step_limit)
+        if time.time() - self.last_magnitude_update > MAX_MAGNITUDE_UPDATE_FREQUENCY:
+            if target_max_magnitude > prev:
+                self.max_magnitude = min(target_max_magnitude, prev + actual_step_limit)
+            elif target_max_magnitude < prev:
+                self.max_magnitude = max(target_max_magnitude, prev - actual_step_limit)
 
-        if prev != self.max_magnitude:
-            LOGGER.info("Max magnitude: %.3f", self.max_magnitude)
+            if prev != self.max_magnitude:
+                LOGGER.info("Max magnitude: %.3f", self.max_magnitude)
 
-            mqtt.CLIENT.publish(
-                MAX_MAGNITUDE_TOPIC,
-                payload=round(self.max_magnitude, 3),
-                qos=2,
-                retain=True,
-            )
+                mqtt.CLIENT.publish(
+                    MAX_MAGNITUDE_TOPIC,
+                    payload=round(self.max_magnitude, 3),
+                    qos=2,
+                    retain=True,
+                )
 
-            self.last_mqtt_update = time.time()
+                self.last_magnitude_update = time.time()
 
         # Get in range 0-1
-        return fft_magnitudes / self.max_magnitude
+        return fft_magnitudes / target_max_magnitude
 
     @backoff(OSError, logger=LOGGER, max_delay=1, max_tries=20)
     def process_incoming_audio(self) -> None:
@@ -216,8 +217,7 @@ class AudioProcessor:
 
         try:
             while self.active:
-                if time.time() - self.last_mqtt_update > MAX_MAGNITUDE_UPDATE_FREQUENCY:
-                    self.shm_array[:] = self.get_magnitudes()
+                self.shm_array[:] = self.get_magnitudes()
         except OSError as err:
             if "Unanticipated host error" in str(err):
                 LOGGER.warning(
