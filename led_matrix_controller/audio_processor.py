@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import collections
+import os
 import threading
+import time
 from contextlib import suppress
 from json import JSONDecodeError, loads
 from typing import TYPE_CHECKING, Any, Final
@@ -38,6 +41,14 @@ del _AV, _COMBO
 PYAUDIO = pyaudio.PyAudio()
 
 MAX_MAGNITUDE_TOPIC: Final = f"/{const.HOSTNAME}/audio-processor/max-magnitude"
+MAGNITUDE_HISTORY_SIZE: Final = int(os.getenv("MAGNITUDE_HISTORY_SIZE", "200"))
+MAX_MAGNITUDE_RELATIVE_STEP: Final = float(
+    os.getenv("MAX_MAGNITUDE_RELATIVE_STEP", "0.01"),
+)  # Max 1% change relative to current value
+MIN_MAGNITUDE_ABSOLUTE_STEP: Final = 1e-6  # Min absolute change step
+MAX_MAGNITUDE_UPDATE_FREQUENCY: Final = float(
+    os.getenv("MAX_MAGNITUDE_UPDATE_FREQUENCY", "0.01"),
+)  # seconds
 
 
 class AudioProcessor:
@@ -68,12 +79,16 @@ class AudioProcessor:
         self.create_stream()
 
         self.max_magnitude = 1e-9
+        self.magnitude_history: collections.deque[float] = collections.deque(
+            maxlen=MAGNITUDE_HISTORY_SIZE,
+        )
 
         self.shm = get_shared_memory(logger=LOGGER)
 
         self.audio_visualiser_in_combination = False
         self.current_content: str | None = None
         self.worker_thread: threading.Thread | None = None
+        self.last_magnitude_update = time.time()
 
         mqtt.CLIENT.message_callback_add(
             CURRENT_CONTENT_TOPIC,
@@ -157,22 +172,43 @@ class AudioProcessor:
 
         fft_magnitudes: NDArray[np.float64] = np.abs(rfft(data))
 
-        prev = self.max_magnitude
+        current_max_fft = fft_magnitudes.max()
+        self.magnitude_history.append(current_max_fft)
 
-        self.max_magnitude = max(self.max_magnitude, fft_magnitudes.max())
+        prev = self.max_magnitude  # Value from the end of the previous call
 
-        if prev != self.max_magnitude:
-            LOGGER.info("Max magnitude: %s", self.max_magnitude)
+        # Calculate the target for max_magnitude
+        if len(self.magnitude_history) >= MAGNITUDE_HISTORY_SIZE / 2:
+            target_max_magnitude = float(np.percentile(self.magnitude_history, 95))
+        else:
+            # Initial phase, use a growing max while populating history
+            target_max_magnitude = max(prev, current_max_fft)
 
-            mqtt.CLIENT.publish(
-                MAX_MAGNITUDE_TOPIC,
-                payload=round(self.max_magnitude, 3),
-                qos=2,
-                retain=True,
-            )
+        # Smooth the update to self.max_magnitude
+        # Determine the maximum allowed step size for this update
+        relative_step_size = prev * MAX_MAGNITUDE_RELATIVE_STEP
+        actual_step_limit = max(relative_step_size, MIN_MAGNITUDE_ABSOLUTE_STEP)
+
+        if time.time() - self.last_magnitude_update > MAX_MAGNITUDE_UPDATE_FREQUENCY:
+            if target_max_magnitude > prev:
+                self.max_magnitude = min(target_max_magnitude, prev + actual_step_limit)
+            elif target_max_magnitude < prev:
+                self.max_magnitude = max(target_max_magnitude, prev - actual_step_limit)
+
+            if prev != self.max_magnitude:
+                LOGGER.info("Max magnitude: %.3f", self.max_magnitude)
+
+                mqtt.CLIENT.publish(
+                    MAX_MAGNITUDE_TOPIC,
+                    payload=round(self.max_magnitude, 3),
+                    qos=2,
+                    retain=True,
+                )
+
+                self.last_magnitude_update = time.time()
 
         # Get in range 0-1
-        return fft_magnitudes / self.max_magnitude
+        return fft_magnitudes / target_max_magnitude
 
     @backoff(OSError, logger=LOGGER, max_delay=1, max_tries=20)
     def process_incoming_audio(self) -> None:
