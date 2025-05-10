@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import collections
+import os
 import threading
 import time
 from contextlib import suppress
@@ -41,8 +42,13 @@ PYAUDIO = pyaudio.PyAudio()
 
 MAX_MAGNITUDE_TOPIC: Final = f"/{const.HOSTNAME}/audio-processor/max-magnitude"
 MAGNITUDE_HISTORY_SIZE: Final = 200
-MAX_MAGNITUDE_RELATIVE_STEP: Final = 0.01  # Max 1% change relative to current value
+MAX_MAGNITUDE_RELATIVE_STEP: Final = float(
+    os.getenv("MAX_MAGNITUDE_RELATIVE_STEP", "0.01"),
+)  # Max 1% change relative to current value
 MIN_MAGNITUDE_ABSOLUTE_STEP: Final = 1e-6  # Min absolute change step
+MAX_MAGNITUDE_UPDATE_FREQUENCY: Final = float(
+    os.getenv("MAX_MAGNITUDE_UPDATE_FREQUENCY", "0.01"),
+)  # seconds
 
 
 class AudioProcessor:
@@ -188,8 +194,11 @@ class AudioProcessor:
         elif target_max_magnitude < prev:
             self.max_magnitude = max(target_max_magnitude, prev - actual_step_limit)
 
-        if prev != self.max_magnitude and time.time() - self.last_mqtt_update > 1:
-            LOGGER.info("Max magnitude: %s", self.max_magnitude)
+        if (
+            prev != self.max_magnitude
+            and time.time() - self.last_mqtt_update > MAX_MAGNITUDE_UPDATE_FREQUENCY
+        ):
+            LOGGER.info("Max magnitude: %.3f", self.max_magnitude)
 
             mqtt.CLIENT.publish(
                 MAX_MAGNITUDE_TOPIC,
