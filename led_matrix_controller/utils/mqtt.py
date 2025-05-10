@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from json import JSONDecodeError, loads
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
 
 import paho.mqtt.client as mqtt
 from paho.mqtt.enums import CallbackAPIVersion
@@ -12,6 +12,8 @@ from utils import const
 from wg_utilities.loggers import get_streaming_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from paho.mqtt.properties import Properties
     from paho.mqtt.reasoncodes import ReasonCode
 

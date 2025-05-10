@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from abc import ABC
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import IntEnum
@@ -15,7 +16,6 @@ from threading import Thread
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     ClassVar,
     Final,
     Self,

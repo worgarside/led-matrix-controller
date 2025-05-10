@@ -9,7 +9,6 @@ from types import MappingProxyType
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     ClassVar,
     Final,
     TypedDict,
@@ -33,7 +32,7 @@ from wg_utilities.decorators import process_exception
 from wg_utilities.loggers import get_streaming_logger
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
     from numpy.typing import DTypeLike, NDArray
     from utils.mqtt import MqttClient

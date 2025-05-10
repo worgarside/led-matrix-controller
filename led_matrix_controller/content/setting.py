@@ -11,7 +11,6 @@ from time import sleep
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     ClassVar,
     Generic,
     Literal,
@@ -26,7 +25,7 @@ from utils.mqtt import MqttClient
 from wg_utilities.loggers import get_streaming_logger
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Callable, Mapping
 
     from models.matrix import Matrix
 

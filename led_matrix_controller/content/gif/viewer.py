@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable, ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from content.base import PreDefinedContent, StopType
 from PIL import Image
@@ -11,7 +11,7 @@ from utils import const, to_kebab_case
 from wg_utilities.loggers import get_streaming_logger
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
     from pathlib import Path
 
     from utils import mtrx

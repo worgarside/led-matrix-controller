@@ -72,7 +72,7 @@ class RainingGrid(Automaton):
     IS_OPAQUE: ClassVar[bool] = True
     # i.e. has a full background to overwrite previous content
 
-    STATE = State
+    STATE: ClassVar[type[StateBase]] = State
 
     def stop_when_no_rain(self) -> None:
         """Stop the simulation when there is no rain."""

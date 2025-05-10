@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from logging import DEBUG, getLogger
 from time import sleep
-from typing import TYPE_CHECKING, Callable, ClassVar, Literal
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 from content.base import PreDefinedContent
 from PIL import Image
@@ -13,7 +13,7 @@ from utils import const, to_kebab_case
 from wg_utilities.loggers import add_stream_handler
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
     from pathlib import Path
 
     from utils import mtrx
