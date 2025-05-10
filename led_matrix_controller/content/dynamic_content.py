@@ -57,7 +57,23 @@ class DynamicContent(ContentBase[GridView], ABC):
 
     def get_content(self) -> GridView:
         """Convert the pixels to an image."""
-        return self.colormap[self.pixels]
+        try:
+            return self.colormap[self.pixels]
+        except IndexError:
+            LOGGER.warning(
+                "IndexError in get_content for %s. Pixel values exceed colormap bounds. Scaling down.",
+                self.__class__.__name__,
+            )
+            pixels_copy = self.pixels.copy()
+            max_pixel_val = np.max(pixels_copy)
+            colormap_size = self.colormap.shape[0]
+
+            # Scale values to fit within the colormap range [0, colormap_size - 1]
+            scaled_pixels = (pixels_copy / max_pixel_val * (colormap_size - 1)).astype(
+                self.pixels.dtype,
+            )  # Preserving original dtype, ensure it's int
+
+            return self.colormap[scaled_pixels]
 
     def zeros(self, *, dtype: DTypeLike = np.int_) -> NDArray[Any]:
         """Return a grid of zeros."""
