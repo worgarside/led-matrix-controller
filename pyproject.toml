@@ -11,7 +11,7 @@ python = ">=3.11,<3.12"
 pillow = "^11.2.1"
 wg-utilities = { extras = ["exceptions"], version = "^5.17.3" }
 paho-mqtt = "^2.1.0"
-numpy = "2.0.1"
+numpy = "2.2.5"
 httpx = "^0.28.1"
 typing-extensions = "^4.12.2"
 pyaudio = "^0.2.14"
