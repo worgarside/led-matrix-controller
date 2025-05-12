@@ -29,7 +29,7 @@ repos:
           - pytest==8.3.4
           - pytest-codspeed==3.1.0
           - types-Pillow
-          - wg-utilities==5.17.3
+          - wg-utilities==5.17.4
           - rgbmatrixemulator==0.13.3
           - types-pyaudio==0.2.16.20240516
           - scipy-stubs==1.14.1.5
