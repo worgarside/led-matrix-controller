@@ -4,19 +4,19 @@ default_language_version:
 
 repos:
   - repo: https://github.com/worgarside/pre-commit-hooks-dependency-sync
-    rev: 1.2.1
+    rev: 1.3.1
     hooks:
       - id: sync-additional-dependencies
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.8
+    rev: v0.12.0
     hooks:
       - id: ruff-format
       - id: ruff
         language_version: python3.11
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.15.0
+    rev: v1.16.1
     hooks:
       - id: mypy
         args:
