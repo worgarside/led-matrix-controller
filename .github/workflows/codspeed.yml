@@ -48,16 +48,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .venv
-          key: venv-${{ hashFiles(env.CACHE_FILE) }}
+          key: 'venv-${{ hashFiles(env.CACHE_FILE) }}'
 
       - name: Install Dependencies
-        run: |
-          sudo apt-get install -y portaudio19-dev
-
-          poetry install --sync
+        run: poetry install --sync
 
       - name: Run Benchmarks
         uses: CodSpeedHQ/action@v3
         with:
-          token: ${{ secrets.CODSPEED_TOKEN }}
+          token: '${{ secrets.CODSPEED_TOKEN }}'
           run: poetry run pytest --codspeed -v
