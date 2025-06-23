@@ -51,10 +51,7 @@ jobs:
           key: venv-${{ hashFiles(env.CACHE_FILE) }}
 
       - name: Install Dependencies
-        run: |
-          sudo apt-get install -y portaudio19-dev
-
-          poetry install --sync
+        run: poetry install --sync
 
       - name: Run Benchmarks
         uses: CodSpeedHQ/action@v3
