@@ -550,21 +550,21 @@ files = [
 
 [[package]]
 name = "optype"
-version = "0.7.3"
+version = "0.10.0"
 description = "Building blocks for precise & flexible type hints"
 optional = false
-python-versions = ">=3.10"
+python-versions = ">=3.11"
 groups = ["dev"]
 files = [
-    {file = "optype-0.7.3-py3-none-any.whl", hash = "sha256:856416484131038799e0e9cefc19d0ef37e7b4fde2144f25e8bb0e8981ebbe95"},
-    {file = "optype-0.7.3.tar.gz", hash = "sha256:51c8dd104ac197457059bcee5e256160a641ca72c6c852012d952790a5e0cac0"},
+    {file = "optype-0.10.0-py3-none-any.whl", hash = "sha256:7e9ccc329fb65c326c6bd62c30c2ba03b694c28c378a96c2bcdd18a084f2c96b"},
+    {file = "optype-0.10.0.tar.gz", hash = "sha256:2b89a1b8b48f9d6dd8c4dd4f59e22557185c81823c6e2bfc43c4819776d5a7ca"},
 ]
 
 [package.dependencies]
 typing-extensions = {version = ">=4.10", markers = "python_version < \"3.13\""}
 
 [package.extras]
-numpy = ["numpy (>=1.24)"]
+numpy = ["numpy (>=1.25.2)"]
 
 [[package]]
 name = "packaging"
@@ -1190,21 +1190,21 @@ test = ["Cython", "array-api-strict (>=2.0)", "asv", "gmpy2", "hypothesis (>=6.3
 
 [[package]]
 name = "scipy-stubs"
-version = "1.14.1.5"
-description = "Precise type-hints for all of SciPy"
+version = "1.16.0.2"
+description = "Type annotations for SciPy"
 optional = false
-python-versions = ">=3.10"
+python-versions = ">=3.11"
 groups = ["dev"]
 files = [
-    {file = "scipy_stubs-1.14.1.5-py3-none-any.whl", hash = "sha256:ca927802cae4c83e75b2a4b8c41271f36ebe0d928cee25ef3968e143b1793a75"},
-    {file = "scipy_stubs-1.14.1.5.tar.gz", hash = "sha256:66c160c6b72b1406edc7827879ef25ea81dc3d95ab7e4af3a2de836f27c26ce6"},
+    {file = "scipy_stubs-1.16.0.2-py3-none-any.whl", hash = "sha256:dc364d24a3accd1663e7576480bdb720533f94de8a05590354ff6d4a83d765c7"},
+    {file = "scipy_stubs-1.16.0.2.tar.gz", hash = "sha256:f83aacaf2e899d044de6483e6112bf7a1942d683304077bc9e78cf6f21353acd"},
 ]
 
 [package.dependencies]
-optype = ">=0.7.3"
+optype = ">=0.10.0,<1"
 
 [package.extras]
-scipy = ["scipy (>=1.10)"]
+scipy = ["scipy (>=1.16.0,<1.17)"]
 
 [[package]]
 name = "sniffio"
@@ -1328,4 +1328,4 @@ testing = ["botocore"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.12"
-content-hash = "7417bebbe361b89221cb3315f00a63fefcfe1a80f55072c07becb9d7ebfdd0db"
+content-hash = "82145ffe3bbb5a5485aac133987ed480fbd2ac4bebcc287c0bf35ec5e65d716e"
