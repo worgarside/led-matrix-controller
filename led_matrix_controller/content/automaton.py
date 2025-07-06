@@ -341,7 +341,7 @@ class Automaton(DynamicContent, ABC):
 
         self._rules_thread.join(timeout=1)
 
-        if self._rules_thread.is_alive():
+        if self._rules_thread.is_alive() and not self.mask_queue.empty():
             raise RuntimeError(f"Rules thread for {self.id!r} did not stop in time")
 
         LOGGER.debug("Rules thread stopped")
