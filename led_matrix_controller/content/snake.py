@@ -221,7 +221,13 @@ class Snake(Automaton):
         actual_food_count = (self.pixels == State.FOOD.state).sum()
 
         if actual_food_count != self.food_count:
-            delta = self.food_count - actual_food_count
+            if (delta := self.food_count - actual_food_count) < 1:
+                LOGGER.error(
+                    "Got negative food count delta: %d. Actual=%i",
+                    delta,
+                    actual_food_count,
+                )
+                return
 
             print("#" * 100, "\n", delta, "\n", "#" * 100)
 
