@@ -525,7 +525,7 @@ def move_snake_tail(ca: Snake, target_slice: TargetSlice) -> MaskGen:
 
         body_pixels = pixels[target_slice] == State.BODY.state
 
-        if body_pixels.sum() == 0:
+        if body_pixels.sum() == 0 and ca.active and ca.stop_reason is None:
             ca.stop(StopType.EXPIRED)
 
         return body_pixels & (  # type: ignore[no-any-return]
