@@ -221,8 +221,6 @@ class Snake(Automaton):
         actual_food_count = (self.pixels == State.FOOD.state).sum()
 
         if actual_food_count != self.food_count:
-            self.update_setting("food_count", int(actual_food_count))
-
             delta = self.food_count - actual_food_count
 
             self.update_setting("snake_length", int(self.snake_length + delta))
@@ -231,6 +229,8 @@ class Snake(Automaton):
                 new_high_score := max(self.snake_length, self.high_score)
             ) > self.high_score:
                 self.update_setting("high_score", int(new_high_score))
+
+            self.update_setting("food_count", int(actual_food_count))
 
             LOGGER.info(
                 "Snake length increased by %d bits (high score: %d)",
