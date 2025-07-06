@@ -160,7 +160,8 @@ class Automaton(DynamicContent, ABC):
         )
 
         LOGGER.info(
-            "Mask Generator loop re-generated. New length: %i; largest ruleset: %i; empty rulesets: %i",
+            "[%s] Mask Generator loop re-generated. New length: %i; largest ruleset: %i; empty rulesets: %i",
+            self.id,
             len(self.frame_rulesets),
             max(len(loop) for loop in self.frame_rulesets),
             sum(not loop for loop in self.frame_rulesets),
@@ -168,7 +169,8 @@ class Automaton(DynamicContent, ABC):
 
         if len(self.frame_rulesets) >= self.QUEUE_SIZE:
             LOGGER.warning(
-                "Rulesets are longer than the queue size. This may cause the queue to fill up and block the rules thread.",  # noqa: E501
+                "[%s] Rulesets are longer than the queue size. This may cause the queue to fill up and block the rules thread.",  # noqa: E501
+                self.id,
             )
 
     @classmethod
