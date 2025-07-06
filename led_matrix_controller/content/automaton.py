@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import time
 from abc import ABC
 from collections.abc import Callable
 from copy import deepcopy
@@ -295,7 +296,13 @@ class Automaton(DynamicContent, ABC):
                     self.durations[~tracked_states_mask] = 0
 
                 # Add new frame to queue
+                LOGGER.debug("Adding frame to queue")
+                start_time = time.time()
                 self.mask_queue.put(prev_pixels := pixels.copy())
+                LOGGER.debug(
+                    "Frame added to queue in %f seconds",
+                    time.time() - start_time,
+                )
 
         LOGGER.debug("Rules worker stopped")
 
@@ -329,7 +336,6 @@ class Automaton(DynamicContent, ABC):
         # Clear the backlog of pending `put` calls - clearing the queue is not sufficient
         count = 0
         while self._rules_thread.is_alive() and not self.mask_queue.empty():
-            self.mask_queue.get(timeout=0.1)
             yield
 
         if not self.mask_queue.empty():
