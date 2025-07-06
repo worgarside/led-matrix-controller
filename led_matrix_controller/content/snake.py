@@ -216,7 +216,11 @@ class Snake(Automaton):
         """Remove all remaining food."""
         yield from self._stop_rules_thread()
 
-        while (food_locs := np.argwhere(self.pixels == State.FOOD.state)).size > 0:
+        while (
+            actual_food_count := (
+                food_locs := np.argwhere(self.pixels == State.FOOD.state)
+            ).size
+        ) > 0:
             self.pixels[tuple(food_locs[const.RNG.integers(food_locs.shape[0])])] = (
                 State.NULL.state
             )
@@ -224,8 +228,17 @@ class Snake(Automaton):
             for _ in range(5):
                 yield
 
+            self.update_setting("food_count", actual_food_count - 1)
+
         self.update_setting("snake_length", 1)
-        self.update_setting("food_count", 0)
+        self.update_setting("food_count", actual_food_count)
+
+        LOGGER.info(
+            "Snake teardown complete with length=%d, food_count=%d, queue size=%d",
+            self.snake_length,
+            self.food_count,
+            self.mask_queue.qsize(),
+        )
 
         yield
 
