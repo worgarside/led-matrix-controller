@@ -177,6 +177,13 @@ class Snake(Automaton):
         ),
     ] = 0
 
+    def __post_init__(self) -> None:
+        """Post-initialization."""
+        super(Snake, self).__post_init__()
+
+        self.update_setting("snake_length", 1)
+        self.update_setting("food_count", 0)
+
     def setup(self) -> Generator[None, None, None]:
         """Setup the snake."""
         self.update_setting("snake_length", 1)
