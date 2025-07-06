@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-import time
 from abc import ABC
 from collections.abc import Callable
 from copy import deepcopy
@@ -167,6 +166,11 @@ class Automaton(DynamicContent, ABC):
             sum(not loop for loop in self.frame_rulesets),
         )
 
+        if len(self.frame_rulesets) >= self.QUEUE_SIZE:
+            LOGGER.warning(
+                "Rulesets are longer than the queue size. This may cause the queue to fill up and block the rules thread.",  # noqa: E501
+            )
+
     @classmethod
     def rule(
         cls,
@@ -296,13 +300,7 @@ class Automaton(DynamicContent, ABC):
                     self.durations[~tracked_states_mask] = 0
 
                 # Add new frame to queue
-                LOGGER.debug("Adding frame to queue")
-                start_time = time.time()
                 self.mask_queue.put(prev_pixels := pixels.copy())
-                LOGGER.debug(
-                    "Frame added to queue in %f seconds",
-                    time.time() - start_time,
-                )
 
         LOGGER.debug("Rules worker stopped")
 
