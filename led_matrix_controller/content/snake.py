@@ -223,6 +223,8 @@ class Snake(Automaton):
         if actual_food_count != self.food_count:
             delta = self.food_count - actual_food_count
 
+            print("#" * 100, "\n", delta, "\n", "#" * 100)
+
             self.update_setting("snake_length", int(self.snake_length + delta))
 
             if (
