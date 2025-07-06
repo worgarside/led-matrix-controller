@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from json import dumps
-from typing import TYPE_CHECKING, Any, Self, get_type_hints
+from typing import TYPE_CHECKING, Any, get_type_hints
 
 import numpy as np
 from wg_utilities.loggers import get_streaming_logger
@@ -27,8 +26,6 @@ class DynamicContent(ContentBase[GridView], ABC):
 
     canvas_count: None = field(init=False, default=None)
     """None == Infinity. Right?"""
-
-    settings: dict[str, Setting[Any]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Compile settings from type hints."""
@@ -93,43 +90,6 @@ class DynamicContent(ContentBase[GridView], ABC):
     @abstractmethod
     def refresh_content(self) -> Generator[None, None, None]:
         """Refresh the content."""
-
-    def update_setting(
-        self,
-        slug: str,
-        value: Any,
-        *,
-        invoke_callback: bool = False,
-    ) -> Self:
-        """Update a setting."""
-        setting = self.settings[slug]
-
-        setting.value = value
-
-        payload = dumps(
-            setting.value,
-            default=lambda x: x.id
-            if isinstance(x, ContentBase)
-            else self._json_encode(x),
-        )
-
-        LOGGER.debug(
-            "Sending payload %r (raw: %r) to topic %r",
-            payload,
-            setting.value,
-            setting.mqtt_topic,
-        )
-
-        setting.mqtt_client.publish(
-            setting.mqtt_topic,
-            payload,
-            retain=True,
-        )
-
-        if invoke_callback:
-            self.setting_update_callback(update_setting=slug)
-
-        return self
 
     def __iter__(self) -> Generator[None, None, None]:
         """Iterate over the frames."""

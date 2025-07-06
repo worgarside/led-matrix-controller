@@ -400,21 +400,37 @@ class Matrix:
 
             self.current_content.active = True
 
-            if (setup_gen := self.current_content.setup()) is not None:
-                # Only run setup if it returns a generator
-                LOGGER.info(
-                    "Running setup sequence for %s",
-                    self.current_content.id,
+            self.current_content.update_setting(
+                "iterations_remaining",
+                self.current_content.iterations,
+            )
+            LOGGER.info(
+                "%s: Iterations remaining: %d",
+                self.current_content.id,
+                self.current_content.iterations_remaining,
+            )
+
+            while self.current_content.iterations_remaining > 0:
+                self.current_content.update_setting(
+                    "iterations_remaining",
+                    self.current_content.iterations_remaining - 1,
                 )
 
-                for _ in setup_gen:
+                if (setup_gen := self.current_content.setup()) is not None:
+                    # Only run setup if it returns a generator
+                    LOGGER.info(
+                        "Running setup sequence for %s",
+                        self.current_content.id,
+                    )
+
+                    for _ in setup_gen:
+                        set_content()
+
+                # Actual loop through individual content instances:
+                for _ in self.current_content:
                     set_content()
 
-            # Actual loop through individual content instances:
-            for _ in self.current_content:
-                set_content()
-
-            self._handle_content_stop(parameters, set_content)
+                self._handle_content_stop(parameters, set_content)
 
         self.clear_matrix()
 

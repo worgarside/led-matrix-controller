@@ -183,10 +183,6 @@ class Snake(Automaton):
         ),
     ] = 0
 
-    def __post_init__(self) -> None:
-        """Post-initialization."""
-        super(Snake, self).__post_init__()
-
     def setup(self) -> Generator[None, None, None]:
         """Setup the snake."""
         self.update_setting("snake_length", 1)
@@ -527,7 +523,7 @@ def move_snake_tail(ca: Snake, target_slice: TargetSlice) -> MaskGen:
 
         body_pixels = pixels[target_slice] == State.BODY.state
 
-        if body_pixels.sum() == 0 and ca.active and ca.stop_reason is None:
+        if body_pixels.sum() == 0 and ca.active:
             ca.stop(StopType.EXPIRED)
 
         return body_pixels & (  # type: ignore[no-any-return]
