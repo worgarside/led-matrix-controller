@@ -225,6 +225,8 @@ class Snake(Automaton):
 
     def setup(self) -> Generator[None, None, None]:
         """Setup the snake."""
+        self.update_setting("snake_length", 1)
+
         # Snake has its head in the middle and one body cell either above/below/next to it
         self.head_location = (self.width // 2, self.height // 2)
         self.pixels[self.head_location] = State.HEAD.state
