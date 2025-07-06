@@ -69,7 +69,7 @@ class SnakeDirection(enum.Enum):
 class Snake(Automaton):
     """Basic Snake game simulation."""
 
-    QUEUE_SIZE: ClassVar[int] = 100
+    QUEUE_SIZE: ClassVar[int] = 1
 
     TRACK_STATES_DURATION: ClassVar[tuple[int, ...]] = (
         State.HEAD.state,
@@ -374,9 +374,8 @@ def follow_head_with_body(ca: Snake, target_slice: TargetSlice) -> MaskGen:
     return mask_gen
 
 
-def update_snake_direction(ca: Snake) -> None:  # noqa: PLR0915, PLR0912, C901
+def update_snake_direction(ca: Snake) -> None:  # noqa: PLR0912, C901
     """Update the snake's direction based on its location."""
-    prev_direction = ca.current_direction
     edge = None
     cooled_down = ca.frame_index - ca.last_turn_tick >= (
         ca.turn_cooldown * ca.snake_speed
@@ -386,113 +385,56 @@ def update_snake_direction(ca: Snake) -> None:  # noqa: PLR0915, PLR0912, C901
         case (0, 0):  # Top-left corner
             if ca.current_direction == SnakeDirection.UP:
                 ca.current_direction = SnakeDirection.RIGHT
-                LOGGER.debug(
-                    "Forced turn to RIGHT from %s in top-left corner",
-                    prev_direction,
-                )
             elif ca.current_direction == SnakeDirection.LEFT:
                 ca.current_direction = SnakeDirection.DOWN
-                LOGGER.debug(
-                    "Forced turn to DOWN from %s in top-left corner",
-                    prev_direction,
-                )
 
         case (0, 63):  # Top-right corner
             if ca.current_direction == SnakeDirection.UP:
                 ca.current_direction = SnakeDirection.LEFT
-                LOGGER.debug(
-                    "Forced turn to LEFT from %s in top-right corner",
-                    prev_direction,
-                )
             elif ca.current_direction == SnakeDirection.RIGHT:
                 ca.current_direction = SnakeDirection.DOWN
-                LOGGER.debug(
-                    "Forced turn to DOWN from %s in top-right corner",
-                    prev_direction,
-                )
 
         case (63, 0):  # Bottom-left corner
             if ca.current_direction == SnakeDirection.DOWN:
                 ca.current_direction = SnakeDirection.RIGHT
-                LOGGER.debug(
-                    "Forced turn to RIGHT from %s in bottom-left corner",
-                    prev_direction,
-                )
             elif ca.current_direction == SnakeDirection.LEFT:
                 ca.current_direction = SnakeDirection.UP
-                LOGGER.debug(
-                    "Forced turn to UP from %s in bottom-left corner",
-                    prev_direction,
-                )
 
         case (63, 63):  # Bottom-right corner
             if ca.current_direction == SnakeDirection.DOWN:
                 ca.current_direction = SnakeDirection.LEFT
-                LOGGER.debug(
-                    "Forced turn to LEFT from %s in bottom-right corner",
-                    prev_direction,
-                )
             elif ca.current_direction == SnakeDirection.RIGHT:
                 ca.current_direction = SnakeDirection.UP
-                LOGGER.debug(
-                    "Forced turn to UP from %s in bottom-right corner",
-                    prev_direction,
-                )
 
         case (_, 0):  # Left edge
             if ca.current_direction == SnakeDirection.LEFT:
                 ca.roll_direction_dice(force=True)
-                LOGGER.debug(
-                    "Turned to %s from %s on left edge",
-                    ca.current_direction,
-                    prev_direction,
-                )
             else:
                 edge = SnakeDirection.LEFT
 
         case (_, 63):  # Right edge
             if ca.current_direction == SnakeDirection.RIGHT:
                 ca.roll_direction_dice(force=True)
-                LOGGER.debug(
-                    "Turned to %s from %s on right edge",
-                    ca.current_direction,
-                    prev_direction,
-                )
             else:
                 edge = SnakeDirection.RIGHT
 
         case (0, _):  # Top edge
             if ca.current_direction == SnakeDirection.UP:
                 ca.roll_direction_dice(force=True)
-                LOGGER.debug(
-                    "Turned to %s from %s on top edge",
-                    ca.current_direction,
-                    prev_direction,
-                )
             else:
                 edge = SnakeDirection.UP
 
         case (63, _):  # Bottom edge
             if ca.current_direction == SnakeDirection.DOWN:
                 ca.roll_direction_dice(force=True)
-                LOGGER.debug(
-                    "Turned to %s from %s on bottom edge",
-                    ca.current_direction,
-                    prev_direction,
-                )
             else:
                 edge = SnakeDirection.DOWN
 
         case _ if cooled_down:
             ca.roll_direction_dice()
 
-    if cooled_down and edge and ca.roll_direction_dice(current_edge=edge):
-        LOGGER.debug(
-            "Randomly turned to %s from %s on edge %s",
-            ca.current_direction,
-            prev_direction,
-            edge,
-        )
+    if cooled_down and edge:
+        ca.roll_direction_dice(current_edge=edge)
 
 
 def check_food_consumption(ca: Snake, actual_food_count: int) -> None:
