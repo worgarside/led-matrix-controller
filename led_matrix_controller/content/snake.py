@@ -247,7 +247,7 @@ class Snake(Automaton):
         actual_food_count = int((self.pixels == State.FOOD.state).sum())
 
         if actual_food_count != self.food_count:
-            if (delta := self.food_count - actual_food_count) > 0:
+            if (delta := self.food_count - actual_food_count) > 0 and self.active:
                 # If there's a positive delta, the snake has consumed food
                 self.update_setting("snake_length", self.snake_length + delta)
 
