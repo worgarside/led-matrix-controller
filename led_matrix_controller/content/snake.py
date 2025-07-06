@@ -84,15 +84,15 @@ class Snake(Automaton):
     STATE: ClassVar[type[StateBase]] = State
 
     turn_chance: Annotated[
-        float,
+        int,
         ParameterSetting(
             minimum=0,
-            maximum=1,
+            maximum=100,
             fp_precision=4,
             icon="mdi:dice-multiple",
             unit_of_measurement="%",
         ),
-    ] = 0.05
+    ] = 5
     """Chance of the snake turning left or right on each tick."""
 
     turn_cooldown: Annotated[
@@ -288,7 +288,7 @@ class Snake(Automaton):
         current_edge: SnakeDirection | None = None,
     ) -> bool:
         """Change the direction to a random other direction. Chance of change is configurable."""
-        if force is False and random.random() >= self.turn_chance:  # noqa: S311
+        if force is False and random.randint(0, 100) >= self.turn_chance:  # noqa: S311
             return False
 
         match current_edge, self.current_direction:
