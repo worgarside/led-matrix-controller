@@ -7,6 +7,7 @@ import random
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Annotated, ClassVar
 
+import numpy as np
 from content.automaton import (
     Automaton,
     BooleanMask,
@@ -36,7 +37,7 @@ class State(StateBase):
     NULL = 0, " "
     HEAD = 1, "O", (255, 94, 13, 255)
     BODY = 2, "o", (107, 155, 250, 255)
-    FOOD = 3, "*", (170, 197, 250, 255)
+    FOOD = 3, "*", (10, 230, 190, 255)
 
 
 @enum.unique
@@ -125,6 +126,17 @@ class Snake(Automaton):
         init=False,
         repr=False,
     )
+
+    food_generation_freq: Annotated[
+        int,
+        FrequencySetting(
+            minimum=100,
+            maximum=10000,
+            icon="mdi:food-apple",
+            unit_of_measurement="ticks",
+        ),
+    ] = 1000
+    """Frequency of food generation."""
 
     def roll_direction_dice(  # noqa: C901
         self,
@@ -444,6 +456,24 @@ def move_snake_tail(ca: Snake, target_slice: TargetSlice) -> MaskGen:
         return (pixels[target_slice] == State.BODY.state) & (  # type: ignore[no-any-return]
             durations >= ca.snake_length * ca.snake_speed
         )
+
+    return mask_gen
+
+
+@Snake.rule(State.FOOD, frequency="food_generation_freq")
+def generate_food(_: Snake, target_slice: TargetSlice) -> MaskGen:
+    """Generate a single food cell at a random location."""
+
+    def mask_gen(pixels: GridView) -> BooleanMask:
+        # Find all NULL cells in the target_slice
+        target_pixels = pixels[target_slice]
+        null_indices = np.argwhere(target_pixels == State.NULL.state)
+        mask = np.zeros_like(target_pixels, dtype=bool)
+
+        # Pick one at random
+        mask[tuple(null_indices[const.RNG.choice(null_indices.shape[0])])] = True
+
+        return mask
 
     return mask_gen
 
