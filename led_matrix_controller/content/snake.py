@@ -206,15 +206,20 @@ class Snake(Automaton):
 
     def teardown(self) -> Generator[None, None, None]:
         """Remove all remaining food."""
+        yield from self._stop_rules_thread()
+
         while (food_locs := np.argwhere(self.pixels == State.FOOD.state)).size > 0:
-            idx = tuple(food_locs[const.RNG.integers(food_locs.shape[0])])
-            self.pixels[idx] = State.NULL.state
+            self.pixels[tuple(food_locs[const.RNG.integers(food_locs.shape[0])])] = (
+                State.NULL.state
+            )
+
             for _ in range(5):
                 yield
 
-        self._stop_rules_thread()
         self.update_setting("snake_length", 1)
         self.update_setting("food_count", 0)
+
+        yield
 
     def check_food_consumption(self) -> None:
         """Check if the snake has consumed food."""

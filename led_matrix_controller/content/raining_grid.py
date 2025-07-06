@@ -215,7 +215,7 @@ class RainingGrid(Automaton):
             original_transition_rate,
         )
 
-        self._stop_rules_thread()
+        yield from self._stop_rules_thread()
 
     def __hash__(self) -> int:
         """Return the hash of the object."""

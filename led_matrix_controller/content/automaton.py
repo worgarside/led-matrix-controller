@@ -323,22 +323,28 @@ class Automaton(DynamicContent, ABC):
 
             LOGGER.info("Started new rules thread")
 
-    def _stop_rules_thread(self) -> None:
+    def _stop_rules_thread(self) -> Generator[None, None, None]:
         self.active = False
 
         # Clear the backlog of pending `put` calls - clearing the queue is not sufficient
+        count = 0
         while self._rules_thread.is_alive() and not self.mask_queue.empty():
-            self.mask_queue.get()
+            self.mask_queue.get(timeout=0.1)
+            yield
 
         if not self.mask_queue.empty():
+            count += self.mask_queue.qsize()
             self.mask_queue.queue.clear()
+
+        if count > 0:
+            LOGGER.warning("Cleared %i frames from the mask queue", count)
 
         self._rules_thread.join(timeout=1)
 
         if self._rules_thread.is_alive():
-            LOGGER.warning("Rules thread did not stop in time")
-        else:
-            LOGGER.debug("Rules thread stopped")
+            raise RuntimeError(f"Rules thread for {self.id!r} did not stop in time")
+
+        LOGGER.debug("Rules thread stopped")
 
     @property
     def str_repr(self) -> str:
