@@ -334,12 +334,14 @@ class Automaton(DynamicContent, ABC):
         self.active = False
 
         # Clear the backlog of pending `put` calls - clearing the queue is not sufficient
-        while self._rules_thread.is_alive() and not self.mask_queue.empty():
+        while not self.mask_queue.empty():
             self.pixels[:, :] = self.mask_queue.get()
             yield
 
         if not self.mask_queue.empty():
-            self.mask_queue.queue.clear()
+            raise RuntimeError(
+                f"Mask queue for {self.id!r} is not empty: {self.mask_queue.qsize()=!r}",
+            )
 
         self._rules_thread.join(timeout=1)
 
