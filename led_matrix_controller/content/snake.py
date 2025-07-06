@@ -504,7 +504,7 @@ def generate_food(ca: Snake, target_slice: TargetSlice) -> MaskGen:
         # Pick one at random
         mask[tuple(null_indices[const.RNG.choice(null_indices.shape[0])])] = True
 
-        ca.food_count += 1
+        ca.update_setting("food_count", int(ca.food_count + 1))
 
         return mask
 
