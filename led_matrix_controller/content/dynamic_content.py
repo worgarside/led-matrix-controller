@@ -113,7 +113,12 @@ class DynamicContent(ContentBase[GridView], ABC):
             else self._json_encode(x),
         )
 
-        LOGGER.debug("Sending payload %r to topic %r", payload, setting.mqtt_topic)
+        LOGGER.debug(
+            "Sending payload %r (raw: %r) to topic %r",
+            payload,
+            setting.value,
+            setting.mqtt_topic,
+        )
 
         setting.mqtt_client.publish(
             setting.mqtt_topic,
