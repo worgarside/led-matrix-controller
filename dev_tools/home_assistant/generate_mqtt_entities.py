@@ -132,12 +132,17 @@ def mqtt_select(setting: Setting[Any]) -> None:
 
 
 def mqtt_sensor(setting: Setting[Any]) -> None:
-    unit = setting.unit_of_measurement
+    if setting.type_ in {int, float}:
+        unit = setting.unit_of_measurement
 
-    if not unit:
-        unit = '" "'
-    elif unit == "%":
-        unit = '"%"'
+        if not unit:
+            unit = '" "'
+        elif unit == "%":
+            unit = '"%"'
+
+        uom = f"unit_of_measurement: {unit}"
+    else:
+        uom = ""
 
     yaml = (
         dedent(
@@ -155,7 +160,7 @@ def mqtt_sensor(setting: Setting[Any]) -> None:
 
     unique_id: mtrxpi_{setting.instance.id.replace("-", "_")}_{setting.slug}
 
-    unit_of_measurement: {unit}
+    {uom}
     """,
         ).strip()
         + "\n"

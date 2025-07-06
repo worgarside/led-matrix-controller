@@ -17,7 +17,7 @@ from content.automaton import (
 from utils import const
 from wg_utilities.loggers import get_streaming_logger
 
-from .base import GridView, StateBase
+from .base import GridView, StateBase, StopType
 from .setting import (
     FrequencySetting,
     ParameterSetting,
@@ -68,7 +68,7 @@ class SnakeDirection(enum.Enum):
 class Snake(Automaton):
     """Basic Snake game simulation."""
 
-    QUEUE_SIZE: ClassVar[int] = 0
+    QUEUE_SIZE: ClassVar[int] = 1
 
     TRACK_STATES_DURATION: ClassVar[tuple[int, ...]] = (
         State.HEAD.state,
@@ -89,7 +89,7 @@ class Snake(Automaton):
             icon="mdi:dice-multiple",
             unit_of_measurement="%",
         ),
-    ] = 1 / const.MATRIX_WIDTH
+    ] = 0.05
     """Chance of the snake turning left or right on each tick."""
 
     snake_speed: Annotated[
@@ -101,7 +101,7 @@ class Snake(Automaton):
             icon="mdi:speedometer",
             unit_of_measurement="ticks",
         ),
-    ] = 1
+    ] = 10
     """Speed of the snake."""
 
     snake_length: Annotated[
@@ -133,7 +133,7 @@ class Snake(Automaton):
         current_edge: SnakeDirection | None = None,
     ) -> bool:
         """Change the direction to a random other direction. Chance of change is configurable."""
-        if not force and random.random() >= self.turn_chance:  # noqa: S311
+        if force is False and random.random() >= self.turn_chance:  # noqa: S311
             return False
 
         match current_edge, self.current_direction:
@@ -416,6 +416,8 @@ def update_snake_direction(ca: Snake) -> None:  # noqa: PLR0915, PLR0912, C901
                 )
             else:
                 edge = SnakeDirection.DOWN
+        case _:
+            ca.roll_direction_dice()
 
     if edge and ca.roll_direction_dice(current_edge=edge):
         LOGGER.debug(
@@ -434,7 +436,14 @@ def move_snake_tail(ca: Snake, target_slice: TargetSlice) -> MaskGen:
     def mask_gen(pixels: GridView) -> BooleanMask:
         update_snake_direction(ca)
 
-        return (pixels[target_slice] == State.BODY.state) & (durations >= ca.snake_length)  # type: ignore[no-any-return]
+        body_length = (pixels[target_slice] == State.BODY.state).sum()
+
+        if body_length == 0:
+            ca.stop(StopType.EXPIRED, reset_priority=False)
+
+        return (pixels[target_slice] == State.BODY.state) & (  # type: ignore[no-any-return]
+            durations >= ca.snake_length * ca.snake_speed
+        )
 
     return mask_gen
 
