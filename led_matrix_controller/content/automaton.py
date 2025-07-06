@@ -79,13 +79,17 @@ class Automaton(DynamicContent, ABC):
     TRACK_STATES_DURATION: ClassVar[tuple[int, ...]] = ()
 
     frame_index: int = field(init=False, default=-1)
-    frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False, repr=False)
-    rules: list[Rule] = field(init=False, repr=False)
+    frame_rulesets: tuple[FrameRuleSet, ...] = field(
+        init=False,
+        repr=False,
+        compare=False,
+    )
+    rules: list[Rule] = field(init=False, repr=False, compare=False)
 
-    _rules_thread: Thread = field(init=False, repr=False)
-    mask_queue: Queue[GridView] = field(init=False, repr=False)
+    _rules_thread: Thread = field(init=False, repr=False, compare=False)
+    mask_queue: Queue[GridView] = field(init=False, repr=False, compare=False)
 
-    durations: GridView = field(init=False, repr=False)
+    durations: GridView = field(init=False, repr=False, compare=False)
 
     class OutOfBoundsError(ValueError):
         """Error for when a slice goes out of bounds."""

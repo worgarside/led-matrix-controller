@@ -138,11 +138,14 @@ class Snake(Automaton):
         init=False,
         repr=False,
         default=SnakeDirection.UP,
+        compare=False,
     )
 
     head_location: tuple[int, int] = field(
         init=False,
         repr=False,
+        default=(const.MATRIX_WIDTH // 2, const.MATRIX_HEIGHT // 2),
+        compare=False,
     )
 
     food_generation_freq: Annotated[
