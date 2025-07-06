@@ -37,9 +37,9 @@ class State(StateBase):
     """Enum representing the state of a cell."""
 
     NULL = 0, " "
-    HEAD = 1, "O", (255, 94, 13, 255)
-    BODY = 2, "o", (107, 155, 250, 255)
-    FOOD = 3, "*", (10, 230, 190, 255)
+    HEAD = 1, "O", (62, 97, 42, 255)
+    BODY = 2, "o", (95, 156, 61, 255)
+    FOOD = 3, "*", (201, 134, 10, 255)
 
 
 @enum.unique
