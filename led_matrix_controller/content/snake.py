@@ -238,7 +238,7 @@ class Snake(Automaton):
             for _ in range(5):
                 yield
 
-            if actual_food_count % (actual_food_count // 10) == 0:
+            if (actual_food_count - 1) % 100 == 0:
                 self.update_setting("food_count", actual_food_count - 1)
 
         self.update_setting("snake_length", 1)
