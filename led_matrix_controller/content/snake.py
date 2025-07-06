@@ -213,14 +213,18 @@ class Snake(Automaton):
                 yield
 
         self._stop_rules_thread()
+        self.update_setting("snake_length", 1)
+        self.update_setting("food_count", 0)
 
     def check_food_consumption(self) -> None:
         """Check if the snake has consumed food."""
         actual_food_count = (self.pixels == State.FOOD.state).sum()
-        if actual_food_count < self.food_count:
+
+        if actual_food_count != self.food_count:
+            self.update_setting("food_count", int(actual_food_count))
+
             delta = self.food_count - actual_food_count
 
-            self.update_setting("food_count", int(actual_food_count))
             self.update_setting("snake_length", int(self.snake_length + delta))
 
             if (
@@ -472,15 +476,15 @@ def move_snake_tail(ca: Snake, target_slice: TargetSlice) -> MaskGen:
     durations = ca.durations[target_slice]
 
     def mask_gen(pixels: GridView) -> BooleanMask:
-        sliced_pixels = pixels[target_slice]
-
         ca.update_snake_direction()
         ca.check_food_consumption()
 
-        if (sliced_pixels == State.BODY.state).sum() == 0:
+        body_pixels = pixels[target_slice] == State.BODY.state
+
+        if body_pixels.sum() == 0:
             ca.stop(StopType.EXPIRED)
 
-        return (pixels[target_slice] == State.BODY.state) & (  # type: ignore[no-any-return]
+        return body_pixels & (  # type: ignore[no-any-return]
             durations >= ca.snake_length * ca.snake_speed
         )
 
