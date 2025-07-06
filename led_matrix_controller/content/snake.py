@@ -192,6 +192,8 @@ class Snake(Automaton):
         self.update_setting("snake_length", 1)
         self.update_setting("food_count", 0)
 
+        self.pixels.fill(State.NULL.state)
+
         with contextlib.suppress(queue.Empty):
             self.mask_queue.get(timeout=0.01)
 
