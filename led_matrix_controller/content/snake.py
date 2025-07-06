@@ -499,11 +499,12 @@ def check_food_consumption(ca: Snake, actual_food_count: int) -> None:
     """Check if the snake has consumed food."""
     if actual_food_count < ca.food_count:
         delta = ca.food_count - actual_food_count
-        ca.food_count = actual_food_count
 
-        ca.snake_length += delta
+        ca.settings["food_count"].value = actual_food_count
+        ca.settings["snake_length"].value = ca.snake_length + delta
 
-        ca.high_score = max(ca.snake_length, ca.high_score)
+        if (new_high_score := max(ca.snake_length, ca.high_score)) > ca.high_score:
+            ca.settings["high_score"].value = new_high_score
 
         LOGGER.info(
             "Snake length increased by %d bits (high score: %d)",
