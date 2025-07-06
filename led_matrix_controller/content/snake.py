@@ -248,6 +248,14 @@ class Snake(Automaton):
 
         yield
 
+    def teardown(self) -> Generator[None, None, None]:
+        """Remove all remaining food."""
+        while (food_locs := np.argwhere(self.pixels == State.FOOD.state)).size > 0:
+            idx = tuple(food_locs[const.RNG.integers(food_locs.shape[0])])
+            self.pixels[idx] = State.NULL.state
+            for _ in range(5):
+                yield
+
     def __hash__(self) -> int:
         """Return the hash of the automaton."""
         return hash(self.id)
