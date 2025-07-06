@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import contextlib
 import enum
+import queue
 import random
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Annotated, ClassVar
@@ -186,6 +188,9 @@ class Snake(Automaton):
         """Setup the snake."""
         self.update_setting("snake_length", 1)
         self.update_setting("food_count", 0)
+
+        with contextlib.suppress(queue.Empty):
+            self.mask_queue.get(timeout=0.01)
 
         # Snake has its head in the middle and one body cell either above/below/next to it
         self.head_location = (self.width // 2, self.height // 2)
