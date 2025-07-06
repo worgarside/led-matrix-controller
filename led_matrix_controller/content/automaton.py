@@ -345,6 +345,15 @@ class Automaton(DynamicContent, ABC):
 
         self._rules_thread.join(timeout=1)
 
+        while not self.mask_queue.empty():
+            self.pixels[:, :] = self.mask_queue.get()
+            yield
+
+        if not self.mask_queue.empty():
+            raise RuntimeError(
+                f"Mask queue for {self.id!r} is not empty: {self.mask_queue.qsize()=!r}",
+            )
+
         if self._rules_thread.is_alive() and not self.mask_queue.empty():
             raise RuntimeError(f"Rules thread for {self.id!r} did not stop in time")
 
