@@ -17,7 +17,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     ClassVar,
-    Final,
     Self,
 )
 
@@ -51,8 +50,8 @@ class Direction(IntEnum):
 
 TargetSliceDecVal = slice | int | tuple[int | slice, int | slice]
 TargetSlice = tuple[slice, slice]
-Mask = NDArray[np.bool_]
-MaskGen = Callable[[GridView], Mask]
+BooleanMask = NDArray[np.bool_]
+MaskGen = Callable[[GridView], BooleanMask]
 RuleFunc = Callable[["Automaton", TargetSlice], MaskGen]
 RuleTuple = tuple[
     TargetSlice,
@@ -63,17 +62,19 @@ RuleTuple = tuple[
 ]
 FrameRuleSet = tuple[RuleTuple, ...]
 
-QUEUE_SIZE: Final[int] = int(getenv("AUTOMATON_QUEUE_SIZE", "100"))
-
 
 @dataclass(kw_only=True, slots=True)
 class Automaton(DynamicContent, ABC):
     """Base class for a grid of cells."""
 
+    QUEUE_SIZE: ClassVar[int] = int(getenv("AUTOMATON_QUEUE_SIZE", "100"))
+
     STATE: ClassVar[type[StateBase]]
-    _RULES_SOURCE: ClassVar[list[Rule]] = []
+
+    _RULES_SOURCE: ClassVar[list[Rule]]
+
     if const.DEBUG_MODE:
-        _RULE_FUNCTIONS: ClassVar[list[Callable[..., MaskGen]]] = []
+        _RULE_FUNCTIONS: ClassVar[list[Callable[..., MaskGen]]]
 
     TRACK_STATES_DURATION: ClassVar[tuple[int, ...]] = ()
 
@@ -96,6 +97,13 @@ class Automaton(DynamicContent, ABC):
             self.limit = limit
 
             super().__init__(f"Out of bounds: {current} + {delta} > {limit}")
+
+    def __init_subclass__(cls) -> None:
+        """Initialize any subclass' class variables."""
+        cls._RULES_SOURCE = []
+
+        if const.DEBUG_MODE:
+            cls._RULE_FUNCTIONS = []
 
     def __post_init__(self) -> None:
         """Set the calculated attributes of the Grid."""
@@ -121,7 +129,7 @@ class Automaton(DynamicContent, ABC):
 
         self.setting_update_callback()
 
-        self.mask_queue = Queue(maxsize=QUEUE_SIZE)
+        self.mask_queue = Queue(maxsize=self.QUEUE_SIZE)
 
     def setting_update_callback(self, update_setting: str | None = None) -> None:
         """Pre-calculate the a sequence of mask generators for each frame.
@@ -172,7 +180,8 @@ class Automaton(DynamicContent, ABC):
 
         Args:
             to_state (StateBase): The state to change to.
-            target_slice (TargetSliceDecVal | None, optional): The slice to target. Defaults to entire automaton.
+            target_slice (TargetSliceDecVal | None, optional): The slice to target for the new state. Defaults to \
+                entire automaton.
             frequency (int, optional): The frequency of the rule (in frames). Defaults to 1 (i.e. every frame). If
                 a string is provided, it references the name of a `FrequencySetting`.
             predicate (Callable[[], bool], optional): Optional predicate to determine if the rule should be
@@ -233,7 +242,7 @@ class Automaton(DynamicContent, ABC):
         """Run the simulation for a given number of frames."""
         yield from islice(self, limit)
 
-    def fresh_mask(self) -> Mask:
+    def fresh_mask(self) -> BooleanMask:
         """Return a fresh mask."""
         return self.zeros(dtype=np.bool_)
 
