@@ -478,7 +478,7 @@ def move_snake_tail(ca: Snake, target_slice: TargetSlice) -> MaskGen:
         ca.check_food_consumption()
 
         if (sliced_pixels == State.BODY.state).sum() == 0:
-            ca.stop(StopType.EXPIRED, reset_priority=False)
+            ca.stop(StopType.EXPIRED)
 
         return (pixels[target_slice] == State.BODY.state) & (  # type: ignore[no-any-return]
             durations >= ca.snake_length * ca.snake_speed
