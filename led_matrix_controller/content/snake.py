@@ -223,13 +223,12 @@ class Snake(Automaton):
         if actual_food_count != self.food_count:
             if (delta := self.food_count - actual_food_count) < 1:
                 LOGGER.error(
-                    "Got negative food count delta: %d. Actual=%i",
+                    "Got negative food count delta: %d. CA Food Count=%i, Actual=%i",
                     delta,
+                    self.food_count,
                     actual_food_count,
                 )
                 return
-
-            print("#" * 100, "\n", delta, "\n", "#" * 100)
 
             self.update_setting("snake_length", int(self.snake_length + delta))
 
