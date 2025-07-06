@@ -218,32 +218,26 @@ class Snake(Automaton):
 
     def check_food_consumption(self) -> None:
         """Check if the snake has consumed food."""
-        actual_food_count = (self.pixels == State.FOOD.state).sum()
+        actual_food_count = int((self.pixels == State.FOOD.state).sum())
 
         if actual_food_count != self.food_count:
-            if (delta := self.food_count - actual_food_count) < 1:
-                LOGGER.error(
-                    "Got negative food count delta: %d. CA Food Count=%i, Actual=%i",
+            if (delta := self.food_count - actual_food_count) > 0:
+                # If there's a positive delta, the snake has consumed food
+                self.update_setting("snake_length", self.snake_length + delta)
+
+                if (
+                    new_high_score := max(self.snake_length, self.high_score)
+                ) > self.high_score:
+                    self.update_setting("high_score", new_high_score)
+
+                LOGGER.info(
+                    "Snake length increased by %d bits (high score: %d)",
                     delta,
-                    self.food_count,
-                    actual_food_count,
+                    self.high_score,
                 )
-                return
 
-            self.update_setting("snake_length", int(self.snake_length + delta))
-
-            if (
-                new_high_score := max(self.snake_length, self.high_score)
-            ) > self.high_score:
-                self.update_setting("high_score", int(new_high_score))
-
-            self.update_setting("food_count", int(actual_food_count))
-
-            LOGGER.info(
-                "Snake length increased by %d bits (high score: %d)",
-                delta,
-                self.high_score,
-            )
+            # Update the food count to the actual count, whether it's positive or negative
+            self.update_setting("food_count", actual_food_count)
 
     def roll_direction_dice(  # noqa: C901
         self,
