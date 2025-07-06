@@ -114,7 +114,7 @@ class Snake(Automaton):
             unit_of_measurement="cells",
             ha_read_only=True,
         ),
-    ] = 10
+    ] = 1
 
     current_direction: SnakeDirection = field(
         init=False,
@@ -135,8 +135,20 @@ class Snake(Automaton):
             icon="mdi:food-apple",
             unit_of_measurement="ticks",
         ),
-    ] = 1000
+    ] = 100
     """Frequency of food generation."""
+
+    food_count: Annotated[
+        int,
+        ParameterSetting(
+            minimum=0,
+            maximum=const.MATRIX_WIDTH * const.MATRIX_HEIGHT,
+            icon="mdi:food",
+            unit_of_measurement="bits",
+            ha_read_only=True,
+        ),
+    ] = 0
+    """Number of food cells."""
 
     def roll_direction_dice(  # noqa: C901
         self,
@@ -233,7 +245,8 @@ def move_snake_head_up(ca: Snake, target_slice: TargetSlice) -> MaskGen:
         )
 
         return (pixels[prev_slice] == State.HEAD.state) & (  # type: ignore[no-any-return]
-            pixels[target_slice] == State.NULL.state
+            (pixels[target_slice] == State.NULL.state)
+            | (pixels[target_slice] == State.FOOD.state)
         )
 
     return mask_gen
@@ -259,7 +272,8 @@ def move_snake_head_down(ca: Snake, target_slice: TargetSlice) -> MaskGen:
         )
 
         return (pixels[prev_slice] == State.HEAD.state) & (  # type: ignore[no-any-return]
-            pixels[target_slice] == State.NULL.state
+            (pixels[target_slice] == State.NULL.state)
+            | (pixels[target_slice] == State.FOOD.state)
         )
 
     return mask_gen
@@ -285,7 +299,8 @@ def move_snake_head_left(ca: Snake, target_slice: TargetSlice) -> MaskGen:
         )
 
         return (pixels[right_slice] == State.HEAD.state) & (  # type: ignore[no-any-return]
-            pixels[target_slice] == State.NULL.state
+            (pixels[target_slice] == State.NULL.state)
+            | (pixels[target_slice] == State.FOOD.state)
         )
 
     return mask_gen
@@ -311,7 +326,8 @@ def move_snake_head_right(ca: Snake, target_slice: TargetSlice) -> MaskGen:
         )
 
         return (pixels[left_slice] == State.HEAD.state) & (  # type: ignore[no-any-return]
-            pixels[target_slice] == State.NULL.state
+            (pixels[target_slice] == State.NULL.state)
+            | (pixels[target_slice] == State.FOOD.state)
         )
 
     return mask_gen
@@ -440,17 +456,32 @@ def update_snake_direction(ca: Snake) -> None:  # noqa: PLR0915, PLR0912, C901
         )
 
 
+def check_food_consumption(ca: Snake, actual_food_count: int) -> None:
+    """Check if the snake has consumed food."""
+    if actual_food_count < ca.food_count:
+        delta = ca.food_count - actual_food_count
+        ca.food_count = actual_food_count
+
+        ca.snake_length += delta
+
+        LOGGER.info("Snake length increased by %d bits", delta)
+
+
 @Snake.rule(State.NULL, frequency="snake_speed")
 def move_snake_tail(ca: Snake, target_slice: TargetSlice) -> MaskGen:
     """Move the snake's tail."""
     durations = ca.durations[target_slice]
 
     def mask_gen(pixels: GridView) -> BooleanMask:
+        sliced_pixels = pixels[target_slice]
+
         update_snake_direction(ca)
+        check_food_consumption(
+            ca,
+            actual_food_count=(sliced_pixels == State.FOOD.state).sum(),
+        )
 
-        body_length = (pixels[target_slice] == State.BODY.state).sum()
-
-        if body_length == 0:
+        if (sliced_pixels == State.BODY.state).sum() == 0:
             ca.stop(StopType.EXPIRED, reset_priority=False)
 
         return (pixels[target_slice] == State.BODY.state) & (  # type: ignore[no-any-return]
@@ -461,7 +492,7 @@ def move_snake_tail(ca: Snake, target_slice: TargetSlice) -> MaskGen:
 
 
 @Snake.rule(State.FOOD, frequency="food_generation_freq")
-def generate_food(_: Snake, target_slice: TargetSlice) -> MaskGen:
+def generate_food(ca: Snake, target_slice: TargetSlice) -> MaskGen:
     """Generate a single food cell at a random location."""
 
     def mask_gen(pixels: GridView) -> BooleanMask:
@@ -472,6 +503,8 @@ def generate_food(_: Snake, target_slice: TargetSlice) -> MaskGen:
 
         # Pick one at random
         mask[tuple(null_indices[const.RNG.choice(null_indices.shape[0])])] = True
+
+        ca.food_count += 1
 
         return mask
 
