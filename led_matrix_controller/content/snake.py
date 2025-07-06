@@ -69,8 +69,6 @@ class SnakeDirection(enum.Enum):
 class Snake(Automaton):
     """Basic Snake game simulation."""
 
-    QUEUE_SIZE: ClassVar[int] = 20
-
     TRACK_STATES_DURATION: ClassVar[tuple[int, ...]] = (
         State.HEAD.state,
         State.BODY.state,
