@@ -150,6 +150,7 @@ class Snake(Automaton):
             maximum=10000,
             icon="mdi:food-apple",
             unit_of_measurement="ticks",
+            invoke_settings_callback=True,
         ),
     ] = 100
     """Frequency of food generation."""
