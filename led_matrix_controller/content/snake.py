@@ -224,35 +224,36 @@ class Snake(Automaton):
         """Remove all remaining food."""
         yield from self._stop_rules_thread()
 
-        # Remove all remaining head/body cells at once
-        self.pixels[
-            (self.pixels == State.HEAD.state) | (self.pixels == State.BODY.state)
-        ] = State.NULL.state
+        if self.stop_reason == StopType.EXPIRED:
+            # Remove all remaining head/body cells at once
+            self.pixels[
+                (self.pixels == State.HEAD.state) | (self.pixels == State.BODY.state)
+            ] = State.NULL.state
 
-        while (
-            actual_food_count := (
-                food_locs := np.argwhere(self.pixels == State.FOOD.state)
-            ).size
-        ) > 0:
-            self.pixels[tuple(food_locs[const.RNG.integers(food_locs.shape[0])])] = (
-                State.NULL.state
+            while (
+                actual_food_count := (
+                    food_locs := np.argwhere(self.pixels == State.FOOD.state)
+                ).size
+            ) > 0:
+                self.pixels[tuple(food_locs[const.RNG.integers(food_locs.shape[0])])] = (
+                    State.NULL.state
+                )
+
+                for _ in range(5):
+                    yield
+
+                if (actual_food_count - 1) % 100 == 0:
+                    self.update_setting("food_count", actual_food_count - 1)
+
+            self.update_setting("snake_length", 1)
+            self.update_setting("food_count", actual_food_count)
+
+            LOGGER.info(
+                "Snake teardown complete with length=%d, food_count=%d, queue size=%d",
+                self.snake_length,
+                self.food_count,
+                self.mask_queue.qsize(),
             )
-
-            for _ in range(5):
-                yield
-
-            if (actual_food_count - 1) % 100 == 0:
-                self.update_setting("food_count", actual_food_count - 1)
-
-        self.update_setting("snake_length", 1)
-        self.update_setting("food_count", actual_food_count)
-
-        LOGGER.info(
-            "Snake teardown complete with length=%d, food_count=%d, queue size=%d",
-            self.snake_length,
-            self.food_count,
-            self.mask_queue.qsize(),
-        )
 
         yield
 
