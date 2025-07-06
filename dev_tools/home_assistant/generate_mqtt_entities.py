@@ -29,6 +29,10 @@ def titleify(slug: str) -> str:
     return slug.replace("-", " ").replace("_", " ").title()
 
 
+def mqtt_binary_sensor(setting: Setting[bool]) -> None:
+    raise NotImplementedError("Binary sensors are not supported yet")
+
+
 def mqtt_number(setting: Setting[int] | Setting[float]) -> None:
     unit = setting.unit_of_measurement
 
@@ -127,6 +131,48 @@ def mqtt_select(setting: Setting[Any]) -> None:
     file_path.write_text(yaml)
 
 
+def mqtt_sensor(setting: Setting[Any]) -> None:
+    unit = setting.unit_of_measurement
+
+    if not unit:
+        unit = '" "'
+    elif unit == "%":
+        unit = '"%"'
+
+    yaml = (
+        dedent(
+            f"""
+    ---
+    force_update: true
+
+    icon: {setting.icon}
+
+    name: "MtrxPi | {titleify(setting.instance.id)}: {titleify(setting.slug)}"
+
+    state_class: measurement
+
+    state_topic: {setting.mqtt_topic}
+
+    unique_id: mtrxpi_{setting.instance.id.replace("-", "_")}_{setting.slug}
+
+    unit_of_measurement: {unit}
+    """,
+        ).strip()
+        + "\n"
+    )
+
+    file_path = MQTT_DIR.joinpath(
+        "sensor",
+        "mtrxpi",
+        setting.instance.id.replace("-", "_"),
+        setting.slug,
+    ).with_suffix(".yaml")
+
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    file_path.write_text(yaml)
+
+
 def mqtt_switch(setting: Setting[bool]) -> None:
     yaml = (
         dedent(
@@ -208,12 +254,17 @@ def mqtt_text(setting: Setting[str]) -> None:
 
 def main() -> None:
     for setting in get_all_settings():
-        if setting.type_ in {int, float}:
+        if setting.type_ is bool:
+            if setting.ha_read_only:
+                mqtt_binary_sensor(setting)
+            else:
+                mqtt_switch(setting)
+        elif setting.ha_read_only:
+            mqtt_sensor(setting)
+        elif setting.type_ in {int, float}:
             mqtt_number(setting)
         elif issubclass(setting.type_, StrEnum):
             mqtt_select(setting)
-        elif setting.type_ is bool:
-            mqtt_switch(setting)
         elif setting.type_ is str:
             mqtt_text(setting)
         else:

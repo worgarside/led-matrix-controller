@@ -111,6 +111,7 @@ class Snake(Automaton):
             maximum=const.MATRIX_WIDTH * const.MATRIX_HEIGHT,
             icon="mdi:snake",
             unit_of_measurement="cells",
+            ha_read_only=True,
         ),
     ] = 10
 
