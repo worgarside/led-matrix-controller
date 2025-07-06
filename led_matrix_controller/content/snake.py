@@ -182,16 +182,16 @@ class Snake(Automaton):
         """Post-initialization."""
         super(Snake, self).__post_init__()
 
-        self.update_setting("snake_length", 1)
-        self.update_setting("food_count", 0)
-
     def setup(self) -> Generator[None, None, None]:
         """Setup the snake."""
         self.update_setting("snake_length", 1)
+        self.update_setting("food_count", 0)
 
         # Snake has its head in the middle and one body cell either above/below/next to it
         self.head_location = (self.width // 2, self.height // 2)
         self.pixels[self.head_location] = State.HEAD.state
+
+        yield
 
         self.roll_direction_dice(force=True)
 
@@ -215,6 +215,11 @@ class Snake(Automaton):
     def teardown(self) -> Generator[None, None, None]:
         """Remove all remaining food."""
         yield from self._stop_rules_thread()
+
+        # Remove all remaining head/body cells at once
+        self.pixels[
+            (self.pixels == State.HEAD.state) | (self.pixels == State.BODY.state)
+        ] = State.NULL.state
 
         while (
             actual_food_count := (

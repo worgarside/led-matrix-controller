@@ -84,8 +84,6 @@ class Automaton(DynamicContent, ABC):
 
     _rules_thread: Thread = field(init=False, repr=False)
     mask_queue: Queue[GridView] = field(init=False, repr=False)
-    _too_many_rulesets: bool = field(init=False, repr=False, default=False)
-    """If there are more rulesets than the queue size, the queue will fill up and block the rules thread."""
 
     durations: GridView = field(init=False, repr=False)
 
@@ -174,8 +172,6 @@ class Automaton(DynamicContent, ABC):
                 "[%s] Rulesets are longer than the queue size. This may cause the queue to fill up and block the rules thread.",  # noqa: E501
                 self.id,
             )
-
-            self._too_many_rulesets = True
 
     @classmethod
     def rule(
@@ -274,9 +270,6 @@ class Automaton(DynamicContent, ABC):
 
         while self.active:
             for ruleset in self.frame_rulesets:
-                if not self.active and self._too_many_rulesets:
-                    break
-
                 # Generate masks
                 masks = tuple(
                     (target_slice, mask_gen(pixels), state, rand_mult)
@@ -341,16 +334,12 @@ class Automaton(DynamicContent, ABC):
         self.active = False
 
         # Clear the backlog of pending `put` calls - clearing the queue is not sufficient
-        count = 0
         while self._rules_thread.is_alive() and not self.mask_queue.empty():
+            self.pixels[:, :] = self.mask_queue.get()
             yield
 
         if not self.mask_queue.empty():
-            count += self.mask_queue.qsize()
             self.mask_queue.queue.clear()
-
-        if count > 0:
-            LOGGER.warning("Cleared %i frames from the mask queue", count)
 
         self._rules_thread.join(timeout=1)
 
