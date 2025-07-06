@@ -69,7 +69,7 @@ class SnakeDirection(enum.Enum):
 class Snake(Automaton):
     """Basic Snake game simulation."""
 
-    QUEUE_SIZE: ClassVar[int] = 1
+    QUEUE_SIZE: ClassVar[int] = 100
 
     TRACK_STATES_DURATION: ClassVar[tuple[int, ...]] = (
         State.HEAD.state,
@@ -92,6 +92,22 @@ class Snake(Automaton):
         ),
     ] = 0.05
     """Chance of the snake turning left or right on each tick."""
+
+    turn_cooldown: Annotated[
+        int,
+        ParameterSetting(
+            minimum=0,
+            maximum=const.MATRIX_WIDTH,
+            icon="mdi:timer-sand",
+            unit_of_measurement="ticks",
+        ),
+    ] = 16
+    """Number of ticks before the snake can turn again.
+
+    Prevents the snake from turning into itself too often.
+    """
+
+    last_turn_tick: int = field(init=False, repr=False, default=0)
 
     snake_speed: Annotated[
         int,
@@ -150,6 +166,17 @@ class Snake(Automaton):
     ] = 0
     """Number of food cells."""
 
+    high_score: Annotated[
+        int,
+        ParameterSetting(
+            minimum=0,
+            maximum=const.MATRIX_WIDTH * const.MATRIX_HEIGHT,
+            icon="mdi:trophy",
+            unit_of_measurement="bits",
+            ha_read_only=True,
+        ),
+    ] = 0
+
     def roll_direction_dice(  # noqa: C901
         self,
         *,
@@ -192,7 +219,10 @@ class Snake(Automaton):
                     f"Invalid edge/direction: {current_edge}/{self.current_direction}",
                 )
 
+        self.last_turn_tick = self.frame_index
+
         LOGGER.info("New direction: %s", self.current_direction)
+
         return True
 
     def setup(self) -> Generator[None, None, None]:
@@ -348,6 +378,10 @@ def update_snake_direction(ca: Snake) -> None:  # noqa: PLR0915, PLR0912, C901
     """Update the snake's direction based on its location."""
     prev_direction = ca.current_direction
     edge = None
+    cooled_down = ca.frame_index - ca.last_turn_tick >= (
+        ca.turn_cooldown * ca.snake_speed
+    )
+
     match ca.head_location:
         case (0, 0):  # Top-left corner
             if ca.current_direction == SnakeDirection.UP:
@@ -404,6 +438,7 @@ def update_snake_direction(ca: Snake) -> None:  # noqa: PLR0915, PLR0912, C901
                     "Forced turn to UP from %s in bottom-right corner",
                     prev_direction,
                 )
+
         case (_, 0):  # Left edge
             if ca.current_direction == SnakeDirection.LEFT:
                 ca.roll_direction_dice(force=True)
@@ -414,6 +449,7 @@ def update_snake_direction(ca: Snake) -> None:  # noqa: PLR0915, PLR0912, C901
                 )
             else:
                 edge = SnakeDirection.LEFT
+
         case (_, 63):  # Right edge
             if ca.current_direction == SnakeDirection.RIGHT:
                 ca.roll_direction_dice(force=True)
@@ -424,6 +460,7 @@ def update_snake_direction(ca: Snake) -> None:  # noqa: PLR0915, PLR0912, C901
                 )
             else:
                 edge = SnakeDirection.RIGHT
+
         case (0, _):  # Top edge
             if ca.current_direction == SnakeDirection.UP:
                 ca.roll_direction_dice(force=True)
@@ -434,6 +471,7 @@ def update_snake_direction(ca: Snake) -> None:  # noqa: PLR0915, PLR0912, C901
                 )
             else:
                 edge = SnakeDirection.UP
+
         case (63, _):  # Bottom edge
             if ca.current_direction == SnakeDirection.DOWN:
                 ca.roll_direction_dice(force=True)
@@ -444,10 +482,11 @@ def update_snake_direction(ca: Snake) -> None:  # noqa: PLR0915, PLR0912, C901
                 )
             else:
                 edge = SnakeDirection.DOWN
-        case _:
+
+        case _ if cooled_down:
             ca.roll_direction_dice()
 
-    if edge and ca.roll_direction_dice(current_edge=edge):
+    if cooled_down and edge and ca.roll_direction_dice(current_edge=edge):
         LOGGER.debug(
             "Randomly turned to %s from %s on edge %s",
             ca.current_direction,
@@ -464,7 +503,13 @@ def check_food_consumption(ca: Snake, actual_food_count: int) -> None:
 
         ca.snake_length += delta
 
-        LOGGER.info("Snake length increased by %d bits", delta)
+        ca.high_score = max(ca.snake_length, ca.high_score)
+
+        LOGGER.info(
+            "Snake length increased by %d bits (high score: %d)",
+            delta,
+            ca.high_score,
+        )
 
 
 @Snake.rule(State.NULL, frequency="snake_speed")
