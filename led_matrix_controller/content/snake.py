@@ -228,7 +228,8 @@ class Snake(Automaton):
             for _ in range(5):
                 yield
 
-            self.update_setting("food_count", actual_food_count - 1)
+            if actual_food_count % 10 == 0:
+                self.update_setting("food_count", actual_food_count - 1)
 
         self.update_setting("snake_length", 1)
         self.update_setting("food_count", actual_food_count)
@@ -247,8 +248,8 @@ class Snake(Automaton):
         actual_food_count = int((self.pixels == State.FOOD.state).sum())
 
         if actual_food_count != self.food_count:
-            if (delta := self.food_count - actual_food_count) > 0 and self.active:
-                # If there's a positive delta, the snake has consumed food
+            if (delta := self.food_count - actual_food_count) == 1 and self.active:
+                # If there's a positive delta of 1, the snake has consumed food
                 self.update_setting("snake_length", self.snake_length + delta)
 
                 if (
@@ -261,6 +262,8 @@ class Snake(Automaton):
                     delta,
                     self.high_score,
                 )
+            else:
+                LOGGER.warning("Food count changed by %d bits", delta)
 
             # Update the food count to the actual count, whether it's positive or negative
             self.update_setting("food_count", actual_food_count)
