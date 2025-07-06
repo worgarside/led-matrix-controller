@@ -222,9 +222,9 @@ class Snake(Automaton):
 
     def teardown(self) -> Generator[None, None, None]:
         """Remove all remaining food."""
-        yield from self._stop_rules_thread()
-
         if self.stop_reason == StopType.EXPIRED:
+            yield from self._stop_rules_thread()
+
             # Remove all remaining head/body cells at once
             self.pixels[
                 (self.pixels == State.HEAD.state) | (self.pixels == State.BODY.state)
