@@ -146,7 +146,7 @@ class Snake(Automaton):
     food_generation_freq: Annotated[
         int,
         FrequencySetting(
-            minimum=100,
+            minimum=1,
             maximum=10000,
             icon="mdi:food-apple",
             unit_of_measurement="ticks",
