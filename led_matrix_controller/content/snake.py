@@ -221,8 +221,6 @@ class Snake(Automaton):
 
         self.last_turn_tick = self.frame_index
 
-        LOGGER.info("New direction: %s", self.current_direction)
-
         return True
 
     def setup(self) -> Generator[None, None, None]:
@@ -442,11 +440,11 @@ def check_food_consumption(ca: Snake, actual_food_count: int) -> None:
     if actual_food_count < ca.food_count:
         delta = ca.food_count - actual_food_count
 
-        ca.settings["food_count"].value = actual_food_count
-        ca.settings["snake_length"].value = ca.snake_length + delta
+        ca.update_setting("food_count", actual_food_count)
+        ca.update_setting("snake_length", ca.snake_length + delta)
 
         if (new_high_score := max(ca.snake_length, ca.high_score)) > ca.high_score:
-            ca.settings["high_score"].value = new_high_score
+            ca.update_setting("high_score", new_high_score)
 
         LOGGER.info(
             "Snake length increased by %d bits (high score: %d)",
