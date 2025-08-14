@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import enum
 import queue
 import random
@@ -110,6 +109,8 @@ class Snake(Automaton):
     """
 
     last_turn_tick: int = field(init=False, repr=False, default=0)
+    _last_head_move_frame: int = field(init=False, repr=False, default=-1)
+    _last_tail_update_frame: int = field(init=False, repr=False, default=-1)
 
     snake_speed: Annotated[
         int,
@@ -190,10 +191,14 @@ class Snake(Automaton):
 
         self.pixels.fill(State.NULL.state)
 
-        with contextlib.suppress(queue.Empty):
-            self.mask_queue.get(timeout=0.01)
+        # Clear any existing masks in the queue
+        while not self.mask_queue.empty():
+            try:
+                self.mask_queue.get_nowait()
+            except queue.Empty:
+                break
 
-        # Snake has its head in the middle and one body cell either above/below/next to it
+        # Snake has its head in the middle
         self.head_location = (self.width // 2, self.height // 2)
         self.pixels[self.head_location] = State.HEAD.state
 
@@ -203,6 +208,7 @@ class Snake(Automaton):
 
         LOGGER.info("Initial direction: %s", self.current_direction)
 
+        # Place body segment behind the head based on direction
         if self.current_direction.is_vertical:
             body_location = (
                 self.head_location[0] - self.current_direction.translation_direction,
@@ -214,7 +220,11 @@ class Snake(Automaton):
                 self.head_location[1] - self.current_direction.translation_direction,
             )
 
-        self.pixels[body_location] = State.BODY.state
+        # Ensure body location is within bounds
+        if 0 <= body_location[0] < self.height and 0 <= body_location[1] < self.width:
+            self.pixels[body_location] = State.BODY.state
+        else:
+            LOGGER.warning("Body location %s out of bounds, skipping", body_location)
 
         yield
 
@@ -228,23 +238,15 @@ class Snake(Automaton):
                 (self.pixels == State.HEAD.state) | (self.pixels == State.BODY.state)
             ] = State.NULL.state
 
-            while (
-                actual_food_count := (
-                    food_locs := np.argwhere(self.pixels == State.FOOD.state)
-                ).size
-            ) > 0:
-                self.pixels[tuple(food_locs[const.RNG.integers(food_locs.shape[0])])] = (
-                    State.NULL.state
-                )
+            # More efficient food removal - remove all food at once
+            food_mask = self.pixels == State.FOOD.state
+            actual_food_count = int(food_mask.sum())
 
-                for _ in range(5):
-                    yield
-
-                if (actual_food_count - 1) % 100 == 0:
-                    self.update_setting("food_count", actual_food_count - 1)
+            if actual_food_count > 0:
+                self.pixels[food_mask] = State.NULL.state
+                self.update_setting("food_count", 0)
 
             self.update_setting("snake_length", 1)
-            self.update_setting("food_count", actual_food_count)
 
             LOGGER.info(
                 "Snake teardown complete with length=%d, food_count=%d, queue size=%d",
@@ -260,8 +262,10 @@ class Snake(Automaton):
         actual_food_count = int((self.pixels == State.FOOD.state).sum())
 
         if actual_food_count != self.food_count:
-            if (delta := self.food_count - actual_food_count) == 1 and self.active:
-                # If there's a positive delta of 1, the snake has consumed food
+            delta = self.food_count - actual_food_count
+
+            if delta > 0 and self.active:
+                # Snake has consumed food
                 self.update_setting("snake_length", self.snake_length + delta)
 
                 if (
@@ -274,10 +278,14 @@ class Snake(Automaton):
                     delta,
                     self.high_score,
                 )
+            elif delta < 0:
+                # Food was added (normal during food generation)
+                LOGGER.debug("Food count increased by %d bits", -delta)
             else:
-                LOGGER.warning("Food count changed by %d bits", delta)
+                # This shouldn't happen - delta should be non-zero if counts differ
+                LOGGER.warning("Food count changed unexpectedly by %d bits", delta)
 
-            # Update the food count to the actual count, whether it's positive or negative
+            # Update the food count to the actual count
             self.update_setting("food_count", actual_food_count)
 
     def roll_direction_dice(  # noqa: C901
@@ -333,6 +341,21 @@ class Snake(Automaton):
             self.turn_cooldown * self.snake_speed
         )
 
+        # Get matrix dimensions
+        max_row = self.height - 1
+        max_col = self.width - 1
+
+        # Ensure head location is within bounds
+        if not (
+            0 <= self.head_location[0] <= max_row
+            and 0 <= self.head_location[1] <= max_col
+        ):
+            LOGGER.warning(
+                "Head location %s out of bounds, resetting to center", self.head_location,
+            )
+            self.head_location = (self.width // 2, self.height // 2)
+            return
+
         match self.head_location:
             case (0, 0):  # Top-left corner
                 if self.current_direction == SnakeDirection.UP:
@@ -340,19 +363,19 @@ class Snake(Automaton):
                 elif self.current_direction == SnakeDirection.LEFT:
                     self.current_direction = SnakeDirection.DOWN
 
-            case (0, 63):  # Top-right corner
+            case (0, max_col):  # Top-right corner
                 if self.current_direction == SnakeDirection.UP:
                     self.current_direction = SnakeDirection.LEFT
                 elif self.current_direction == SnakeDirection.RIGHT:
                     self.current_direction = SnakeDirection.DOWN
 
-            case (63, 0):  # Bottom-left corner
+            case (max_row, 0):  # Bottom-left corner
                 if self.current_direction == SnakeDirection.DOWN:
                     self.current_direction = SnakeDirection.RIGHT
                 elif self.current_direction == SnakeDirection.LEFT:
                     self.current_direction = SnakeDirection.UP
 
-            case (63, 63):  # Bottom-right corner
+            case (max_row, max_col):  # Bottom-right corner
                 if self.current_direction == SnakeDirection.DOWN:
                     self.current_direction = SnakeDirection.LEFT
                 elif self.current_direction == SnakeDirection.RIGHT:
@@ -364,7 +387,7 @@ class Snake(Automaton):
                 else:
                     edge = SnakeDirection.LEFT
 
-            case (_, 63):  # Right edge
+            case (_, max_col):  # Right edge
                 if self.current_direction == SnakeDirection.RIGHT:
                     self.roll_direction_dice(force=True)
                 else:
@@ -376,7 +399,7 @@ class Snake(Automaton):
                 else:
                     edge = SnakeDirection.UP
 
-            case (63, _):  # Bottom edge
+            case (max_row, _):  # Bottom edge
                 if self.current_direction == SnakeDirection.DOWN:
                     self.roll_direction_dice(force=True)
                 else:
@@ -387,6 +410,38 @@ class Snake(Automaton):
 
         if cooled_down and edge:
             self.roll_direction_dice(current_edge=edge)
+
+    def validate_snake_state(self) -> bool:
+        """Validate that the snake's state is consistent."""
+        # Check that head location is within bounds
+        if not (
+            0 <= self.head_location[0] < self.height
+            and 0 <= self.head_location[1] < self.width
+        ):
+            LOGGER.error("Head location %s out of bounds", self.head_location)
+            return False
+
+        # Check that there's exactly one head
+        head_count = int((self.pixels == State.HEAD.state).sum())
+        if head_count != 1:
+            LOGGER.error("Expected 1 head, found %d", head_count)
+            return False
+
+        # Check that head is at the recorded location
+        if self.pixels[self.head_location] != State.HEAD.state:
+            LOGGER.error("Head not found at recorded location %s", self.head_location)
+            return False
+
+        # Check that snake length is reasonable
+        if self.snake_length < 1 or self.snake_length > self.width * self.height:
+            LOGGER.error("Invalid snake length: %d", self.snake_length)
+            return False
+
+        return True
+
+    def check_self_collision(self, new_head_location: tuple[int, int]) -> bool:
+        """Check if the new head location collides with the snake's body."""
+        return new_head_location in self.pixels
 
     def __hash__(self) -> int:
         """Return the hash of the automaton."""
@@ -407,10 +462,17 @@ def move_snake_head_up(ca: Snake, target_slice: TargetSlice) -> MaskGen:
     )
 
     def mask_gen(pixels: GridView) -> BooleanMask:
-        ca.head_location = (
+        new_head_location = (
             ca.head_location[0] + SnakeDirection.UP.translation_direction,
             ca.head_location[1],
         )
+
+        # Check for self-collision
+        if ca.check_self_collision(new_head_location):
+            ca.stop(StopType.EXPIRED)
+            return np.zeros_like(pixels[target_slice], dtype=bool)
+
+        ca.head_location = new_head_location
 
         return (pixels[prev_slice] == State.HEAD.state) & (  # type: ignore[no-any-return]
             (pixels[target_slice] == State.NULL.state)
@@ -434,10 +496,17 @@ def move_snake_head_down(ca: Snake, target_slice: TargetSlice) -> MaskGen:
     )
 
     def mask_gen(pixels: GridView) -> BooleanMask:
-        ca.head_location = (
+        new_head_location = (
             ca.head_location[0] + SnakeDirection.DOWN.translation_direction,
             ca.head_location[1],
         )
+
+        # Check for self-collision
+        if ca.check_self_collision(new_head_location):
+            ca.stop(StopType.EXPIRED)
+            return np.zeros_like(pixels[target_slice], dtype=bool)
+
+        ca.head_location = new_head_location
 
         return (pixels[prev_slice] == State.HEAD.state) & (  # type: ignore[no-any-return]
             (pixels[target_slice] == State.NULL.state)
@@ -461,10 +530,17 @@ def move_snake_head_left(ca: Snake, target_slice: TargetSlice) -> MaskGen:
     )
 
     def mask_gen(pixels: GridView) -> BooleanMask:
-        ca.head_location = (
+        new_head_location = (
             ca.head_location[0],
             ca.head_location[1] + SnakeDirection.LEFT.translation_direction,
         )
+
+        # Check for self-collision
+        if ca.check_self_collision(new_head_location):
+            ca.stop(StopType.EXPIRED)
+            return np.zeros_like(pixels[target_slice], dtype=bool)
+
+        ca.head_location = new_head_location
 
         return (pixels[right_slice] == State.HEAD.state) & (  # type: ignore[no-any-return]
             (pixels[target_slice] == State.NULL.state)
@@ -488,10 +564,17 @@ def move_snake_head_right(ca: Snake, target_slice: TargetSlice) -> MaskGen:
     )
 
     def mask_gen(pixels: GridView) -> BooleanMask:
-        ca.head_location = (
+        new_head_location = (
             ca.head_location[0],
             ca.head_location[1] + SnakeDirection.RIGHT.translation_direction,
         )
+
+        # Check for self-collision
+        if ca.check_self_collision(new_head_location):
+            ca.stop(StopType.EXPIRED)
+            return np.zeros_like(pixels[target_slice], dtype=bool)
+
+        ca.head_location = new_head_location
 
         return (pixels[left_slice] == State.HEAD.state) & (  # type: ignore[no-any-return]
             (pixels[target_slice] == State.NULL.state)
@@ -518,13 +601,18 @@ def move_snake_tail(ca: Snake, target_slice: TargetSlice) -> MaskGen:
     durations = ca.durations[target_slice]
 
     def mask_gen(pixels: GridView) -> BooleanMask:
-        ca.update_snake_direction()
-        ca.check_food_consumption()
+        # Only update direction and check food consumption once per frame
+        if ca.frame_index != getattr(ca, "_last_tail_update_frame", -1):
+            ca.update_snake_direction()
+            ca.check_food_consumption()
+            ca._last_tail_update_frame = ca.frame_index
 
         body_pixels = pixels[target_slice] == State.BODY.state
 
+        # Check if snake has no body segments (game over condition)
         if body_pixels.sum() == 0 and ca.active:
             ca.stop(StopType.EXPIRED)
+            return np.zeros_like(pixels[target_slice], dtype=bool)
 
         return body_pixels & (  # type: ignore[no-any-return]
             durations >= ca.snake_length * ca.snake_speed
@@ -533,19 +621,31 @@ def move_snake_tail(ca: Snake, target_slice: TargetSlice) -> MaskGen:
     return mask_gen
 
 
-@Snake.rule(State.FOOD, frequency="food_generation_freq")
+@Snake.rule(State.NULL, frequency="food_generation_freq")
 def generate_food(ca: Snake, target_slice: TargetSlice) -> MaskGen:
     """Generate a single food cell at a random location."""
 
     def mask_gen(pixels: GridView) -> BooleanMask:
         # Find all NULL cells in the target_slice
         target_pixels = pixels[target_slice]
-        null_indices = np.argwhere(target_pixels == State.NULL.state)
-        mask = np.zeros_like(target_pixels, dtype=bool)
+        null_mask = target_pixels == State.NULL.state
+
+        # Only generate food if there are available NULL cells
+        if not null_mask.any():
+            return np.zeros_like(target_pixels, dtype=bool)
+
+        # Get indices of NULL cells
+        null_indices = np.argwhere(null_mask)
 
         # Pick one at random
-        mask[tuple(null_indices[const.RNG.choice(null_indices.shape[0])])] = True
+        chosen_index = const.RNG.choice(null_indices.shape[0])
+        chosen_pos = tuple(null_indices[chosen_index])
 
+        # Create mask for the chosen position
+        mask = np.zeros_like(target_pixels, dtype=bool)
+        mask[chosen_pos] = True
+
+        # Update food count
         ca.update_setting("food_count", int(ca.food_count + 1))
 
         return mask
