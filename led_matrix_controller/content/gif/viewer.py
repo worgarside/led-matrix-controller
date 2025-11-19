@@ -58,7 +58,7 @@ class GifViewer(PreDefinedContent):
         https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/bindings/python/samples/gif-viewer.py
         """
         canvases: list[mtrx.Canvas] = []
-        for frame_index in range(self.canvas_count):
+        for frame_index in range(self.image.n_frames):
             self.image.seek(frame_index)
 
             canvas = new_canvas(self.image)
