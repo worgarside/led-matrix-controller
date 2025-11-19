@@ -25,7 +25,7 @@ scipy-stubs = "^1.14.1.5"
 
 [tool.poetry.group.test.dependencies]
 pytest-codspeed = "^3.1.0"
-pytest-env = "^1.1.5"
+pytest-env = "^1.2.0"
 pytest-cov = "^6.2.1"
 pytest-xdist = "^3.8.0"
 
