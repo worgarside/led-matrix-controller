@@ -101,7 +101,7 @@ class Clock(DynamicContent):
         self.y_pos = int((const.MATRIX_HEIGHT - self.height) / 2)
 
     def refresh_content(self) -> Generator[None, None, None]:
-        """Refresh the content."""
+        """Refreshes the content."""
         prev_str = ""
         while self.active:
             now_str = self.now_str()

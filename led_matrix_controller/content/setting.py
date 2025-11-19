@@ -114,6 +114,8 @@ class Setting(Generic[S]):
     icon: str
     unit_of_measurement: str | None = None
     display_mode: Literal["box", "slider"] = "box"
+    ha_read_only: bool = False
+    """Whether the setting is read-only in Home Assistant."""
 
     matrix: Matrix = field(init=False, repr=False)
 

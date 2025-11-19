@@ -14,6 +14,7 @@ from content import (
     ImageViewer,
     NowPlaying,
     RainingGrid,
+    Snake,
     Sorter,
 )
 from models import Matrix
@@ -36,6 +37,7 @@ def get_library() -> tuple[ContentBase[Any], ...]:
         NowPlaying(),
         RainingGrid(),
         Sorter(),
+        Snake(),
         AudioVisualiser(),
     )
 
@@ -48,21 +50,20 @@ def main() -> None:
     library = get_library()
 
     works_with: dict[type[ContentBase[Any]], set[type[ContentBase[Any]]]] = {
-        Clock: {RainingGrid, Sorter, NowPlaying, AudioVisualiser},
+        Clock: {RainingGrid, Sorter, NowPlaying, AudioVisualiser, Snake},
         GifViewer: set(),
         ImageViewer: set(),
         NowPlaying: {Clock},
         RainingGrid: {Clock},
         Sorter: {Clock},
         AudioVisualiser: {Clock},
+        Snake: {Clock},
     }
 
     Matrix(
         mqtt_client=mqtt_client,
         content_works_with=works_with,
-    ).register_content(
-        *library,
-    )
+    ).register_content(*library)
 
     mqtt_client.loop_forever()
 

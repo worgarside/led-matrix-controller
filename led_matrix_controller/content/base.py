@@ -19,6 +19,7 @@ from typing import (
     ClassVar,
     Generic,
     Literal,
+    Self,
     final,
 )
 
@@ -30,7 +31,7 @@ from utils import const, mtrx
 from utils.helpers import camel_to_kebab_case
 from wg_utilities.loggers import get_streaming_logger
 
-from .setting import TransitionableParameterSetting
+from .setting import ParameterSetting, Setting, TransitionableParameterSetting
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Generator, Iterator
@@ -174,6 +175,28 @@ class ContentBase(ABC, Generic[ContentType]):
         ),
     ] = 0
 
+    settings: dict[str, Setting[Any]] = field(default_factory=dict)
+
+    iterations_remaining: Annotated[
+        int,
+        ParameterSetting(
+            minimum=0,
+            maximum=100,
+            icon="mdi:counter",
+            unit_of_measurement="iterations",
+        ),
+    ] = 1
+
+    iterations: Annotated[
+        int,
+        ParameterSetting(
+            minimum=0,
+            maximum=100,
+            icon="mdi:counter",
+            unit_of_measurement="iterations",
+        ),
+    ] = 5
+
     id_override: str | None = None
     priority: float = const.MAX_PRIORITY
 
@@ -192,6 +215,8 @@ class ContentBase(ABC, Generic[ContentType]):
             raise ValueError(f"Content with ID `{self.id}` already exists")
 
         _CONTENT_STORE[self.id] = self
+
+        self.iterations_remaining = self.iterations
 
     @staticmethod
     def get(content_id: str) -> ContentBase[ContentType]:
@@ -248,6 +273,43 @@ class ContentBase(ABC, Generic[ContentType]):
             self.priority = const.MAX_PRIORITY
 
         LOGGER.info("Stopped content with ID `%s`: %r", self.id, stop_type)
+
+    def update_setting(
+        self,
+        slug: str,
+        value: Any,
+        *,
+        invoke_callback: bool = False,
+    ) -> Self:
+        """Update a setting."""
+        setting = self.settings[slug]
+
+        setting.value = value
+
+        payload = dumps(
+            setting.value,
+            default=lambda x: x.id
+            if isinstance(x, ContentBase)
+            else self._json_encode(x),
+        )
+
+        LOGGER.debug(
+            "Sending payload %r (raw: %r) to topic %r",
+            payload,
+            setting.value,
+            setting.mqtt_topic,
+        )
+
+        setting.mqtt_client.publish(
+            setting.mqtt_topic,
+            payload,
+            retain=True,
+        )
+
+        if invoke_callback:
+            self.setting_update_callback(update_setting=slug)
+
+        return self
 
     @final
     def validate_setup(self) -> None:

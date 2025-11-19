@@ -17,7 +17,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     ClassVar,
-    Final,
     Self,
 )
 
@@ -51,8 +50,8 @@ class Direction(IntEnum):
 
 TargetSliceDecVal = slice | int | tuple[int | slice, int | slice]
 TargetSlice = tuple[slice, slice]
-Mask = NDArray[np.bool_]
-MaskGen = Callable[[GridView], Mask]
+BooleanMask = NDArray[np.bool_]
+MaskGen = Callable[[GridView], BooleanMask]
 RuleFunc = Callable[["Automaton", TargetSlice], MaskGen]
 RuleTuple = tuple[
     TargetSlice,
@@ -63,28 +62,34 @@ RuleTuple = tuple[
 ]
 FrameRuleSet = tuple[RuleTuple, ...]
 
-QUEUE_SIZE: Final[int] = int(getenv("AUTOMATON_QUEUE_SIZE", "100"))
-
 
 @dataclass(kw_only=True, slots=True)
 class Automaton(DynamicContent, ABC):
     """Base class for a grid of cells."""
 
+    QUEUE_SIZE: ClassVar[int] = int(getenv("AUTOMATON_QUEUE_SIZE", "100"))
+
     STATE: ClassVar[type[StateBase]]
-    _RULES_SOURCE: ClassVar[list[Rule]] = []
+
+    _RULES_SOURCE: ClassVar[list[Rule]]
+
     if const.DEBUG_MODE:
-        _RULE_FUNCTIONS: ClassVar[list[Callable[..., MaskGen]]] = []
+        _RULE_FUNCTIONS: ClassVar[list[Callable[..., MaskGen]]]
 
     TRACK_STATES_DURATION: ClassVar[tuple[int, ...]] = ()
 
     frame_index: int = field(init=False, default=-1)
-    frame_rulesets: tuple[FrameRuleSet, ...] = field(init=False, repr=False)
-    rules: list[Rule] = field(init=False, repr=False)
+    frame_rulesets: tuple[FrameRuleSet, ...] = field(
+        init=False,
+        repr=False,
+        compare=False,
+    )
+    rules: list[Rule] = field(init=False, repr=False, compare=False)
 
-    _rules_thread: Thread = field(init=False, repr=False)
-    mask_queue: Queue[GridView] = field(init=False, repr=False)
+    _rules_thread: Thread = field(init=False, repr=False, compare=False)
+    mask_queue: Queue[GridView] = field(init=False, repr=False, compare=False)
 
-    durations: GridView = field(init=False, repr=False)
+    durations: GridView = field(init=False, repr=False, compare=False)
 
     class OutOfBoundsError(ValueError):
         """Error for when a slice goes out of bounds."""
@@ -96,6 +101,13 @@ class Automaton(DynamicContent, ABC):
             self.limit = limit
 
             super().__init__(f"Out of bounds: {current} + {delta} > {limit}")
+
+    def __init_subclass__(cls) -> None:
+        """Initialize any subclass' class variables."""
+        cls._RULES_SOURCE = []
+
+        if const.DEBUG_MODE:
+            cls._RULE_FUNCTIONS = []
 
     def __post_init__(self) -> None:
         """Set the calculated attributes of the Grid."""
@@ -121,7 +133,7 @@ class Automaton(DynamicContent, ABC):
 
         self.setting_update_callback()
 
-        self.mask_queue = Queue(maxsize=QUEUE_SIZE)
+        self.mask_queue = Queue(maxsize=self.QUEUE_SIZE)
 
     def setting_update_callback(self, update_setting: str | None = None) -> None:
         """Pre-calculate the a sequence of mask generators for each frame.
@@ -152,11 +164,18 @@ class Automaton(DynamicContent, ABC):
         )
 
         LOGGER.info(
-            "Mask Generator loop re-generated. New length: %i; largest ruleset: %i; empty rulesets: %i",
+            "[%s] Mask Generator loop re-generated. New length: %i; largest ruleset: %i; empty rulesets: %i",
+            self.id,
             len(self.frame_rulesets),
             max(len(loop) for loop in self.frame_rulesets),
             sum(not loop for loop in self.frame_rulesets),
         )
+
+        if len(self.frame_rulesets) >= self.QUEUE_SIZE:
+            LOGGER.warning(
+                "[%s] Rulesets are longer than the queue size. This may cause the queue to fill up and block the rules thread.",  # noqa: E501
+                self.id,
+            )
 
     @classmethod
     def rule(
@@ -172,7 +191,8 @@ class Automaton(DynamicContent, ABC):
 
         Args:
             to_state (StateBase): The state to change to.
-            target_slice (TargetSliceDecVal | None, optional): The slice to target. Defaults to entire automaton.
+            target_slice (TargetSliceDecVal | None, optional): The slice to target for the new state. Defaults to \
+                entire automaton.
             frequency (int, optional): The frequency of the rule (in frames). Defaults to 1 (i.e. every frame). If
                 a string is provided, it references the name of a `FrequencySetting`.
             predicate (Callable[[], bool], optional): Optional predicate to determine if the rule should be
@@ -233,7 +253,7 @@ class Automaton(DynamicContent, ABC):
         """Run the simulation for a given number of frames."""
         yield from islice(self, limit)
 
-    def fresh_mask(self) -> Mask:
+    def fresh_mask(self) -> BooleanMask:
         """Return a fresh mask."""
         return self.zeros(dtype=np.bool_)
 
@@ -314,22 +334,34 @@ class Automaton(DynamicContent, ABC):
 
             LOGGER.info("Started new rules thread")
 
-    def _stop_rules_thread(self) -> None:
+    def _stop_rules_thread(self) -> Generator[None, None, None]:
         self.active = False
 
         # Clear the backlog of pending `put` calls - clearing the queue is not sufficient
-        while self._rules_thread.is_alive() and not self.mask_queue.empty():
-            self.mask_queue.get()
+        while not self.mask_queue.empty():
+            self.pixels[:, :] = self.mask_queue.get()
+            yield
 
         if not self.mask_queue.empty():
-            self.mask_queue.queue.clear()
+            raise RuntimeError(
+                f"Mask queue for {self.id!r} is not empty: {self.mask_queue.qsize()=!r}",
+            )
 
         self._rules_thread.join(timeout=1)
 
-        if self._rules_thread.is_alive():
-            LOGGER.warning("Rules thread did not stop in time")
-        else:
-            LOGGER.debug("Rules thread stopped")
+        while not self.mask_queue.empty():
+            self.pixels[:, :] = self.mask_queue.get()
+            yield
+
+        if not self.mask_queue.empty():
+            raise RuntimeError(
+                f"Mask queue for {self.id!r} is not empty: {self.mask_queue.qsize()=!r}",
+            )
+
+        if self._rules_thread.is_alive() and not self.mask_queue.empty():
+            raise RuntimeError(f"Rules thread for {self.id!r} did not stop in time")
+
+        LOGGER.debug("Rules thread stopped")
 
     @property
     def str_repr(self) -> str:
