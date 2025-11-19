@@ -9,6 +9,7 @@ Type=simple
 Restart=always
 RestartSec=5
 User=root
+AmbientCapabilities=CAP_SYS_NICE
 ExecStart=/home/pi/led-matrix-controller/.venv/bin/python /home/pi/led-matrix-controller/led_matrix_controller/main.py
 EnvironmentFile=/home/pi/led-matrix-controller/.env
 WorkingDirectory=/home/pi/led-matrix-controller
