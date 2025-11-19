@@ -42,7 +42,7 @@ class GifViewer(PreDefinedContent):
 
         self.image = Image.open(self.path)
 
-        self.canvas_count = self.image.n_frames
+        self.canvas_count = self.image.n_frames * self.frame_multiplier
 
         super(GifViewer, self).__post_init__()
 

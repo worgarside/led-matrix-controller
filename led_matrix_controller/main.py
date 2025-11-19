@@ -32,7 +32,7 @@ def get_library() -> tuple[ContentBase[Any], ...]:
         Clock(),
         Combination(),
         GifViewer(path=Path("door/animated.gif")),
-        GifViewer(path=Path("alert/bell.gif"), frame_multiplier=10),
+        GifViewer(path=Path("alert/bell.gif"), frame_multiplier=100),
         ImageViewer(path=Path("door/closed.bmp"), display_seconds=5),
         NowPlaying(),
         RainingGrid(),
