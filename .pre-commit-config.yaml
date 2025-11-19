@@ -31,7 +31,7 @@ repos:
           - types-Pillow
           - wg-utilities==5.17.4
           - rgbmatrixemulator==0.13.3
-          - types-pyaudio==0.2.16.20240516
+          - types-pyaudio==0.2.16.20250801
           - scipy-stubs==1.14.1.5
 
   - repo: https://github.com/python-poetry/poetry

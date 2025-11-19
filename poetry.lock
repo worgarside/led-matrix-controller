@@ -1247,14 +1247,14 @@ files = [
 
 [[package]]
 name = "types-pyaudio"
-version = "0.2.16.20240516"
+version = "0.2.16.20250801"
 description = "Typing stubs for pyaudio"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "types-pyaudio-0.2.16.20240516.tar.gz", hash = "sha256:f1c419ccc78b00d26c6c1ae4fcb17f7e4f08af2c2b9b73b12fcbc4a4ffa3a2c7"},
-    {file = "types_pyaudio-0.2.16.20240516-py3-none-any.whl", hash = "sha256:40063f13ae15a422cbd4a2a783653eb3e1091bdd23fc7ab8ca3abc21ad0d13f8"},
+    {file = "types_pyaudio-0.2.16.20250801-py3-none-any.whl", hash = "sha256:1b6d293e0d511108b1d13575868e87fba6ea9056900aee4f8440e0fdc89f9f75"},
+    {file = "types_pyaudio-0.2.16.20250801.tar.gz", hash = "sha256:c6ff1b9681f67c1f14d8d86804b99fe5b1fa79f88c5a1ec0367fccfc183e095d"},
 ]
 
 [[package]]
@@ -1333,4 +1333,4 @@ testing = ["botocore"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.12"
-content-hash = "6722ae70281900a5602c9d1e0a59e1a1785dc5fdc85bcdf85eeb3819d580c0a8"
+content-hash = "df4155edd42d23b15c783142aa1f66c5d45d0a8a3f127205354d2cb2a71cdfce"

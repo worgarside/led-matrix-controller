@@ -20,7 +20,7 @@ httpcore = "^1.0.7"
 
 [tool.poetry.group.dev.dependencies]
 rgbmatrixemulator = "^0.13.3"
-types-pyaudio = "^0.2.16.20240516"
+types-pyaudio = "^0.2.16.20250801"
 scipy-stubs = "^1.14.1.5"
 
 [tool.poetry.group.test.dependencies]
