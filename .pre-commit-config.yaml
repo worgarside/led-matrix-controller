@@ -12,7 +12,7 @@ repos:
     rev: v0.14.5
     hooks:
       - id: ruff-format
-      - id: ruff
+      - id: ruff-check
         language_version: python3.11
 
   - repo: https://github.com/pre-commit/mirrors-mypy
