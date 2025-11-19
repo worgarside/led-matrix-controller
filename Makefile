@@ -17,6 +17,11 @@ create:
 	sudo chmod -R 777 /var/cache/led-matrix-controller
 
 	git clone https://github.com/hzeller/rpi-rgb-led-matrix.git
+ifdef COMMIT
+	cd rpi-rgb-led-matrix && git checkout $(COMMIT)
+else
+	cd rpi-rgb-led-matrix && git checkout master
+endif
 
 	$(MAKE) -C rpi-rgb-led-matrix/bindings/python build-python PYTHON=/home/pi/led-matrix-controller/.venv/bin/python
 	$(MAKE) -C rpi-rgb-led-matrix/bindings/python install-python PYTHON=/home/pi/led-matrix-controller/.venv/bin/python
