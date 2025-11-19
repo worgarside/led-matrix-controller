@@ -16,6 +16,8 @@ create:
 	sudo chown -R root:root /var/cache/led-matrix-controller
 	sudo chmod -R 777 /var/cache/led-matrix-controller
 
+	sudo rm -rf rpi-rgb-led-matrix
+
 	git clone https://github.com/hzeller/rpi-rgb-led-matrix.git
 ifdef COMMIT
 	cd rpi-rgb-led-matrix && git checkout $(COMMIT)
