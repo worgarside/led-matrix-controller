@@ -35,14 +35,17 @@ class GifViewer(PreDefinedContent):
     def __post_init__(self) -> None:
         """Initialize the image."""
         if self.frame_multiplier < 1:
-            raise ValueError("Frame multiplier must be at least 1")
+            LOGGER.warning("Frame multiplier is less than 1, setting to 1")
+            self.frame_multiplier = 1
 
         if not self.path.is_absolute():
             self.path = self.GIF_DIRECTORY / self.path
 
         self.image = Image.open(self.path)
 
-        self.canvas_count = self.image.n_frames * self.frame_multiplier
+        self.canvas_count = int(self.image.n_frames) * self.frame_multiplier
+
+        LOGGER.info("Canvas count for %s: %s", self.path, self.canvas_count)
 
         super(GifViewer, self).__post_init__()
 
