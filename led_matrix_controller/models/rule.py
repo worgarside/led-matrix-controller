@@ -30,7 +30,7 @@ class AttributeVisitor(ast.NodeVisitor):
         self.grid_arg_name = grid_arg_name
         self.attributes: set[str] = set()
 
-    def visit_Attribute(self, node: ast.Attribute) -> None:  # noqa: N802
+    def visit_Attribute(self, node: ast.Attribute) -> None:
         """Visit an attribute node."""
         if isinstance(node.value, ast.Name) and node.value.id == self.grid_arg_name:
             # Record the consumption of the grid's attribute
