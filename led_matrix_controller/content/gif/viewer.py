@@ -29,14 +29,23 @@ class GifViewer(PreDefinedContent):
 
     image: Image.Image = field(init=False, repr=False)
 
+    frame_multiplier: int = 1
+    """The number of ticks to display each frame for."""
+
     def __post_init__(self) -> None:
         """Initialize the image."""
+        if self.frame_multiplier < 1:
+            LOGGER.warning("Frame multiplier is less than 1, setting to 1")
+            self.frame_multiplier = 1
+
         if not self.path.is_absolute():
             self.path = self.GIF_DIRECTORY / self.path
 
         self.image = Image.open(self.path)
 
-        self.canvas_count = self.image.n_frames
+        self.canvas_count = int(self.image.n_frames) * self.frame_multiplier
+
+        LOGGER.info("Canvas count for %s: %s", self.path, self.canvas_count)
 
         super(GifViewer, self).__post_init__()
 
@@ -48,11 +57,13 @@ class GifViewer(PreDefinedContent):
 
         https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/bindings/python/samples/gif-viewer.py
         """
-        canvases = []
-        for frame_index in range(self.canvas_count):
+        canvases: list[mtrx.Canvas] = []
+        for frame_index in range(self.image.n_frames):
             self.image.seek(frame_index)
 
-            canvases.append(new_canvas(self.image))
+            canvas = new_canvas(self.image)
+
+            canvases.extend(canvas for _ in range(self.frame_multiplier))
 
         self.canvases = tuple(canvases)
 

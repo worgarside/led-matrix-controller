@@ -688,7 +688,22 @@ class Matrix:
         canvas = cast("mtrx.Canvas", self.matrix.CreateFrameCanvas())
 
         if image is not None:
-            canvas.SetImage(image.convert("RGB"))
+            # Handle transparency by compositing onto black background
+            if image.mode in {"RGBA", "LA"}:
+                # Create a black background and composite the image onto it
+                background = Image.new("RGB", image.size, (0, 0, 0))
+                background.paste(image, mask=image.split()[-1])
+                image = background
+            elif image.mode == "P" and "transparency" in image.info:
+                # Convert palette mode with transparency to RGBA first, then composite
+                image = image.convert("RGBA")
+                background = Image.new("RGB", image.size, (0, 0, 0))
+                background.paste(image, mask=image.split()[-1])
+                image = background
+            else:
+                image = image.convert("RGB")
+
+            canvas.SetImage(image)
 
         return canvas
 
