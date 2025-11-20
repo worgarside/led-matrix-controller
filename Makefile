@@ -6,7 +6,8 @@ AP ?= 0
 
 clean:
 	sudo rm -rf .venv
-	sudo rm -rf rpi-rgb-led-matrix
+	git submodule update --init --recursive
+	cd rpi-rgb-led-matrix && git reset --hard && git clean -fd
 
 create:
 	virtualenv -p 3.11 .venv
@@ -16,19 +17,10 @@ create:
 	sudo chown -R root:root /var/cache/led-matrix-controller
 	sudo chmod -R 777 /var/cache/led-matrix-controller
 
-	sudo rm -rf rpi-rgb-led-matrix
-
-	git clone https://github.com/hzeller/rpi-rgb-led-matrix.git
-ifdef COMMIT
-	cd rpi-rgb-led-matrix && git checkout $(COMMIT)
-else
-	cd rpi-rgb-led-matrix && git checkout master
-endif
+	git submodule update --init --recursive
 
 	$(MAKE) -C rpi-rgb-led-matrix/bindings/python build-python PYTHON=/home/pi/led-matrix-controller/.venv/bin/python
 	$(MAKE) -C rpi-rgb-led-matrix/bindings/python install-python PYTHON=/home/pi/led-matrix-controller/.venv/bin/python
-
-	sudo rm -rf rpi-rgb-led-matrix
 
 dev-update:
 	@$(MAKE) update
@@ -125,6 +117,7 @@ update:
 	git add .
 	git stash save "Stash before update @ $(shell date)"
 	git pull --prune
+	git submodule update --init --recursive
 	@$(MAKE) install-all
 
 
