@@ -160,7 +160,8 @@ class NowPlaying(DynamicContent):
         artwork_bytes = res.content
 
         img_arr = np.array(
-            Image.open(BytesIO(artwork_bytes))
+            Image
+            .open(BytesIO(artwork_bytes))
             .resize((self.width, self.height))
             .convert("RGBA"),
         )
