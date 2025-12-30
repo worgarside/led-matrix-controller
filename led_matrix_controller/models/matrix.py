@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import contextlib
+from contextlib import suppress
 from json import dumps
 from queue import Empty, Full, PriorityQueue, Queue
 from threading import Condition, Thread
@@ -723,18 +723,16 @@ class Matrix:
         LOGGER.info("Matrix cleared")
 
     def get_canvas_swap_canvas(self) -> None:
-        """Get the canvas and enqueue it for rendering."""
+        """Get the canvas and enqueue it for rendering.
+
+        For PreDefinedContent (GIFs, images), we block if the queue is full to ensure
+        every frame is displayed. These are pre-rendered and fast, so blocking is acceptable.
+        """
         canvas = self.current_content.get_content()  # type: ignore[union-attr]
 
-        # Enqueue instead of swapping directly
-        try:
-            self._render_queue.put_nowait(canvas)
-        except Full as err:
-            # Queue full, skip this frame to prevent blocking
-            # The render thread will continue displaying the previous frame
-
-            # TODO: figure out if this is needed or not
-            raise RuntimeError("Queue full") from err
+        # Block if queue is full - PreDefinedContent needs every frame shown
+        # This is safe because PreDefinedContent frames are pre-rendered and fast
+        self._render_queue.put(canvas)
 
     def new_canvas(self, image: Image.Image | None = None) -> mtrx.Canvas:
         """Return a new canvas, optionally with an image."""
@@ -801,14 +799,11 @@ class Matrix:
         self.canvas.SetImage(image)
 
         # Enqueue instead of swapping directly
-        try:
+        # For DynamicContent, we use non-blocking to prevent stalling frame generation
+        # If queue is full, skip this frame (better than blocking the content thread)
+        # This is acceptable for DynamicContent since frames are generated continuously
+        with suppress(Full):
             self._render_queue.put_nowait(self.canvas)
-        except Full as err:
-            # Queue full, skip this frame to prevent blocking
-            # The render thread will continue displaying the previous frame
-
-            # TODO: figure out if this is needed or not
-            raise RuntimeError("Queue full") from err
 
     def swap_canvas(self, content: mtrx.Canvas | None = None, /) -> None:
         """Update the content of the canvas and increment the tick count."""
@@ -870,7 +865,7 @@ class Matrix:
         # If there is no content playing, enqueue canvas to update the brightness
         # Otherwise the brightness will be updated on each tick anyway
         if self.current_content is None or self.current_content.is_sleeping:
-            with contextlib.suppress(Full):
+            with suppress(Full):
                 self._render_queue.put_nowait(self.canvas)
 
     @property
