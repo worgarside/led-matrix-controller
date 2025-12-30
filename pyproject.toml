@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "led-matrix-controller"
-version = "1.10.0"
+version = "1.11.0"
 description = "Updates an RGB LED matrix with payloads from an MQTT topic"
 authors = ["Will Garside <worgarside@gmail.com>"]
 license = "MIT"
