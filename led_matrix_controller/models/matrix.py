@@ -794,9 +794,10 @@ class Matrix:
             x : x + self.current_content.width,  # type: ignore[union-attr]
         ] = content_array
 
-        image = Image.fromarray(self.array, "RGBA").convert("RGB")
-
-        self.canvas.SetImage(image)
+        # Extract RGB channels (drop alpha channel) - this is a view, no copy
+        # Create Image directly - avoids .convert("RGB") call by using RGB mode from start
+        rgb_array = self.array[..., :3].astype(np.uint8, copy=False)
+        self.canvas.SetImage(Image.fromarray(rgb_array, mode="RGB"))
 
         # Enqueue instead of swapping directly
         # For DynamicContent, we use non-blocking to prevent stalling frame generation
