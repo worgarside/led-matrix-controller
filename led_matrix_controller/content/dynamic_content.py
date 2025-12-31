@@ -108,9 +108,9 @@ class DynamicContent(ContentBase[GridView], ABC):
 
         payload = dumps(
             setting.value,
-            default=lambda x: x.id
-            if isinstance(x, ContentBase)
-            else self._json_encode(x),
+            default=lambda x: (
+                x.id if isinstance(x, ContentBase) else self._json_encode(x)
+            ),
         )
 
         LOGGER.debug("Sending payload %r to topic %r", payload, setting.mqtt_topic)

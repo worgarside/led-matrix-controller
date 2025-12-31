@@ -543,7 +543,7 @@ class Matrix:
         """Add/remove content to/from the queue."""
         target_content = self._content[payload["id"]]
         target_content.priority = payload["priority"] or const.MAX_PRIORITY
-        parameters = cast("ContentParameters", payload.get("parameters", {}))
+        parameters = payload.get("parameters", {})
 
         if target_content.priority == const.MAX_PRIORITY:  # i.e. null, i.e. de-queue
             self._remove_content(target_content)
