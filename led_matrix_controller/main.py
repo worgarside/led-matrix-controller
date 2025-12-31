@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import atexit
 from contextlib import suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -18,9 +19,18 @@ from content import (
 )
 from models import Matrix
 from utils import MqttClient
+from utils.profiling import PROFILE_ENABLED, get_profiler, save_profiling_results
 from wg_utilities.loggers import get_streaming_logger
 
 LOGGER = get_streaming_logger(__name__)
+
+# Setup profiling if enabled
+if PROFILE_ENABLED:
+    profiler = get_profiler()
+    if profiler:
+        profiler.enable()
+        atexit.register(save_profiling_results)
+        LOGGER.info("Profiling enabled - results will be saved on exit")
 
 if TYPE_CHECKING:
     from content.base import ContentBase

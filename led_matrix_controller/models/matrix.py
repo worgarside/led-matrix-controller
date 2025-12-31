@@ -29,6 +29,7 @@ from content.setting import Setting, TransitionableParameterSetting
 from PIL import Image
 from utils import const, mtrx
 from utils.helpers import to_kebab_case
+from utils.profiling import time_operation
 from wg_utilities.decorators import process_exception
 from wg_utilities.loggers import get_streaming_logger
 
@@ -783,28 +784,31 @@ class Matrix:
 
     def set_image_swap_canvas(self) -> None:
         """Set the image and enqueue the canvas for rendering."""
-        content_array = self.current_content.get_content()  # type: ignore[union-attr]
+        with time_operation("set_image_swap_canvas.total"):
+            content_array = self.current_content.get_content()  # type: ignore[union-attr]
 
-        self.array.fill(0)
+            with time_operation("set_image_swap_canvas.array_ops"):
+                self.array.fill(0)
 
-        x, y = self.current_content.position  # type: ignore[union-attr]
+                x, y = self.current_content.position  # type: ignore[union-attr]
 
-        self.array[
-            y : y + self.current_content.height,  # type: ignore[union-attr]
-            x : x + self.current_content.width,  # type: ignore[union-attr]
-        ] = content_array
+                self.array[
+                    y : y + self.current_content.height,  # type: ignore[union-attr]
+                    x : x + self.current_content.width,  # type: ignore[union-attr]
+                ] = content_array
 
-        # Extract RGB channels (drop alpha channel) - this is a view, no copy
-        # Create Image directly - avoids .convert("RGB") call by using RGB mode from start
-        rgb_array = self.array[..., :3].astype(np.uint8, copy=False)
-        self.canvas.SetImage(Image.fromarray(rgb_array, mode="RGB"))
+            with time_operation("set_image_swap_canvas.image_conversion"):
+                # Extract RGB channels (drop alpha channel) - this is a view, no copy
+                # Create Image directly - avoids .convert("RGB") call by using RGB mode from start
+                rgb_array = self.array[..., :3].astype(np.uint8, copy=False)
+                self.canvas.SetImage(Image.fromarray(rgb_array, mode="RGB"))
 
-        # Enqueue instead of swapping directly
-        # For DynamicContent, we use non-blocking to prevent stalling frame generation
-        # If queue is full, skip this frame (better than blocking the content thread)
-        # This is acceptable for DynamicContent since frames are generated continuously
-        with suppress(Full):
-            self._render_queue.put_nowait(self.canvas)
+            # Enqueue instead of swapping directly
+            # For DynamicContent, we use non-blocking to prevent stalling frame generation
+            # If queue is full, skip this frame (better than blocking the content thread)
+            # This is acceptable for DynamicContent since frames are generated continuously
+            with time_operation("set_image_swap_canvas.queue_put"), suppress(Full):
+                self._render_queue.put_nowait(self.canvas)
 
     def swap_canvas(self, content: mtrx.Canvas | None = None, /) -> None:
         """Update the content of the canvas and increment the tick count."""
