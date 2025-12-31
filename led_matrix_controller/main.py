@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import atexit
+import signal
+import sys
 from contextlib import suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -30,6 +32,16 @@ if PROFILE_ENABLED:
     if profiler:
         profiler.enable()
         atexit.register(save_profiling_results)
+
+        def _signal_handler(signum: int, _frame: Any) -> None:
+            """Handle shutdown signals to ensure profiling results are saved."""
+            LOGGER.info("Received signal %s, saving profiling results...", signum)
+            save_profiling_results()
+            sys.exit(0)
+
+        # Register signal handlers to ensure profiling results are saved on service stop
+        signal.signal(signal.SIGTERM, _signal_handler)
+        signal.signal(signal.SIGINT, _signal_handler)
         LOGGER.info("Profiling enabled - results will be saved on exit")
 
 if TYPE_CHECKING:
