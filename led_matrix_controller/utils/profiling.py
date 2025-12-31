@@ -96,21 +96,26 @@ def save_profiling_results() -> None:
     if not PROFILE_ENABLED:
         return
 
-    PROFILE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        PROFILE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Save timing statistics
-    timing_file = PROFILE_OUTPUT_DIR / "timing_stats.json"
-    _timing_stats.save(timing_file)
-    LOGGER.info("Timing statistics saved to: %s", timing_file)
+        # Save timing statistics (only if we have data)
+        if _timing_stats.timings:
+            timing_file = PROFILE_OUTPUT_DIR / "timing_stats.json"
+            _timing_stats.save(timing_file)
+            LOGGER.info("Timing statistics saved to: %s", timing_file)
 
-    # Save cProfile statistics if available
-    if _profiler is not None:
-        stats_file = PROFILE_OUTPUT_DIR / "cprofile_stats.txt"
-        with stats_file.open("w", encoding="utf-8") as f:
-            stats = pstats.Stats(_profiler, stream=f)
-            stats.sort_stats("cumulative")
-            stats.print_stats(50)  # Top 50 functions
-        LOGGER.info("cProfile statistics saved to: %s", stats_file)
+        # Save cProfile statistics if available
+        if _profiler is not None:
+            stats_file = PROFILE_OUTPUT_DIR / "cprofile_stats.txt"
+            with stats_file.open("w", encoding="utf-8") as f:
+                stats = pstats.Stats(_profiler, stream=f)
+                stats.sort_stats("cumulative")
+                stats.print_stats(50)  # Top 50 functions
+            LOGGER.info("cProfile statistics saved to: %s", stats_file)
+    except (OSError, PermissionError, ValueError, AttributeError) as err:
+        # Don't let profiling save failures crash the service
+        LOGGER.warning("Failed to save profiling results: %s", err)
 
 
 def get_profiler() -> cProfile.Profile | None:

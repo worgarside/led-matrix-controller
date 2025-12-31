@@ -90,5 +90,7 @@ if __name__ == "__main__":
         raise
     finally:
         # Save profiling results on any exit (normal, exception, or signal)
+        # Wrap in suppress to prevent profiling errors from masking real errors
         if PROFILE_ENABLED:
-            save_profiling_results()
+            with suppress(Exception):
+                save_profiling_results()
