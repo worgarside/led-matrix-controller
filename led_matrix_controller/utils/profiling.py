@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 LOGGER = get_streaming_logger(__name__)
 
-PROFILE_ENABLED: bool = bool(int(getenv("ENABLE_PROFILING", "0")))
+PROFILE_ENABLED: bool = True
 # Use /tmp for profiling output - this is safe for profiling data
 PROFILE_OUTPUT_DIR: Path = Path(
     getenv("PROFILE_OUTPUT_DIR", "/tmp/led_matrix_profiles"),  # noqa: S108
