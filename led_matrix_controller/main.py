@@ -18,9 +18,17 @@ from content import (
 )
 from models import Matrix
 from utils import MqttClient
+from utils.profiling import PROFILE_ENABLED, get_profiler, save_profiling_results
 from wg_utilities.loggers import get_streaming_logger
 
 LOGGER = get_streaming_logger(__name__)
+
+# Setup profiling if enabled
+if PROFILE_ENABLED:
+    profiler = get_profiler()
+    if profiler:
+        profiler.enable()
+        LOGGER.info("Profiling enabled - results will be saved on exit")
 
 if TYPE_CHECKING:
     from content.base import ContentBase
@@ -80,3 +88,9 @@ if __name__ == "__main__":
                 content_works_with={},
             ).clear_matrix()
         raise
+    finally:
+        # Save profiling results on any exit (normal, exception, or signal)
+        # Wrap in suppress to prevent profiling errors from masking real errors
+        if PROFILE_ENABLED:
+            with suppress(Exception):
+                save_profiling_results()

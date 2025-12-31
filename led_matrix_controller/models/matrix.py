@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from contextlib import suppress
 from json import dumps
-from queue import Empty, PriorityQueue
+from queue import Empty, Full, PriorityQueue, Queue
 from threading import Condition, Thread
 from types import MappingProxyType
 from typing import (
@@ -28,6 +29,7 @@ from content.setting import Setting, TransitionableParameterSetting
 from PIL import Image
 from utils import const, mtrx
 from utils.helpers import to_kebab_case
+from utils.profiling import time_operation
 from wg_utilities.decorators import process_exception
 from wg_utilities.loggers import get_streaming_logger
 
@@ -289,6 +291,15 @@ class Matrix:
 
         self._content_thread = Thread(target=self._content_loop)
 
+        # Render queue for double buffering (maxsize=2 allows next frame to be ready)
+        self._render_queue: Queue[mtrx.Canvas] = Queue(maxsize=2)
+        self._render_thread = Thread(
+            target=self._render_loop,
+            daemon=False,
+            name="render",
+        )
+        self._render_thread.start()
+
         # Setting via property to trigger MQTT update
         self.current_content: ContentBase[GridView] | ContentBase[mtrx.Canvas] | None = (
             None
@@ -380,6 +391,29 @@ class Matrix:
         )
 
         return target_content
+
+    def _render_loop(self) -> None:
+        """Dedicated render thread that only swaps canvases on VSync."""
+        while True:
+            try:
+                # Try to get next frame (non-blocking with timeout)
+                canvas = self._render_queue.get(timeout=0.1)
+                self.canvas = self.matrix.SwapOnVSync(canvas)
+                self.tick += 1
+
+                # Notify waiting threads (for transitions)
+                self.tick_condition.acquire()
+                self.tick_condition.notify_all()
+                self.tick_condition.release()
+            except Empty:
+                # No frame ready, swap current canvas to maintain timing
+                # This prevents the display from freezing if content generation is slow
+                self.canvas = self.matrix.SwapOnVSync(self.canvas)
+                self.tick += 1
+
+                self.tick_condition.acquire()
+                self.tick_condition.notify_all()
+                self.tick_condition.release()
 
     def _content_loop(self) -> None:
         """Loop through the content queue."""
@@ -675,13 +709,31 @@ class Matrix:
         self.current_content = None
 
         self.canvas.Clear()
-        self.swap_canvas()
+        # Enqueue cleared canvas for rendering
+        try:
+            self._render_queue.put_nowait(self.canvas)
+        except Full:
+            # Queue full, but we want to clear, so clear the queue and add
+            while not self._render_queue.empty():
+                try:
+                    self._render_queue.get_nowait()
+                except Empty:
+                    break
+            self._render_queue.put_nowait(self.canvas)
 
         LOGGER.info("Matrix cleared")
 
     def get_canvas_swap_canvas(self) -> None:
-        """Get the canvas and swap it."""
-        self.swap_canvas(self.current_content.get_content())  # type: ignore[union-attr]
+        """Get the canvas and enqueue it for rendering.
+
+        For PreDefinedContent (GIFs, images), we block if the queue is full to ensure
+        every frame is displayed. These are pre-rendered and fast, so blocking is acceptable.
+        """
+        canvas = self.current_content.get_content()  # type: ignore[union-attr]
+
+        # Block if queue is full - PreDefinedContent needs every frame shown
+        # This is safe because PreDefinedContent frames are pre-rendered and fast
+        self._render_queue.put(canvas)
 
     def new_canvas(self, image: Image.Image | None = None) -> mtrx.Canvas:
         """Return a new canvas, optionally with an image."""
@@ -731,23 +783,32 @@ class Matrix:
                     )
 
     def set_image_swap_canvas(self) -> None:
-        """Set the image and swap the canvas."""
-        content_array = self.current_content.get_content()  # type: ignore[union-attr]
+        """Set the image and enqueue the canvas for rendering."""
+        with time_operation("set_image_swap_canvas.total"):
+            content_array = self.current_content.get_content()  # type: ignore[union-attr]
 
-        self.array.fill(0)
+            with time_operation("set_image_swap_canvas.array_ops"):
+                self.array.fill(0)
 
-        x, y = self.current_content.position  # type: ignore[union-attr]
+                x, y = self.current_content.position  # type: ignore[union-attr]
 
-        self.array[
-            y : y + self.current_content.height,  # type: ignore[union-attr]
-            x : x + self.current_content.width,  # type: ignore[union-attr]
-        ] = content_array
+                self.array[
+                    y : y + self.current_content.height,  # type: ignore[union-attr]
+                    x : x + self.current_content.width,  # type: ignore[union-attr]
+                ] = content_array
 
-        image = Image.fromarray(self.array, "RGBA").convert("RGB")
+            with time_operation("set_image_swap_canvas.image_conversion"):
+                # Extract RGB channels (drop alpha channel) - this is a view, no copy
+                # Create Image directly - avoids .convert("RGB") call by using RGB mode from start
+                rgb_array = self.array[..., :3].astype(np.uint8, copy=False)
+                self.canvas.SetImage(Image.fromarray(rgb_array, mode="RGB"))
 
-        self.canvas.SetImage(image)
-
-        self.swap_canvas(self.canvas)
+            # Enqueue instead of swapping directly
+            # For DynamicContent, we use non-blocking to prevent stalling frame generation
+            # If queue is full, skip this frame (better than blocking the content thread)
+            # This is acceptable for DynamicContent since frames are generated continuously
+            with time_operation("set_image_swap_canvas.queue_put"), suppress(Full):
+                self._render_queue.put_nowait(self.canvas)
 
     def swap_canvas(self, content: mtrx.Canvas | None = None, /) -> None:
         """Update the content of the canvas and increment the tick count."""
@@ -806,10 +867,11 @@ class Matrix:
 
         LOGGER.debug("Set brightness to %s (%i)", value, self.tick)
 
-        # If there is no content playing, actively swap the canvas to update the brightness
+        # If there is no content playing, enqueue canvas to update the brightness
         # Otherwise the brightness will be updated on each tick anyway
         if self.current_content is None or self.current_content.is_sleeping:
-            self.swap_canvas()
+            with suppress(Full):
+                self._render_queue.put_nowait(self.canvas)
 
     @property
     def current_content(self) -> ContentBase[Any] | None:
