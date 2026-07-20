@@ -23,7 +23,7 @@ from wg_utilities.functions import backoff, force_mkdir
 from wg_utilities.loggers import get_streaming_logger
 
 from .dynamic_content import DynamicContent
-from .setting import ParameterSetting
+from .setting import ParameterSetting, TransitionableParameterSetting
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -76,6 +76,20 @@ class NowPlaying(DynamicContent):
     track_metadata: Annotated[TrackMeta, ParameterSetting(icon="")] = field(
         default_factory=lambda: _INITIAL_TRACK_META,
     )
+
+    size: Annotated[
+        int,
+        TransitionableParameterSetting(
+            transition_rate=0.1,
+            minimum=4,
+            maximum=64,
+            strict=True,
+            invoke_settings_callback=True,
+            icon="mdi:resize",
+            unit_of_measurement="px",
+            display_mode="slider",
+        ),
+    ] = const.MATRIX_WIDTH
 
     _current_image: tuple[Path, GridView] = field(
         init=False,
@@ -185,6 +199,12 @@ class NowPlaying(DynamicContent):
             self.stop(StopType.EXPIRED)
             with suppress(AttributeError):
                 del self._current_image
+
+    def setting_update_callback(self, update_setting: str | None = None) -> None:
+        """Update the dimensions of the content."""
+        if update_setting == "size":
+            self.height = self.size
+            self.width = self.size
 
     def zeros(self, *, dtype: DTypeLike = np.int_) -> NDArray[Any]:
         """Return a grid of zeros."""
