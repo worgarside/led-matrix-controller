@@ -538,7 +538,7 @@ def plant_growth(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 
         left_mask = ((random_directions == 0) & eligible_mask)[:, 1:]
         right_mask = ((random_directions == 1) & eligible_mask)[:, :-1]
-        up_mask = ((random_directions == 2) & eligible_mask)[1:, :]  # noqa: PLR2004
+        up_mask = ((random_directions == 2) & eligible_mask)[1:, :]  # ruff:ignore[magic-value-comparison]
 
         change_mask = np.zeros_like(source_pixels, dtype=bool)
 
@@ -842,7 +842,7 @@ def leaf_growth_b(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
 @RainingGrid.rule(
     State.DYING_PLANT,
     frequency=const.TICKS_PER_SECOND,
-    predicate=lambda ca: ca.rain_chance < 0.002,  # noqa: PLR2004
+    predicate=lambda ca: ca.rain_chance < 0.002,  # ruff:ignore[magic-value-comparison]
     random_multiplier=0.25,
 )
 def kill_stagnant_plant(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
@@ -996,7 +996,7 @@ def trim_plant_tops(ca: RainingGrid, target_slice: TargetSlice) -> MaskGen:
     State.DYING_PLANT,
     target_slice=(slice(None, 1)),
     frequency=const.seconds_to_ticks(60),
-    predicate=lambda ca: ca.rain_chance <= 0.0005,  # noqa: PLR2004  (0.5% rain intensity)
+    predicate=lambda ca: ca.rain_chance <= 0.0005,  # ruff:ignore[magic-value-comparison]  (0.5% rain intensity)
     random_multiplier=0.2,
 )
 def kill_off_full_height_plants(_: RainingGrid, target_slice: TargetSlice) -> MaskGen:

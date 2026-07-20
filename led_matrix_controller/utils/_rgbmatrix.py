@@ -38,24 +38,24 @@ class Canvas(ABC):
     """
 
     @abstractmethod
-    def Clear(self) -> None:  # noqa: N802
+    def Clear(self) -> None:  # ruff:ignore[invalid-function-name]
         """Clear the canvas."""
 
     @abstractmethod
-    def Fill(self, red: int, green: int, blue: int) -> None:  # noqa: N802
+    def Fill(self, red: int, green: int, blue: int) -> None:  # ruff:ignore[invalid-function-name]
         """Fill the canvas with a color."""
 
     @abstractmethod
-    def SetPixel(self, x: int, y: int, red: int, green: int, blue: int) -> None:  # noqa: N802
+    def SetPixel(self, x: int, y: int, red: int, green: int, blue: int) -> None:  # ruff:ignore[invalid-function-name]
         """Set the color of a pixel."""
 
     @abstractmethod
-    def SetImage(  # noqa: N802
+    def SetImage(  # ruff:ignore[invalid-function-name]
         self,
         image: Image.Image,
         offset_x: int = 0,
         offset_y: int = 0,
-        unsafe: bool = True,  # noqa: FBT001, FBT002
+        unsafe: bool = True,  # ruff:ignore[boolean-type-hint-positional-argument, boolean-default-value-positional-argument]
     ) -> None:
         """Set the image on the canvas."""
 

@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 LOGGER = get_streaming_logger(__name__)
 
 
-def _merge(list_: list[int], /, l: int, m: int, r: int) -> Generator[None, None, None]:  # noqa: E741
+def _merge(list_: list[int], /, l: int, m: int, r: int) -> Generator[None, None, None]:  # ruff:ignore[ambiguous-variable-name]
     """Merges two sorted subarrays of the array.
 
     The first subarray is array[l..m]
@@ -245,7 +245,7 @@ class SortingAlgorithm(StrEnum):
     def stooge_sort(
         self,
         list_: list[int],
-        l: int = 0,  # noqa: E741
+        l: int = 0,  # ruff:ignore[ambiguous-variable-name]
         h: int | None = None,
     ) -> Generator[None, None, None]:
         """Recursively sorts by sorting the first two-thirds, last two-thirds, and first two-thirds again."""
@@ -259,7 +259,7 @@ class SortingAlgorithm(StrEnum):
             list_[l], list_[h] = list_[h], list_[l]
             yield
 
-        if h - l + 1 > 2:  # noqa: PLR2004
+        if h - l + 1 > 2:  # ruff:ignore[magic-value-comparison]
             t = (h - l + 1) // 3
             yield from self.stooge_sort(list_, l, h - t)
             yield from self.stooge_sort(list_, l + t, h)
@@ -369,7 +369,7 @@ class Sorter(DynamicContent):
         shuffle(self._values)
 
         if self.randomize_algorithm:
-            self.update_setting("algorithm", choice(list(SortingAlgorithm)))  # noqa: S311
+            self.update_setting("algorithm", choice(list(SortingAlgorithm)))  # ruff:ignore[suspicious-non-cryptographic-random-usage]
 
         # Initial render
         for i in range(self.height, -2, -1):
@@ -397,10 +397,10 @@ class Sorter(DynamicContent):
         """Randomly generate a new gradient colormap."""
         interval = 360.0 / self.width
 
-        offset = randint(0, 360)  # noqa: S311
+        offset = randint(0, 360)  # ruff:ignore[suspicious-non-cryptographic-random-usage]
 
-        lightness = uniform(0.25, 0.75)  # noqa: S311
-        saturation = uniform(0.25, 1)  # noqa: S311
+        lightness = uniform(0.25, 0.75)  # ruff:ignore[suspicious-non-cryptographic-random-usage]
+        saturation = uniform(0.25, 1)  # ruff:ignore[suspicious-non-cryptographic-random-usage]
 
         LOGGER.debug(
             "Creating colormap with offset=%s, step=%s, lightness=%s, saturation=%s",

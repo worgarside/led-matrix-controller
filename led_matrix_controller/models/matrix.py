@@ -97,7 +97,7 @@ class ContentQueue(
 
     def get(
         self,
-        block: bool = True,  # noqa: FBT001,FBT002
+        block: bool = True,  # ruff:ignore[boolean-type-hint-positional-argument, boolean-default-value-positional-argument]
         timeout: float | None = None,
         *,
         pop: bool = True,
@@ -192,7 +192,7 @@ class ContentQueue(
 
     @property
     def mqtt_attributes(self) -> dict[str, MqttMeta]:
-        """Return the MQTT attributes of the queue."""
+        """MQTT attributes of the queue."""
         return {
             f"{item[1].priority:.3f}": {
                 "id": item[1].id,
@@ -227,7 +227,7 @@ class Matrix:
         "show_refresh_rate": const.DEBUG_MODE,
         "limit_refresh_rate_hz": const.TICKS_PER_SECOND,
         "pwm_lsb_nanoseconds": 80,
-        # "pwm_dither_bits": 1,  # noqa: ERA001
+        # "pwm_dither_bits": 1,  # ruff:ignore[commented-out-code]
     }
 
     canvas: mtrx.Canvas
@@ -774,12 +774,12 @@ class Matrix:
 
     @property
     def active(self) -> bool:
-        """Return whether content is currently playing."""
+        """Whether content is currently playing."""
         return self.current_content is not None and self.current_content.active
 
     @property
     def dimensions(self) -> Dimensions:
-        """Return the dimensions of the matrix."""
+        """Dimensions of the matrix."""
         return {
             "height": self.height,
             "width": self.width,
@@ -787,17 +787,17 @@ class Matrix:
 
     @property
     def height(self) -> int:
-        """Return the height of the matrix."""
+        """Height of the matrix."""
         return int(self.matrix.height)
 
     @property
     def width(self) -> int:
-        """Return the width of the matrix."""
+        """Width of the matrix."""
         return int(self.matrix.width)
 
     @property
     def brightness(self) -> int:
-        """Return the brightness of the matrix."""
+        """Brightness of the matrix."""
         return self._brightness
 
     @brightness.setter
@@ -815,7 +815,7 @@ class Matrix:
 
     @property
     def current_content(self) -> ContentBase[Any] | None:
-        """Return the currently displaying content."""
+        """Currently displaying content."""
         return self._current_content
 
     @current_content.setter
