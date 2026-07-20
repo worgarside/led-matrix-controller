@@ -353,7 +353,7 @@ class Setting(Generic[S]):
 
     @property
     def value(self) -> S:
-        """Get the setting's value from the automaton's attribute."""
+        """Setting value from the automaton's attribute."""
         return cast("S", getattr(self.instance, self.slug))
 
     @value.setter

@@ -173,5 +173,5 @@ class Combination(DynamicContent):
 
     @property
     def content_ids(self) -> tuple[str, ...]:
-        """Get the content ids."""
+        """Content IDs."""
         return tuple(c.id for c in self.content)

@@ -60,7 +60,7 @@ class ImageViewer(PreDefinedContent):
 
     @property
     def id(self) -> str:
-        """Return the ID of the content."""
+        """ID of the content."""
         return "image-" + to_kebab_case(
             self.path.relative_to(self.IMAGE_DIRECTORY).with_suffix("").as_posix(),
         )

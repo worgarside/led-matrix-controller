@@ -333,7 +333,7 @@ class Automaton(DynamicContent, ABC):
 
     @property
     def str_repr(self) -> str:
-        """Return a string representation of the automaton."""
+        """String representation of the automaton."""
         return "\n".join(" ".join(state.char for state in row) for row in self.pixels)
 
     def translate_slice(
@@ -367,12 +367,12 @@ class Automaton(DynamicContent, ABC):
 
     @property
     def shape(self) -> tuple[int, int]:
-        """Return the shape of the automaton."""
+        """Shape of the automaton."""
         return self.pixels.shape  # type: ignore[return-value]
 
     @property
     def current_content(self) -> Self:
-        """Return this automaton.
+        """This automaton.
 
         Bit of a workaround to get Settings to play nice between Matrix and Automaton instances.
         """

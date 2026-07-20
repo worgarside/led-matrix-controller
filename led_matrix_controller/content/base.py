@@ -257,27 +257,27 @@ class ContentBase(ABC, Generic[ContentType]):
 
     @property
     def id(self) -> str:
-        """Return the ID of the content."""
+        """ID of the content."""
         return self.id_override or camel_to_kebab_case(self.__class__.__name__)
 
     @cached_property
     def is_small(self) -> bool:
-        """Return whether the content is smaller than the matrix."""
+        """Whether the content is smaller than the matrix."""
         return self.shape < const.MATRIX_SHAPE
 
     @property
     def mqtt_attributes(self) -> str:
-        """Return extra attributes for the MQTT message."""
+        """Extra attributes for the MQTT message."""
         return dumps(self, default=self._json_encode)
 
     @property
     def position(self) -> tuple[int, int]:
-        """Return the position of the content."""
+        """Position of the content."""
         return self.x_pos, self.y_pos
 
     @property
     def shape(self) -> tuple[int, int]:
-        """Return the shape of the content."""
+        """Shape of the content."""
         return self.height, self.width
 
     @abstractmethod

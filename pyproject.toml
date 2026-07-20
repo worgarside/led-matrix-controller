@@ -137,6 +137,7 @@ lint.ignore = [
   "DOC201", # https://docs.astral.sh/ruff/rules/docstring-missing-returns/
   "DOC402", # https://docs.astral.sh/ruff/rules/docstring-missing-yields/
   "DOC501", # https://docs.astral.sh/ruff/rules/docstring-missing-exception/
+  "RUF105", # https://docs.astral.sh/ruff/rules/noqa-comments/
 ]
 
 [tool.ruff.lint.per-file-ignores]
