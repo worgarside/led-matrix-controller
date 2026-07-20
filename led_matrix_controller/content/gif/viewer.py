@@ -69,7 +69,7 @@ class GifViewer(PreDefinedContent):
 
     @property
     def id(self) -> str:
-        """Return the ID of the content."""
+        """ID of the content."""
         return "gif-" + to_kebab_case(
             self.path.relative_to(self.GIF_DIRECTORY).with_suffix("").as_posix(),
         )

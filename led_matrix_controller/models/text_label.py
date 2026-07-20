@@ -81,7 +81,7 @@ class Text:
 
     @property
     def display_content(self) -> str:
-        """Return a (potentially) formatted version of the text for display.
+        """(Potentially) formatted version of the text for display.
 
         Returns:
             str: the display content of the text.
@@ -113,7 +113,7 @@ class Text:
 
     @property
     def label_len(self) -> int:
-        """Return the length of the text in pixels.
+        """Length of the text in pixels.
 
         Returns:
             int: length of the text in pixels
@@ -122,7 +122,7 @@ class Text:
 
     @property
     def matrix_width(self) -> int | None:
-        """Return the width of the matrix.
+        """Width of the matrix.
 
         Returns:
             int: the width of the matrix
@@ -131,7 +131,7 @@ class Text:
 
     @matrix_width.setter
     def matrix_width(self, value: int | None) -> None:
-        """Return the width of the matrix.
+        """Width of the matrix.
 
         Args:
             value (int, optional): the width of the matrix
@@ -140,7 +140,7 @@ class Text:
 
     @property
     def original_x_pos(self) -> int:
-        """Return the x position of the text.
+        """X position of the text.
 
         Returns:
             int: x position of the text

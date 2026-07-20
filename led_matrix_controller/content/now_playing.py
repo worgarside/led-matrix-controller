@@ -120,7 +120,7 @@ class NowPlaying(DynamicContent):
                 self.artwork_uri,
                 self.album,
             )
-            LOGGER.error("Response content: %s", err.response.text)  # noqa: TRY400
+            LOGGER.error("Response content: %s", err.response.text)  # ruff:ignore[error-instead-of-exception]
         except Exception:
             LOGGER.exception(
                 "Failed to download artwork from %s for album %s",
@@ -192,7 +192,7 @@ class NowPlaying(DynamicContent):
 
     @property
     def artist_directory(self) -> str | None:
-        """Return the artist name, with all non-alphanumeric characters removed.
+        """Artist name, with all non-alphanumeric characters removed.
 
         Returns:
             str: the artist name, with all non-alphanumeric characters removed
@@ -204,7 +204,7 @@ class NowPlaying(DynamicContent):
 
     @property
     def filename(self) -> str | None:
-        """Return the album name, with all non-alphanumeric characters removed.
+        """Album name, with all non-alphanumeric characters removed.
 
         Returns:
             str: the filename of the artwork image
@@ -216,7 +216,7 @@ class NowPlaying(DynamicContent):
 
     @property
     def file_path(self) -> Path | None:
-        """Return the local path to the artwork image.
+        """Local path to the artwork image.
 
         Returns:
             Path: fully-qualified path to the artwork image
@@ -228,22 +228,22 @@ class NowPlaying(DynamicContent):
 
     @property
     def album(self) -> str | None:
-        """Return the album name."""
+        """Album name."""
         return self.track_metadata.get("album")
 
     @property
     def artist(self) -> str | None:
-        """Return the artist name."""
+        """Artist name."""
         return self.track_metadata.get("artist")
 
     @property
     def artwork_uri(self) -> httpx.URL | None:
-        """Return the URL of the artwork."""
+        """URL of the artwork."""
         return self.track_metadata.get("album_artwork_url")
 
     @property
     def title(self) -> str | None:
-        """Return the title of the track."""
+        """Title of the track."""
         return self.track_metadata.get("title")
 
     def __hash__(self) -> int:

@@ -231,11 +231,11 @@ class ContentBase(ABC, Generic[ContentType]):
         _ = self, update_setting
         raise NotImplementedError
 
-    def setup(self) -> Generator[None, None, None] | None:  # noqa: PLR6301
+    def setup(self) -> Generator[None, None, None] | None:  # ruff:ignore[no-self-use]
         """Perform any necessary setup."""
         return None
 
-    def teardown(self) -> Generator[None, None, None] | None:  # noqa: PLR6301
+    def teardown(self) -> Generator[None, None, None] | None:  # ruff:ignore[no-self-use]
         """Perform any necessary cleanup."""
         return None
 
@@ -257,27 +257,27 @@ class ContentBase(ABC, Generic[ContentType]):
 
     @property
     def id(self) -> str:
-        """Return the ID of the content."""
+        """ID of the content."""
         return self.id_override or camel_to_kebab_case(self.__class__.__name__)
 
     @cached_property
     def is_small(self) -> bool:
-        """Return whether the content is smaller than the matrix."""
+        """Whether the content is smaller than the matrix."""
         return self.shape < const.MATRIX_SHAPE
 
     @property
     def mqtt_attributes(self) -> str:
-        """Return extra attributes for the MQTT message."""
+        """Extra attributes for the MQTT message."""
         return dumps(self, default=self._json_encode)
 
     @property
     def position(self) -> tuple[int, int]:
-        """Return the position of the content."""
+        """Position of the content."""
         return self.x_pos, self.y_pos
 
     @property
     def shape(self) -> tuple[int, int]:
-        """Return the shape of the content."""
+        """Shape of the content."""
         return self.height, self.width
 
     @abstractmethod
@@ -286,7 +286,7 @@ class ContentBase(ABC, Generic[ContentType]):
 
     @final
     @staticmethod
-    def _json_encode(obj: Any) -> Any:  # noqa: PLR0911,C901
+    def _json_encode(obj: Any) -> Any:  # ruff:ignore[too-many-return-statements, complex-structure]
         if hasattr(obj, "__json__"):
             with suppress(TypeError):
                 return obj.__json__()
@@ -323,7 +323,7 @@ class ContentBase(ABC, Generic[ContentType]):
             return dumps(obj)
         except TypeError:
             if not callable(obj):
-                LOGGER.error("Could not serialize object (%s): %r", obj, obj)  # noqa: TRY400
+                LOGGER.error("Could not serialize object (%s): %r", obj, obj)  # ruff:ignore[error-instead-of-exception]
                 if not const.IS_PI:
                     raise
             return None

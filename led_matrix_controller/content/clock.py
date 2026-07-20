@@ -9,7 +9,7 @@ from functools import lru_cache
 from typing import TYPE_CHECKING, Annotated, Final, cast
 
 import numpy as np
-from content.base import GridView  # noqa: TC002
+from content.base import GridView  # ruff:ignore[typing-only-third-party-import]
 from utils import const
 from wg_utilities.loggers import get_streaming_logger
 
@@ -139,4 +139,4 @@ class Clock(DynamicContent):
     @staticmethod
     def now_str() -> str:
         """Return the current time as a string."""
-        return datetime.now().strftime("%H:%M:%S")  # noqa: DTZ005
+        return datetime.now().strftime("%H:%M:%S")  # ruff:ignore[call-datetime-now-without-tzinfo]

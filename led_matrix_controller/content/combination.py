@@ -91,7 +91,7 @@ class Combination(DynamicContent):
                     next(content_chains[content.id])
                 except StopIteration:
                     if content.active:
-                        LOGGER.error(  # noqa: TRY400
+                        LOGGER.error(  # ruff:ignore[error-instead-of-exception]
                             "Content %s stopped unexpectedly",
                             content.id,
                         )
@@ -173,5 +173,5 @@ class Combination(DynamicContent):
 
     @property
     def content_ids(self) -> tuple[str, ...]:
-        """Get the content ids."""
+        """Content IDs."""
         return tuple(c.id for c in self.content)
