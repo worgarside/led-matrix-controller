@@ -94,7 +94,7 @@ def hex_to_rgba(hex_code: str) -> tuple[int, int, int, int]:
     """Convert hex code to rgba tuple."""
     hex_code = hex_code.lstrip("#")
 
-    if len(hex_code) == 6:  # noqa: PLR2004
+    if len(hex_code) == 6:  # ruff:ignore[magic-value-comparison]
         r, g, b = int(hex_code[0:2], 16), int(hex_code[2:4], 16), int(hex_code[4:6], 16)
         a = 255
     else:

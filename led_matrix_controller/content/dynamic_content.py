@@ -41,7 +41,7 @@ class DynamicContent(ContentBase[GridView], ABC):
                 include_extras=True,
             )
         except TypeError:
-            LOGGER.error("Failed to get type hints for %s", self.__class__.__name__)  # noqa: TRY400
+            LOGGER.error("Failed to get type hints for %s", self.__class__.__name__)  # ruff:ignore[error-instead-of-exception]
             raise
 
         for field_name, field_type in type_hints.items():

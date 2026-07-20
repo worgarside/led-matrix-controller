@@ -101,7 +101,7 @@ class MqttClient(metaclass=Singleton):
             LOGGER.error(msg)
             sys.exit(msg)
 
-    def _on_disconnect(  # noqa: PLR6301
+    def _on_disconnect(  # ruff:ignore[no-self-use]
         self,
         client: mqtt.Client,
         userdata: Any,
@@ -112,7 +112,7 @@ class MqttClient(metaclass=Singleton):
         _ = client, userdata, flags, properties
         LOGGER.info("Disconnected with reason code: %s", rc)
 
-    def _on_message(  # noqa: PLR6301
+    def _on_message(  # ruff:ignore[no-self-use]
         self,
         client: mqtt.Client,
         userdata: Any,
@@ -121,7 +121,7 @@ class MqttClient(metaclass=Singleton):
         _ = client, userdata
         LOGGER.info("Received message: %s", message.payload)
 
-    def _on_subscribe(  # noqa: PLR6301
+    def _on_subscribe(  # ruff:ignore[no-self-use]
         self,
         client: mqtt.Client,
         userdata: Any,

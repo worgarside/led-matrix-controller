@@ -1,16 +1,18 @@
-"""Windows Media Player? ;_;"""  # noqa: D415
+"""Windows Media Player? ;_;"""  # ruff:ignore[missing-terminal-punctuation]
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
 from json import dumps
-from multiprocessing import shared_memory  # noqa: TC003
+from multiprocessing import (
+    shared_memory,  # ruff:ignore[typing-only-standard-library-import]
+)
 from typing import TYPE_CHECKING, Annotated, Final
 
 import numpy as np
 from content.setting import ParameterSetting, TransitionableParameterSetting
-from numpy.typing import NDArray  # noqa: TC002
+from numpy.typing import NDArray  # ruff:ignore[typing-only-third-party-import]
 from scipy.fftpack import rfftfreq
 from utils import const, get_shared_memory, hex_to_rgba
 from wg_utilities.loggers import get_streaming_logger

@@ -97,7 +97,7 @@ class ContentQueue(
 
     def get(
         self,
-        block: bool = True,  # noqa: FBT001,FBT002
+        block: bool = True,  # ruff:ignore[boolean-type-hint-positional-argument, boolean-default-value-positional-argument]
         timeout: float | None = None,
         *,
         pop: bool = True,
@@ -227,7 +227,7 @@ class Matrix:
         "show_refresh_rate": const.DEBUG_MODE,
         "limit_refresh_rate_hz": const.TICKS_PER_SECOND,
         "pwm_lsb_nanoseconds": 80,
-        # "pwm_dither_bits": 1,  # noqa: ERA001
+        # "pwm_dither_bits": 1,  # ruff:ignore[commented-out-code]
     }
 
     canvas: mtrx.Canvas

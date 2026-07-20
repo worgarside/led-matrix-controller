@@ -114,7 +114,7 @@ class Automaton(DynamicContent, ABC):
                 freq_setting := self.settings.get(rule.frequency),
                 FrequencySetting,
             ):
-                rule._frequency_setting = freq_setting  # noqa: SLF001
+                rule._frequency_setting = freq_setting  # ruff:ignore[private-member-access]
 
             rule.target_view = self.pixels[rule.target_slice]
             rule.refresh_mask_generator(self)
@@ -264,7 +264,7 @@ class Automaton(DynamicContent, ABC):
                 # Apply masks
                 for target_slice, mask, new_state, rand_mult in masks:
                     if rand_mult < 1:
-                        mask &= const.RNG.random(mask.shape) < rand_mult  # noqa: PLW2901
+                        mask &= const.RNG.random(mask.shape) < rand_mult  # ruff:ignore[redefined-loop-name]
 
                     if isinstance(new_state, int):
                         pixels[target_slice][mask] = new_state

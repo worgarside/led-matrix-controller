@@ -231,11 +231,11 @@ class ContentBase(ABC, Generic[ContentType]):
         _ = self, update_setting
         raise NotImplementedError
 
-    def setup(self) -> Generator[None, None, None] | None:  # noqa: PLR6301
+    def setup(self) -> Generator[None, None, None] | None:  # ruff:ignore[no-self-use]
         """Perform any necessary setup."""
         return None
 
-    def teardown(self) -> Generator[None, None, None] | None:  # noqa: PLR6301
+    def teardown(self) -> Generator[None, None, None] | None:  # ruff:ignore[no-self-use]
         """Perform any necessary cleanup."""
         return None
 
@@ -286,7 +286,7 @@ class ContentBase(ABC, Generic[ContentType]):
 
     @final
     @staticmethod
-    def _json_encode(obj: Any) -> Any:  # noqa: PLR0911,C901
+    def _json_encode(obj: Any) -> Any:  # ruff:ignore[too-many-return-statements, complex-structure]
         if hasattr(obj, "__json__"):
             with suppress(TypeError):
                 return obj.__json__()
@@ -323,7 +323,7 @@ class ContentBase(ABC, Generic[ContentType]):
             return dumps(obj)
         except TypeError:
             if not callable(obj):
-                LOGGER.error("Could not serialize object (%s): %r", obj, obj)  # noqa: TRY400
+                LOGGER.error("Could not serialize object (%s): %r", obj, obj)  # ruff:ignore[error-instead-of-exception]
                 if not const.IS_PI:
                     raise
             return None

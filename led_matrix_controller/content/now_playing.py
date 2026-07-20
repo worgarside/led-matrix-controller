@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Final, TypedDict
 
 # The httpcore import is needed because httpx throws an error here for some reason
 # https://github.com/encode/httpx/blob/master/httpx/_transports/default.py#L150
-import httpcore  # noqa: F401
+import httpcore  # ruff:ignore[unused-import]
 import httpx
 import numpy as np
 from content.base import GridView, StopType
@@ -120,7 +120,7 @@ class NowPlaying(DynamicContent):
                 self.artwork_uri,
                 self.album,
             )
-            LOGGER.error("Response content: %s", err.response.text)  # noqa: TRY400
+            LOGGER.error("Response content: %s", err.response.text)  # ruff:ignore[error-instead-of-exception]
         except Exception:
             LOGGER.exception(
                 "Failed to download artwork from %s for album %s",

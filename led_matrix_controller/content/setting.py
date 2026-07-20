@@ -122,7 +122,7 @@ class Setting(Generic[S]):
 
     def __post_init__(self) -> None:
         if not hasattr(self.__class__, "_MQTT_CLIENT"):
-            self.__class__._MQTT_CLIENT = MqttClient()  # noqa: SLF001
+            self.__class__._MQTT_CLIENT = MqttClient()  # ruff:ignore[private-member-access]
 
         if (
             self.minimum is not None
@@ -162,7 +162,7 @@ class Setting(Generic[S]):
 
         self.matrix.publish_attributes()
 
-    def on_message(self, raw_payload: S) -> None:  # noqa: C901
+    def on_message(self, raw_payload: S) -> None:  # ruff:ignore[complex-structure]
         """Handle an MQTT message.
 
         Args:
@@ -327,7 +327,7 @@ class Setting(Generic[S]):
     @property
     def mqtt_client(self) -> MqttClient:
         """The MQTT client to use for this setting."""
-        return self.__class__._MQTT_CLIENT  # noqa: SLF001
+        return self.__class__._MQTT_CLIENT  # ruff:ignore[private-member-access]
 
     _mqtt_topic: str = field(init=False, repr=False)
 
@@ -429,7 +429,7 @@ class TransitionableSettingMixin(Setting[N]):
             else:
                 LOGGER.debug("Transition thread already running")
         else:
-            Setting._set_value_from_payload(self, payload)  # noqa: SLF001
+            Setting._set_value_from_payload(self, payload)  # ruff:ignore[private-member-access]
 
     def _transition_worker(self) -> None:
         LOGGER.info("Transitioning %s to %s", self.slug, self.target_value)
