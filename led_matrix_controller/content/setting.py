@@ -437,39 +437,47 @@ class TransitionableSettingMixin(Setting[N]):
         tick_condition = self.matrix.tick_condition
         tick_condition.acquire()
 
-        cc = self.matrix.current_content
+        try:
+            cc = self.matrix.current_content
 
-        if self.type_ is int:
-            # Wait until accumulated change reaches 1
-            ticks_between_transitions = math.ceil(1 / self.transition_rate)
+            if self.type_ is int:
+                # Wait until accumulated change reaches 1
+                ticks_between_transitions = math.ceil(1 / self.transition_rate)
 
-            transition_amount: N = 1
-        else:
-            # Wait until accumulated change reaches the specified precision
-            precision_value = 10**-self.fp_precision
-            ticks_between_transitions = math.ceil(precision_value / self.transition_rate)
-
-            transition_amount = ticks_between_transitions * self.transition_rate
-
-        direction = 1 if self.target_value > self.value else -1
-        while self.value != self.target_value:
-            if self.matrix.tick % ticks_between_transitions == 0:
-                self.value = round(
-                    self.value
-                    + min(transition_amount, abs(self.value - self.target_value))
-                    * direction,
-                    self.fp_precision,
+                transition_amount: N = 1
+            else:
+                # Wait until accumulated change reaches the specified precision
+                precision_value = 10**-self.fp_precision
+                ticks_between_transitions = math.ceil(
+                    precision_value / self.transition_rate,
                 )
 
-            if not (cc and cc.is_sleeping):
-                # If the content is sleeping, then it isn't yielding, so the canvas isn't being
-                # swapped, and that means that no ticks are happening...
-                # So only wait for a tick notification if the content is not sleeping!
-                tick_condition.wait()
-            else:
-                sleep(const.TICK_LENGTH)
+                transition_amount = ticks_between_transitions * self.transition_rate
 
-        tick_condition.release()
+            while self.value != self.target_value:
+                if (
+                    self.matrix.tick % ticks_between_transitions == 0
+                    and (delta := self.target_value - self.value) != 0
+                ):
+                    # Recalculate each step so mid-transition target changes reverse correctly
+                    # instead of overshooting (e.g. brightness below 0).
+                    direction = 1 if delta > 0 else -1
+                    self.value = self._coerce_and_format(
+                        round(
+                            self.value + min(transition_amount, abs(delta)) * direction,
+                            self.fp_precision,
+                        ),
+                    )
+
+                if not (cc and cc.is_sleeping):
+                    # If the content is sleeping, then it isn't yielding, so the canvas isn't
+                    # being swapped, and that means that no ticks are happening...
+                    # So only wait for a tick notification if the content is not sleeping!
+                    tick_condition.wait()
+                else:
+                    sleep(const.TICK_LENGTH)
+        finally:
+            tick_condition.release()
 
         LOGGER.info(
             'Transition complete: %s("%s").%s = %s',
