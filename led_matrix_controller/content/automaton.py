@@ -25,6 +25,7 @@ import numpy as np
 from models.rule import Rule
 from numpy.typing import NDArray
 from utils import const
+from utils.profiling import time_operation
 from wg_utilities.loggers import get_streaming_logger
 
 from .base import GridView, StateBase
@@ -86,6 +87,13 @@ class Automaton(DynamicContent, ABC):
 
     durations: GridView = field(init=False, repr=False)
 
+    _working_pixels: GridView = field(init=False, repr=False)
+    """Pre-allocated working array for rules processing."""
+    _prev_working_pixels: GridView = field(init=False, repr=False)
+    """Pre-allocated previous state array for rules processing."""
+    _mask_buffer: NDArray[np.bool_] = field(init=False, repr=False)
+    """Pre-allocated buffer for mask operations."""
+
     class OutOfBoundsError(ValueError):
         """Error for when a slice goes out of bounds."""
 
@@ -122,6 +130,11 @@ class Automaton(DynamicContent, ABC):
         self.setting_update_callback()
 
         self.mask_queue = Queue(maxsize=QUEUE_SIZE)
+
+        # Pre-allocate working arrays for rules processing (reused each frame)
+        self._working_pixels = self.pixels.copy()
+        self._prev_working_pixels = self.pixels.copy()
+        self._mask_buffer = np.empty_like(self.pixels, dtype=np.bool_)
 
     def setting_update_callback(self, update_setting: str | None = None) -> None:
         """Pre-calculate the a sequence of mask generators for each frame.
@@ -245,48 +258,97 @@ class Automaton(DynamicContent, ABC):
 
         yield
 
+    def _apply_mask_operations(
+        self,
+        masks: tuple[
+            tuple[TargetSlice, Mask, int | tuple[int, ...], float],
+            ...,
+        ],
+    ) -> None:
+        """Apply mask operations to working pixels."""
+        for target_slice, mask, new_state, rand_mult in masks:
+            # Apply random multiplier if needed
+            if rand_mult < 1:
+                # Use pre-allocated buffer for random multiplier operation
+                # This avoids creating intermediate arrays
+                np.multiply(
+                    mask,
+                    const.RNG.random(mask.shape) < rand_mult,
+                    out=self._mask_buffer[target_slice],
+                )
+                # Use the modified mask from buffer
+                final_mask = self._mask_buffer[target_slice]
+            else:
+                # No random multiplier, use original mask
+                final_mask = mask
+
+            if isinstance(new_state, int):
+                self._working_pixels[target_slice][final_mask] = new_state
+            else:
+                # A tuple of ints; distribute them randomly
+                self._working_pixels[target_slice][final_mask] = const.RNG.choice(
+                    new_state,
+                    size=final_mask.sum(),
+                )
+
+    def _update_duration_tracking(self) -> None:
+        """Update duration tracking for tracked states."""
+        # Optimized duration tracking: only update changed cells
+        # Compute changed mask once (pixels after rules vs self._prev_working_pixels before rules)
+        changed = self._working_pixels != self._prev_working_pixels
+        tracked = np.isin(
+            self._working_pixels,
+            self.TRACK_STATES_DURATION,
+        )
+
+        # Update durations in optimized single pass
+        self.durations[changed & tracked] = 1
+        self.durations[~changed & tracked] += 1
+        self.durations[~tracked] = 0
+
     def _rules_worker(self) -> None:
         if not hasattr(self, "durations"):
             self.durations = self.zeros()
 
-        pixels = self.pixels.copy()
-        prev_pixels = self.pixels.copy()
+        # Use pre-allocated working arrays (reused each frame)
+        # Initialize working arrays from current state
+        self._working_pixels[:] = self.pixels
+        self._prev_working_pixels[:] = self.pixels
 
         while self.active:
             for ruleset in self.frame_rulesets:
-                # Generate masks
-                masks = tuple(
-                    (target_slice, mask_gen(pixels), state, rand_mult)
-                    for target_slice, mask_gen, state, predicate, rand_mult in ruleset
-                    if predicate(self)
-                )
+                with time_operation("automaton.ruleset.total"):
+                    # Save current state before applying rules (for duration tracking)
+                    # This is needed to compare "before rules" vs "after rules"
+                    if self.TRACK_STATES_DURATION:
+                        # Use in-place copy to avoid allocation
+                        self._prev_working_pixels[:] = self._working_pixels
 
-                # Apply masks
-                for target_slice, mask, new_state, rand_mult in masks:
-                    if rand_mult < 1:
-                        mask &= const.RNG.random(mask.shape) < rand_mult  # noqa: PLW2901
-
-                    if isinstance(new_state, int):
-                        pixels[target_slice][mask] = new_state
-                    else:
-                        # A tuple of ints; distribute them randomly
-                        pixels[target_slice][mask] = const.RNG.choice(
-                            new_state,
-                            size=mask.sum(),
+                    # Generate masks
+                    with time_operation("automaton.ruleset.generate_masks"):
+                        masks = tuple(
+                            (
+                                target_slice,
+                                mask_gen(self._working_pixels),
+                                state,
+                                rand_mult,
+                            )
+                            for target_slice, mask_gen, state, predicate, rand_mult in ruleset
+                            if predicate(self)
                         )
 
-                if self.TRACK_STATES_DURATION:
-                    # Calculate state durations
-                    tracked_states_mask = np.isin(pixels, self.TRACK_STATES_DURATION)
-                    same_state_mask = (pixels == prev_pixels) & tracked_states_mask
-                    new_tracked_state_mask = (pixels != prev_pixels) & tracked_states_mask
+                    # Apply masks with optimized operations
+                    with time_operation("automaton.ruleset.apply_masks"):
+                        self._apply_mask_operations(masks)
 
-                    self.durations[same_state_mask] += 1
-                    self.durations[new_tracked_state_mask] = 1
-                    self.durations[~tracked_states_mask] = 0
+                    if self.TRACK_STATES_DURATION:
+                        # Optimized duration tracking: only update changed cells
+                        with time_operation("automaton.ruleset.duration_tracking"):
+                            self._update_duration_tracking()
 
-                # Add new frame to queue
-                self.mask_queue.put(prev_pixels := pixels.copy())
+                    # Copy only when putting in queue (unavoidable for queue safety)
+                    with time_operation("automaton.ruleset.queue_put"):
+                        self.mask_queue.put(self._working_pixels.copy())
 
         LOGGER.debug("Rules worker stopped")
 
