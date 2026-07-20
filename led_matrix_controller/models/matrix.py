@@ -755,9 +755,11 @@ class Matrix:
 
         self.tick += 1
 
-        self.tick_condition.acquire(timeout=const.TICK_LENGTH)
-        self.tick_condition.notify_all()
-        self.tick_condition.release()
+        if self.tick_condition.acquire(timeout=const.TICK_LENGTH):
+            try:
+                self.tick_condition.notify_all()
+            finally:
+                self.tick_condition.release()
 
     def zeros(self, *, dtype: DTypeLike = np.int_) -> NDArray[Any]:
         """Return a grid of zeros."""
